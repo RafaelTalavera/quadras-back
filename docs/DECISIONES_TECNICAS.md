@@ -55,3 +55,10 @@
 - Contexto: El Hito 4 requiere un modelo estable para persistencia backend y serializacion frontend antes de exponer API.
 - Decision: Definir entidad `Reservation` con estados `SCHEDULED`, `COMPLETED` y `CANCELLED`, y DTOs base (`CreateReservationDto`, `ReservationDto`) como contrato de datos inicial.
 - Impacto: Estandariza el dominio para los proximos hitos (API, agenda, validaciones de solapamiento) y reduce riesgo de cambios contractuales tardios.
+
+## DT-009 - API de reservas v1 con alcance minimo y codigos HTTP consistentes
+- Fecha: 2026-03-12
+- Estado: Activa
+- Contexto: Hito 5 requiere exponer operaciones base de consulta/alta sin introducir aun reglas avanzadas de negocio.
+- Decision: Publicar `POST /api/v1/reservations`, `GET /api/v1/reservations` y `GET /api/v1/reservations/{id}` con respuestas `201/200/404/400`, dejando solapamientos para Hito 7.
+- Impacto: Permite integracion temprana del cliente con una API estable y reduce acoplamiento prematuro a reglas aun no cerradas.

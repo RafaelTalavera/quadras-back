@@ -265,3 +265,23 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Registrar hash documental final de cierre en la fila consolidada del Hito 4.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 5 | Implementacion backend de API de reservas
+- Componente afectado: Backend (controller/service/repository)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/controller/ReservationController.java`
+  - `src/main/java/com/axioma/quadras/service/ReservationService.java`
+  - `src/main/java/com/axioma/quadras/repository/ReservationRepository.java`
+  - `src/main/java/com/axioma/quadras/config/ApiExceptionHandler.java`
+- Motivo del cambio: Exponer endpoints de alta, listado y consulta por id con codigos HTTP consistentes.
+- Impacto funcional: Backend publica API `/api/v1/reservations` lista para integracion inicial del cliente.
+
+## 2026-03-12 | Hito 5 | Pruebas de integracion y validacion backend
+- Componente afectado: Backend (calidad + gobernanza)
+- Archivos tocados:
+  - `src/test/java/com/axioma/quadras/controller/ReservationControllerTest.java`
+  - `docs/HITOS.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Validar flujo principal de API, casos invalidos y 404 con MockMvc + Flyway en test.
+- Impacto funcional: API de reservas validada en `mvnw test` para continuar cierre del hito.
