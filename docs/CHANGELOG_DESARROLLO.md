@@ -448,3 +448,19 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Incorporar hash del commit documental de cierre backend en la fila consolidada del Hito 8.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 9 | Inicio secuencial del hito (fase backend)
+- Componente afectado: Backend (gobierno de hito)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Abrir Hito 9 en estado `En progreso` y fijar decision tecnica de integracion HTTP local entre frontend y backend.
+- Impacto funcional: Sin cambios funcionales en API backend durante esta fase; se mantiene estabilidad del contrato existente.
+
+## 2026-03-12 | Hito 9 | Validacion backend previa a integracion cliente
+- Componente afectado: Backend (calidad)
+- Archivos tocados:
+  - `target/surefire-reports/` (generado, no versionado)
+- Motivo del cambio: Ejecutar `mvnw test` para confirmar estabilidad de endpoints y reglas antes de conectar frontend por HTTP real.
+- Impacto funcional: Backend validado en verde (`22 tests`) para continuar fase frontend del Hito 9.

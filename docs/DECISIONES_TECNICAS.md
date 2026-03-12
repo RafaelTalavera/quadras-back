@@ -83,3 +83,10 @@
 - Contexto: Hito 8 requiere editar/cancelar sin romper integridad del calendario ni estados del dominio.
 - Decision: Exponer `PUT /api/v1/reservations/{id}` y `PATCH /api/v1/reservations/{id}/cancel`; permitir edicion solo en estado `SCHEDULED`, permitir cancelacion idempotente de `SCHEDULED/CANCELLED` y bloquear cancelacion de `COMPLETED`; en edicion se reaplican horario/duracion/solapamiento excluyendo la propia reserva.
 - Impacto: Se habilita mantenimiento operativo de turnos con reglas consistentes y sin introducir cambios de seguridad o alcance extra.
+
+## DT-013 - Integracion local por adaptador HTTP en cliente de reservas
+- Fecha: 2026-03-12
+- Estado: Activa
+- Contexto: Hito 9 requiere conectar Flutter Desktop con backend local sin dependencia de internet y con manejo claro de errores de conectividad.
+- Decision: Mantener API backend sin cambios de contrato y sustituir el servicio en memoria por un adaptador HTTP (`ReservationAppService`) que consume endpoints locales de reservas, propagando mensajes de error de API y fallos de red en formato entendible para UI.
+- Impacto: El flujo operativo pasa a datos persistidos en MySQL via backend local y la UI queda preparada para escenarios de backend no disponible.

@@ -142,7 +142,7 @@ Flujos principales operan en red local sin dependencia de internet.
 Riesgos:
 Configuracion de firewall o puertos en equipos del hotel.
 Estado:
-Pendiente.
+En progreso.
 
 ## Hito 10 - Validacion integral, documentacion final y preparacion para instalacion
 Objetivo:
