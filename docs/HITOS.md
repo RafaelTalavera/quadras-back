@@ -14,7 +14,7 @@ Documentacion base disponible, estructura revisada y tests de smoke ejecutables 
 Riesgos:
 Sin remotos Git definidos, convencion de ramas pendiente y test backend fallando por datasource no configurado.
 Estado:
-En progreso (backend desbloqueado, pendiente cierre documental final del hito).
+Completado.
 
 ## Hito 2 - Configuracion base backend Spring Boot + MySQL + estructura de capas
 Objetivo:

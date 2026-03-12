@@ -55,3 +55,12 @@
   - `target/surefire-reports/` (generado, no versionado)
 - Motivo del cambio: Confirmar que `mvnw test` pasa luego del ajuste de infraestructura de pruebas.
 - Impacto funcional: Tests de backend en estado OK.
+
+## 2026-03-12 | Hito 1 | Cierre de tablero y estado del hito
+- Componente afectado: Backend (control de proyecto)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/HITOS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Consolidar Hito 1 como completado en backend y frontend.
+- Impacto funcional: Sin cambios funcionales en API.
