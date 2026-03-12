@@ -207,3 +207,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Registrar finalizacion de Hito 3 con commit frontend estable y actualizar la fuente unica de verdad del proyecto.
 - Impacto funcional: Sin cambios en runtime backend; el hito queda cerrado y habilita inicio del Hito 4.
+
+## 2026-03-12 | Hito 3 | Sincronizacion final de hashes de cierre
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Incorporar hashes finales de commits backend/frontend del Hito 3 en la fila consolidada del tablero.
+- Impacto funcional: Sin impacto funcional; mejora trazabilidad de release por hito.
