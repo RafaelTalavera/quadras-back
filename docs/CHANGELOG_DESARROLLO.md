@@ -23,3 +23,19 @@
   - `target/surefire-reports/com.axioma.quadras.QuadrasApplicationTests.txt` (generado, no versionado)
 - Motivo del cambio: Ejecutar `mvnw test` para validar estabilidad base sin cambios funcionales.
 - Impacto funcional: Se detecta bloqueo; `contextLoads` falla por falta de datasource/perfil de test (`Failed to determine a suitable driver class`).
+
+## 2026-03-12 | Hito 1 | Commit backend de inicializacion
+- Componente afectado: Backend (codigo base + documentacion)
+- Archivos tocados:
+  - Estructura base Spring Boot (`pom.xml`, `src/`, `mvnw*`, `.mvn/`)
+  - Documentacion de control en `docs/`
+- Motivo del cambio: Registrar baseline backend y documentos de gestion de hitos en control de versiones.
+- Impacto funcional: Sin cambios funcionales nuevos; se mantiene bloqueo de test por datasource sin configurar.
+
+## 2026-03-12 | Hito 1 | Actualizacion de tablero con commits y estado final
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Reflejar hashes de commits de backend/frontend y estado consolidado del Hito 1.
+- Impacto funcional: Sin impacto funcional en API.

@@ -12,7 +12,7 @@
 ## Hitos
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |
 |------|--------|---------|----------|----------------|-------|---------------|----------------|-----------------|---------------|
-| 1 | Inicializacion y orden del proyecto | Bloqueado | Completado | Bloqueado | Backend FAIL (`mvnw test`), Frontend OK (`flutter test`) | Completada | Pendiente | Pendiente | Plan inicial completo; bloqueo tecnico en test de contexto Spring por datasource. |
+| 1 | Inicializacion y orden del proyecto | Bloqueado | Completado | Bloqueado | Backend FAIL (`mvnw test`), Frontend OK (`flutter test`) | Completada | Hecho (`6da5aa9`) | Hecho (`7d60e05`) | Plan inicial completo; bloqueo tecnico en test de contexto Spring por datasource. |
 | 2 | Configuracion base backend Spring Boot + MySQL + estructura de capas | Pendiente | N/A | Pendiente | Pendiente | Pendiente | Pendiente | N/A | Base tecnica backend y perfiles locales. |
 | 3 | Configuracion base frontend Flutter Desktop + estructura del cliente | N/A | Pendiente | Pendiente | Pendiente | Pendiente | N/A | Pendiente | Base tecnica Flutter Desktop orientada a red local. |
 | 4 | Modelo de dominio de reservas | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Definicion de entidades, DTOs y contratos base UI. |
