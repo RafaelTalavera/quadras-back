@@ -4,10 +4,10 @@
 - Proyecto: QUEDRAS
 - Backend: En progreso
 - Frontend: En progreso
-- Ultimo hito trabajado: Hito 6 - Pantallas base de agenda y creacion de reserva
+- Ultimo hito trabajado: Hito 7 - Validacion de solapamientos y reglas de negocio
 - Ultima actualizacion: 2026-03-12
 - Riesgos abiertos: Inconsistencia de naming entre proyectos (`quedras` vs `quadras`).
-- Proximo paso recomendado: Iniciar Hito 7 (validacion de solapamientos y reglas de negocio).
+- Proximo paso recomendado: Iniciar Hito 8 (edicion y cancelacion de reservas).
 
 ## Hitos
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |
@@ -18,14 +18,14 @@
 | 4 | Modelo de dominio de reservas | Completado | Completado | Completado | Backend OK (`mvnw test`, incluye `FlywayReservationMigrationTest`), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`6937aef`, `03d9223`) | Hecho (`eb642e4`) | Contrato de `Reservation` alineado entre backend y frontend con serializacion validada. |
 | 5 | API backend de reservas | Completado | N/A (sin cambios funcionales) | Completado | Backend OK (`mvnw test`, 12 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`333bb3d`, `9b4083c`) | Hecho documental (`4486f2e`) | Endpoints `POST/GET/GET{id}` operativos con respuestas 201/200/404/400. |
 | 6 | Pantallas base de agenda y creacion de reserva | N/A (fase backend ejecutada) | Completado | Completado | Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`b51f932`, `63004fa`) | Hecho (`968fe87`) | Agenda diaria y alta operativa con validaciones y estados locales en memoria. |
-| 7 | Validacion de solapamientos y reglas de negocio | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Reglas de horario, duracion y conflictos. |
+| 7 | Validacion de solapamientos y reglas de negocio | Completado | Completado | Completado | Backend OK (`mvnw test`, 15 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`7d6fb2e`) | Hecho (`26dab3b`) | Reglas de horario (07:00-23:00), duracion (60/90/120) y solapamientos aplicadas y alineadas entre API/UI. |
 | 8 | Edicion y cancelacion de reservas | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Operaciones de mantenimiento de reservas. |
 | 9 | Conexion frontend-backend local | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Integracion HTTP local, manejo de errores y estados. |
 | 10 | Validacion integral, documentacion final y preparacion para instalacion | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Checklist final para despliegue interno hotel. |
 
 ## Pendientes inmediatos
-- Iniciar Hito 7 en backend: validar solapamientos y horario operativo de reservas.
-- Definir mensajes de error de conflicto para alineacion backend/frontend.
+- Iniciar Hito 8 en backend: habilitar edicion y cancelacion de reservas.
+- Definir reglas de edicion sobre reservas canceladas y reservas ya iniciadas.
 - Definir convencion de ramas (ejemplo: `main` + ramas por hito).
 - Definir criterio final de naming entre proyectos (`quedras` / `quadras`).
 

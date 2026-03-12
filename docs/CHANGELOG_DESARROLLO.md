@@ -370,3 +370,23 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Cubrir casos de conflicto, horario invalido y duracion invalida, y registrar avance del hito.
 - Impacto funcional: Backend validado en `mvnw test` para continuar implementacion frontend de Hito 7.
+
+## 2026-03-12 | Hito 7 | Cierre frontend de reglas de negocio
+- Componente afectado: Frontend (servicio + UI + pruebas)
+- Archivos tocados:
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/reservations/application/reservation_app_service.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/reservations/presentation/new_reservation_page.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/test/features/reservations/application/reservation_app_service_test.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_PROGRESS.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_CHANGELOG.md`
+- Motivo del cambio: Aplicar en el cliente las mismas reglas de solapamiento, horario y duracion del backend y validar con `flutter test` y `flutter analyze`.
+- Impacto funcional: Frontend bloquea reservas invalidas con mensajes consistentes y queda listo para evolucion de Hito 8.
+
+## 2026-03-12 | Hito 7 | Cierre global y actualizacion de tablero
+- Componente afectado: Backend (gobierno de proyecto)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Consolidar Hito 7 como completado en backend/frontend y establecer Hito 8 como siguiente paso del proyecto.
+- Impacto funcional: Sin cambios de runtime adicionales; trazabilidad del hito cerrada en fuente de verdad global.
