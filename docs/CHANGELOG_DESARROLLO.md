@@ -64,3 +64,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Consolidar Hito 1 como completado en backend y frontend.
 - Impacto funcional: Sin cambios funcionales en API.
+
+## 2026-03-12 | Hito 1 | Ajuste final de trazabilidad de commits frontend en tablero
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Incorporar ultimo commit documental de frontend en la fila del Hito 1.
+- Impacto funcional: Sin impacto funcional.
