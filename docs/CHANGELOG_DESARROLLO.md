@@ -285,3 +285,20 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Validar flujo principal de API, casos invalidos y 404 con MockMvc + Flyway en test.
 - Impacto funcional: API de reservas validada en `mvnw test` para continuar cierre del hito.
+
+## 2026-03-12 | Hito 5 | Sincronizacion frontend (N/A funcional)
+- Componente afectado: Frontend (seguimiento)
+- Archivos tocados:
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_PROGRESS.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_CHANGELOG.md`
+- Motivo del cambio: Registrar fase frontend sin cambios funcionales y revalidar estabilidad del cliente.
+- Impacto funcional: Sin impacto en UI; hito backend queda trazado en ambos repos.
+
+## 2026-03-12 | Hito 5 | Cierre global de hito y actualizacion de tablero
+- Componente afectado: Backend (gobierno de proyecto)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Consolidar Hito 5 como completado y habilitar inicio del Hito 6.
+- Impacto funcional: Sin cambios de runtime adicionales; tablero y trazabilidad cerrados.

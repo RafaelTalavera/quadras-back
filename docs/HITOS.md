@@ -78,7 +78,7 @@ Coleccion de pruebas backend cubre flujo principal y casos invalidos.
 Riesgos:
 Contratos API no alineados con necesidades de UI.
 Estado:
-En progreso.
+Completado.
 
 ## Hito 6 - Pantallas base de agenda y creacion de reserva
 Objetivo:
