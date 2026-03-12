@@ -62,7 +62,7 @@ Modelo consistente entre backend y frontend con pruebas de serializacion.
 Riesgos:
 Cambios tardios en reglas operativas del hotel.
 Estado:
-En progreso.
+Completado.
 
 ## Hito 5 - API backend de reservas
 Objetivo:

@@ -238,3 +238,22 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Cubrir reglas de dominio, mapeo DTO y aplicacion de migraciones Flyway en entorno de pruebas.
 - Impacto funcional: Backend validado en `mvnw test` para continuar con implementacion frontend del Hito 4.
+
+## 2026-03-12 | Hito 4 | Cierre frontend del modelo de reservas
+- Componente afectado: Frontend (dominio y serializacion)
+- Archivos tocados:
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/reservations/domain/*`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/test/features/reservations/domain/reservation_models_test.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_PROGRESS.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_CHANGELOG.md`
+- Motivo del cambio: Alinear contrato frontend con entidad/DTO backend de reservas y validar serializacion.
+- Impacto funcional: Frontend queda listo para consumir API real en hitos posteriores sin redefinir modelo.
+
+## 2026-03-12 | Hito 4 | Cierre global de hito y actualizacion de tablero
+- Componente afectado: Backend (gobierno de proyecto)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Consolidar Hito 4 como completado en backend/frontend y dejar proximo paso en Hito 5.
+- Impacto funcional: Sin impacto en runtime; trazabilidad completa del hito cerrada.
