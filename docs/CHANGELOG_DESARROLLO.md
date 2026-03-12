@@ -533,3 +533,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Reflejar cierre parcial del Hito 10 con bloqueo externo de toolchain Visual Studio.
 - Impacto funcional: Proyecto queda trazado en estado bloqueado hasta resolver build desktop de frontend.
+
+## 2026-03-12 | Hito 10 | Sincronizacion final de hashes de trazabilidad
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Incorporar hash documental de actualizacion de estado bloqueado en la fila del Hito 10.
+- Impacto funcional: Sin impacto funcional.
