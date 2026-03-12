@@ -343,3 +343,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Validar `flutter test`/`flutter analyze`, cerrar estado del Hito 6 y consolidar tablero.
 - Impacto funcional: Hito 6 cerrado con trazabilidad completa y base lista para reglas de conflicto del Hito 7.
+
+## 2026-03-12 | Hito 6 | Sincronizacion final de hashes de cierre
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Incorporar hash documental final del backend en la fila consolidada del Hito 6.
+- Impacto funcional: Sin impacto funcional.
