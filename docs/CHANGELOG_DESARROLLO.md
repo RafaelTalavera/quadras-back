@@ -419,3 +419,24 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Validar casos de exito/error de update/cancel en pruebas de integracion y registrar decisiones/estado del hito.
 - Impacto funcional: `mvnw test` en verde con cobertura de operaciones de mantenimiento del Hito 8.
+
+## 2026-03-12 | Hito 8 | Cierre frontend de edicion y cancelacion
+- Componente afectado: Frontend (servicio + agenda + pruebas)
+- Archivos tocados:
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/reservations/application/reservation_app_service.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/reservations/domain/update_reservation_model.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/schedule/presentation/schedule_page.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/test/features/reservations/application/reservation_app_service_test.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_PROGRESS.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_CHANGELOG.md`
+- Motivo del cambio: Implementar acciones de edicion/cancelacion desde agenda, extender servicio en memoria y cerrar documentacion del hito en frontend.
+- Impacto funcional: Cliente permite mantenimiento de reservas con reglas de negocio alineadas al backend y validacion en `flutter test`/`flutter analyze`.
+
+## 2026-03-12 | Hito 8 | Cierre global y actualizacion de tablero
+- Componente afectado: Backend (gobierno de proyecto)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Consolidar Hito 8 como completado en backend/frontend y habilitar inicio de Hito 9.
+- Impacto funcional: Sin cambios de runtime adicionales; fuente unica de verdad actualizada.

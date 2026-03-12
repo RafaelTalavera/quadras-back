@@ -126,7 +126,7 @@ Cambios reflejados correctamente en UI y persistencia.
 Riesgos:
 Conflictos al editar hacia franjas ocupadas.
 Estado:
-En progreso.
+Completado.
 
 ## Hito 9 - Conexion frontend-backend local
 Objetivo:
