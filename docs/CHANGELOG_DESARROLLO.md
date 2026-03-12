@@ -156,3 +156,28 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Reflejar commits documentales mas recientes de backend y frontend en la fila de Hito 2.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 2 | Ajuste de credenciales y base local segun entorno real
+- Componente afectado: Backend (configuracion local)
+- Archivos tocados:
+  - `src/main/resources/application-local.properties`
+- Motivo del cambio: Alinear defaults locales a `db_quadras` con credenciales `root/sasa`.
+- Impacto funcional: Permite arranque local en el entorno actual sin modificar el perfil de test.
+
+## 2026-03-12 | Hito 2 | Validacion final de conectividad MySQL local
+- Componente afectado: Backend (validacion de entorno)
+- Archivos tocados:
+  - `target/local-run.log` (generado, no versionado)
+  - `target/surefire-reports/` (generado, no versionado)
+- Motivo del cambio: Verificar `spring-boot:run` con perfil `local` y confirmar conexion/Flyway en `db_quadras`.
+- Impacto funcional: Hito 2 desbloqueado y validado en entorno local.
+
+## 2026-03-12 | Hito 2 | Cierre de hito en tablero e hitos
+- Componente afectado: Backend (control de proyecto)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/MYSQL_LOCAL_SETUP.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Consolidar cierre del Hito 2 y dejar guia local actualizada con valores validados.
+- Impacto funcional: Sin cambios de negocio; trazabilidad y estado del proyecto actualizados.
