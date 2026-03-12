@@ -257,3 +257,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Consolidar Hito 4 como completado en backend/frontend y dejar proximo paso en Hito 5.
 - Impacto funcional: Sin impacto en runtime; trazabilidad completa del hito cerrada.
+
+## 2026-03-12 | Hito 4 | Sincronizacion final de hashes de commit
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Registrar hash documental final de cierre en la fila consolidada del Hito 4.
+- Impacto funcional: Sin impacto funcional.
