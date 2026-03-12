@@ -148,3 +148,11 @@
   - `docs/MYSQL_LOCAL_SETUP.md`
 - Motivo del cambio: Documentar pasos concretos para crear DB/usuario esperados por `application-local.properties`.
 - Impacto funcional: Sin impacto funcional; reduce tiempo de desbloqueo del entorno local.
+
+## 2026-03-12 | Hito 2 | Actualizacion de tablero con commits documentales finales
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Reflejar commits documentales mas recientes de backend y frontend en la fila de Hito 2.
+- Impacto funcional: Sin impacto funcional.
