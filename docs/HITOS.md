@@ -12,7 +12,7 @@ Crear carpeta `docs` y archivos de seguimiento especificos de cliente.
 Criterios de validacion:
 Documentacion base disponible, estructura revisada y tests de smoke ejecutables sin cambios funcionales.
 Riesgos:
-Sin remotos Git definidos, convencion de ramas pendiente y test backend fallando por datasource no configurado.
+Convencion de ramas pendiente y naming entre proyectos a unificar (`quedras`/`quadras`).
 Estado:
 Completado.
 
