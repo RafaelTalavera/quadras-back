@@ -48,3 +48,10 @@
 - Contexto: El Hito 3 requiere una base de UI desktop mantenible y lista para integrar backend local sin acoplamiento temprano.
 - Decision: Implementar `MaterialApp` con rutas nominales (`/`, `/agenda`, `/reservas/nueva`), shell responsive para desktop/mobile y capa `ApiClient` con implementacion `LocalHttpClient`.
 - Impacto: Permite evolucionar cada modulo de UI por separado y facilita pruebas sustituyendo el cliente HTTP por dobles de prueba.
+
+## DT-008 - Contrato base de reservas y estados de ciclo de vida
+- Fecha: 2026-03-12
+- Estado: Activa
+- Contexto: El Hito 4 requiere un modelo estable para persistencia backend y serializacion frontend antes de exponer API.
+- Decision: Definir entidad `Reservation` con estados `SCHEDULED`, `COMPLETED` y `CANCELLED`, y DTOs base (`CreateReservationDto`, `ReservationDto`) como contrato de datos inicial.
+- Impacto: Estandariza el dominio para los proximos hitos (API, agenda, validaciones de solapamiento) y reduce riesgo de cambios contractuales tardios.

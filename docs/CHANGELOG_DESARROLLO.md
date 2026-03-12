@@ -215,3 +215,26 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Incorporar hashes finales de commits backend/frontend del Hito 3 en la fila consolidada del tablero.
 - Impacto funcional: Sin impacto funcional; mejora trazabilidad de release por hito.
+
+## 2026-03-12 | Hito 4 | Implementacion backend del dominio de reservas
+- Componente afectado: Backend (dominio + persistencia)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/domain/model/Reservation.java`
+  - `src/main/java/com/axioma/quadras/domain/model/ReservationStatus.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/*`
+  - `src/main/java/com/axioma/quadras/repository/ReservationRepository.java`
+  - `src/main/resources/db/migration/V2__create_reservations_domain.sql`
+- Motivo del cambio: Definir entidad JPA de reservas, estados permitidos, DTOs base y migracion Flyway del dominio.
+- Impacto funcional: Queda listo el modelo de datos para exponer API de reservas en Hito 5.
+
+## 2026-03-12 | Hito 4 | Pruebas y validacion backend del dominio
+- Componente afectado: Backend (calidad)
+- Archivos tocados:
+  - `src/test/java/com/axioma/quadras/domain/model/ReservationTest.java`
+  - `src/test/java/com/axioma/quadras/domain/dto/ReservationDtoTest.java`
+  - `src/test/java/com/axioma/quadras/infrastructure/FlywayReservationMigrationTest.java`
+  - `docs/HITOS.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Cubrir reglas de dominio, mapeo DTO y aplicacion de migraciones Flyway en entorno de pruebas.
+- Impacto funcional: Backend validado en `mvnw test` para continuar con implementacion frontend del Hito 4.
