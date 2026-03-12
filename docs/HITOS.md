@@ -94,7 +94,7 @@ Flujo UI completo usando datos mock o backend local segun disponibilidad.
 Riesgos:
 Ajustes de UX por operativa real del personal del hotel.
 Estado:
-Pendiente.
+En progreso.
 
 ## Hito 7 - Validacion de solapamientos y reglas de negocio
 Objetivo:

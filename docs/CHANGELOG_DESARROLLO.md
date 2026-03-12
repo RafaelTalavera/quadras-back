@@ -310,3 +310,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Incorporar hash documental final del backend en la fila consolidada del Hito 5.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 6 | Inicio secuencial del hito (fase backend N/A)
+- Componente afectado: Backend (gobierno de hito)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Iniciar formalmente Hito 6 respetando flujo secuencial con fase backend sin cambios funcionales.
+- Impacto funcional: Sin cambios en API backend; habilita implementacion ordenada de frontend.
