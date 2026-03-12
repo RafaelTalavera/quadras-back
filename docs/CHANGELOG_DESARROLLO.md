@@ -39,3 +39,19 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Reflejar hashes de commits de backend/frontend y estado consolidado del Hito 1.
 - Impacto funcional: Sin impacto funcional en API.
+
+## 2026-03-12 | Hito 1 | Desbloqueo de test de contexto en backend
+- Componente afectado: Backend (infraestructura de test)
+- Archivos tocados:
+  - `pom.xml`
+  - `src/test/java/com/axioma/quadras/QuadrasApplicationTests.java`
+  - `src/test/resources/application-test.properties`
+- Motivo del cambio: Configurar entorno de pruebas con perfil `test` y datasource H2 para levantar el contexto Spring sin MySQL local.
+- Impacto funcional: Sin cambios en logica de negocio ni en runtime productivo; mejora de estabilidad de pruebas.
+
+## 2026-03-12 | Hito 1 | Revalidacion backend posterior al ajuste de test
+- Componente afectado: Backend (calidad)
+- Archivos tocados:
+  - `target/surefire-reports/` (generado, no versionado)
+- Motivo del cambio: Confirmar que `mvnw test` pasa luego del ajuste de infraestructura de pruebas.
+- Impacto funcional: Tests de backend en estado OK.
