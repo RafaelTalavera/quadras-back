@@ -181,3 +181,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Consolidar cierre del Hito 2 y dejar guia local actualizada con valores validados.
 - Impacto funcional: Sin cambios de negocio; trazabilidad y estado del proyecto actualizados.
+
+## 2026-03-12 | Hito 2 | Sincronizacion final de hashes de commit en tablero
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Reflejar commits finales de cierre de Hito 2 en backend y frontend.
+- Impacto funcional: Sin impacto funcional.
