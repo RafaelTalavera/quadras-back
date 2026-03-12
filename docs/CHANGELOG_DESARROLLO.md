@@ -189,3 +189,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Reflejar commits finales de cierre de Hito 2 en backend y frontend.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 3 | Inicio secuencial del hito (fase backend N/A)
+- Componente afectado: Backend (gobierno del hito)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Abrir formalmente el Hito 3 y ejecutar la fase backend requerida por metodologia, sin cambios funcionales de API.
+- Impacto funcional: Sin cambios en runtime backend; habilita inicio ordenado de la implementacion frontend.
