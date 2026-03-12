@@ -108,3 +108,20 @@
   - `target/quadras-0.0.1-SNAPSHOT.jar` (generado, no versionado)
 - Motivo del cambio: Validar `mvnw test` y `mvnw -DskipTests package` luego de la configuracion base.
 - Impacto funcional: Build y pruebas en verde; pendiente validacion de conexion contra MySQL real del entorno hotel.
+
+## 2026-03-12 | Hito 2 | Commit backend de base tecnica
+- Componente afectado: Backend (codigo + documentacion)
+- Archivos tocados:
+  - Configuracion y capas base en `src/main/**`
+  - Pruebas en `src/test/**`
+  - Documentacion de seguimiento en `docs/**`
+- Motivo del cambio: Registrar el avance estable del Hito 2 en control de versiones.
+- Impacto funcional: Se habilita infraestructura base de backend para siguientes hitos.
+
+## 2026-03-12 | Hito 2 | Sincronizacion de tablero con commits actuales
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Reflejar hash de commit backend (`6e6a46d`) y commit documental frontend (`bf91833`) del Hito 2.
+- Impacto funcional: Sin impacto funcional.

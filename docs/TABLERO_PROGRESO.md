@@ -13,7 +13,7 @@
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |
 |------|--------|---------|----------|----------------|-------|---------------|----------------|-----------------|---------------|
 | 1 | Inicializacion y orden del proyecto | Completado | Completado | Completado | Backend OK (`mvnw test`), Frontend OK (`flutter test`) | Completada | Hecho (`6da5aa9`, `390a9e0`, `781af62`) | Hecho (`7d60e05`, `ea8e76b`, `8ecd571`, `28a9d0e`) | Plan inicial, trazabilidad y validaciones base cerradas. |
-| 2 | Configuracion base backend Spring Boot + MySQL + estructura de capas | En progreso | N/A | En progreso | Backend OK (`mvnw test` y `mvnw -DskipTests package`) | En progreso | Pendiente | N/A | Base tecnica implementada; falta validacion con instancia MySQL real del entorno. |
+| 2 | Configuracion base backend Spring Boot + MySQL + estructura de capas | En progreso | N/A | En progreso | Backend OK (`mvnw test` y `mvnw -DskipTests package`) | En progreso | Hecho parcial (`6e6a46d`) | Hecho documental (`bf91833`) | Base tecnica implementada; falta validacion con instancia MySQL real del entorno. |
 | 3 | Configuracion base frontend Flutter Desktop + estructura del cliente | N/A | Pendiente | Pendiente | Pendiente | Pendiente | N/A | Pendiente | Base tecnica Flutter Desktop orientada a red local. |
 | 4 | Modelo de dominio de reservas | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Definicion de entidades, DTOs y contratos base UI. |
 | 5 | API backend de reservas | Pendiente | N/A | Pendiente | Pendiente | Pendiente | Pendiente | N/A | Endpoints CRUD y validaciones basicas. |
