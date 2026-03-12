@@ -302,3 +302,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Consolidar Hito 5 como completado y habilitar inicio del Hito 6.
 - Impacto funcional: Sin cambios de runtime adicionales; tablero y trazabilidad cerrados.
+
+## 2026-03-12 | Hito 5 | Sincronizacion final de hashes de cierre
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Incorporar hash documental final del backend en la fila consolidada del Hito 5.
+- Impacto funcional: Sin impacto funcional.
