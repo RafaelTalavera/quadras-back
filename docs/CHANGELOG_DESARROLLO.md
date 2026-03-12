@@ -72,3 +72,39 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Incorporar ultimo commit documental de frontend en la fila del Hito 1.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 2 | Configuracion base de perfiles y datasource backend
+- Componente afectado: Backend (configuracion tecnica)
+- Archivos tocados:
+  - `src/main/resources/application.properties`
+  - `src/main/resources/application-local.properties`
+  - `src/main/resources/db/migration/V1__init_technical_baseline.sql`
+- Motivo del cambio: Definir perfil `local` con MySQL/Flyway y baseline inicial de migraciones para entorno local del hotel.
+- Impacto funcional: Se habilita configuracion base de persistencia para los siguientes hitos.
+
+## 2026-03-12 | Hito 2 | Estructura de capas y endpoint tecnico de salud
+- Componente afectado: Backend (arquitectura interna)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/config/*`
+  - `src/main/java/com/axioma/quadras/controller/*`
+  - `src/main/java/com/axioma/quadras/service/*`
+  - `src/main/java/com/axioma/quadras/domain/*`
+  - `src/main/java/com/axioma/quadras/repository/package-info.java`
+- Motivo del cambio: Crear capas base del backend y endpoint `GET /api/v1/system/health` para verificacion tecnica.
+- Impacto funcional: API expone endpoint de estado y manejo global de errores base.
+
+## 2026-03-12 | Hito 2 | Refuerzo de pruebas backend
+- Componente afectado: Backend (testing)
+- Archivos tocados:
+  - `pom.xml`
+  - `src/test/java/com/axioma/quadras/controller/SystemStatusControllerTest.java`
+- Motivo del cambio: Incorporar pruebas de endpoint tecnico y dependencia de pruebas general (`spring-boot-starter-test`).
+- Impacto funcional: Se amplian pruebas automatizadas sin afectar logica productiva.
+
+## 2026-03-12 | Hito 2 | Validacion tecnica del backend
+- Componente afectado: Backend (calidad)
+- Archivos tocados:
+  - `target/surefire-reports/` (generado, no versionado)
+  - `target/quadras-0.0.1-SNAPSHOT.jar` (generado, no versionado)
+- Motivo del cambio: Validar `mvnw test` y `mvnw -DskipTests package` luego de la configuracion base.
+- Impacto funcional: Build y pruebas en verde; pendiente validacion de conexion contra MySQL real del entorno hotel.

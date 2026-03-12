@@ -34,3 +34,10 @@
 - Contexto: Se solicita control estricto de progreso y trazabilidad.
 - Decision: Ejecutar cada hito con orden fijo: backend completo -> frontend completo -> tablero/documentacion.
 - Impacto: Mejora control de alcance y reduce regresiones por cambios desordenados.
+
+## DT-006 - Perfiles de ejecucion separados para runtime local y pruebas
+- Fecha: 2026-03-12
+- Estado: Activa
+- Contexto: El runtime del hotel usa MySQL local, pero las pruebas deben ejecutarse sin depender de infraestructura externa.
+- Decision: Usar perfil `local` para MySQL + Flyway en runtime y perfil `test` con H2 en memoria para pruebas automatizadas.
+- Impacto: Permite CI/desarrollo estable sin bloquear el avance por ausencia de MySQL en el entorno de pruebas.
