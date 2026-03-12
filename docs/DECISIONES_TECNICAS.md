@@ -97,3 +97,10 @@
 - Contexto: Hito 10 exige preparar instalacion interna del hotel y dejar evidencia tecnica repetible de validaciones.
 - Decision: Formalizar en documentacion los comandos de validacion (`mvnw test`, `mvnw -DskipTests package`, `flutter test`, `flutter analyze`, `flutter build windows`) y un checklist operativo con prerequisitos minimos de backend/frontend.
 - Impacto: Reduce riesgo de despliegue, mejora trazabilidad de cierre y facilita reproduccion del proceso en nuevas estaciones de trabajo.
+
+## DT-015 - Estandar de toolchain Windows para builds Flutter Desktop
+- Fecha: 2026-03-12
+- Estado: Activa
+- Contexto: El bloqueo de Hito 10 se origino por instalacion incompleta de toolchain Visual Studio para compilar Windows release.
+- Decision: Estandarizar instalacion de `Visual Studio Community 2022` con workload `Desktop development with C++` y verificar con `flutter doctor -v` antes de ejecutar `flutter build windows --release`.
+- Impacto: Evita bloqueos de build por componentes faltantes y vuelve reproducible el cierre de release en estaciones nuevas.

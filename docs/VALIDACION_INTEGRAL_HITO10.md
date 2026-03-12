@@ -33,14 +33,15 @@ Resultado de smoke HTTP:
 |---|---|---|
 | Pruebas | `flutter test` | OK |
 | Analisis estatico | `flutter analyze` | OK |
-| Build desktop Windows | `flutter build windows --release` | Bloqueado por toolchain de Visual Studio incompleto |
+| Diagnostico de toolchain | `flutter doctor -v` | OK (`No issues found!`) |
+| Build desktop Windows | `flutter build windows --release` | OK (`build/windows/x64/runner/Release/quedras.exe`) |
 
-Detalle de bloqueo desktop:
-- `flutter doctor -v` reporta:
-  - `Visual Studio Build Tools 2019 ...`
-  - `The current Visual Studio installation is incomplete.`
+Resolucion de toolchain desktop:
+- Se completo instalacion de `Visual Studio Community 2022` con `Desktop development with C++`.
+- Flutter detecta correctamente Visual Studio y Windows SDK en `flutter doctor -v`.
 
 ## Conclusiones
 - Flujo funcional de reservas validado en backend y frontend.
 - Release backend generado correctamente.
-- Cierre de instalacion desktop queda condicionado a completar toolchain de Visual Studio en el equipo de build.
+- Build desktop Windows release generado correctamente.
+- Hito 10 queda apto para cierre completo y paso a instalacion piloto.

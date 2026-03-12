@@ -549,3 +549,24 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Reejecutar validaciones backend (`mvnw test`, `mvnw -DskipTests package`, smoke local) para confirmar estabilidad antes del cierre global del hito.
 - Impacto funcional: Sin cambios de logica; backend ratificado en estado estable para cierre de Hito 10.
+
+## 2026-03-12 | Hito 10 | Cierre frontend por resolucion de toolchain y build release
+- Componente afectado: Frontend (validacion final)
+- Archivos tocados:
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/INSTALACION_FRONTEND_HOTEL.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_PROGRESS.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/VALIDACION_FRONTEND_HITO10.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_CHANGELOG.md`
+- Motivo del cambio: Completar prerequisitos de Visual Studio para Flutter Desktop y validar `flutter build windows --release` exitoso.
+- Impacto funcional: Frontend sin bloqueos de build en Windows; Hito 10 queda listo para cierre global.
+
+## 2026-03-12 | Hito 10 | Cierre global del hito y actualizacion de tablero final
+- Componente afectado: Backend (gobernanza + cierre documental)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/VALIDACION_INTEGRAL_HITO10.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Marcar Hito 10 como completado en backend/frontend, cerrar bloqueos y actualizar decision tecnica de toolchain Windows.
+- Impacto funcional: Proyecto QUEDRAS cierra el plan de 10 hitos con estado estable y trazabilidad completa.
