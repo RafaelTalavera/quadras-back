@@ -2,6 +2,7 @@ package com.axioma.quadras.controller;
 
 import com.axioma.quadras.domain.dto.CreateReservationDto;
 import com.axioma.quadras.domain.dto.ReservationDto;
+import com.axioma.quadras.domain.dto.UpdateReservationDto;
 import com.axioma.quadras.service.ReservationService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -45,5 +46,18 @@ public class ReservationController {
 	@GetMapping("/{reservationId}")
 	public ResponseEntity<ReservationDto> findById(@PathVariable Long reservationId) {
 		return ResponseEntity.ok(reservationService.findById(reservationId));
+	}
+
+	@PutMapping("/{reservationId}")
+	public ResponseEntity<ReservationDto> update(
+			@PathVariable Long reservationId,
+			@Valid @RequestBody UpdateReservationDto input
+	) {
+		return ResponseEntity.ok(reservationService.update(reservationId, input));
+	}
+
+	@PatchMapping("/{reservationId}/cancel")
+	public ResponseEntity<ReservationDto> cancel(@PathVariable Long reservationId) {
+		return ResponseEntity.ok(reservationService.cancel(reservationId));
 	}
 }

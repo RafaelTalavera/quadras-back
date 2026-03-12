@@ -76,3 +76,10 @@
 - Contexto: Hito 7 exige evitar reservas invalidas o conflictivas antes de exponer operaciones de mantenimiento.
 - Decision: Aplicar en backend validaciones de horario operativo (`07:00` a `23:00`), duraciones permitidas (`60/90/120` minutos) y bloqueo de solapamientos con respuesta `409 Conflict`.
 - Impacto: Mejora integridad del calendario y establece contrato de errores para alineacion de mensajes en frontend.
+
+## DT-012 - Reglas de mantenimiento para editar y cancelar reservas
+- Fecha: 2026-03-12
+- Estado: Activa
+- Contexto: Hito 8 requiere editar/cancelar sin romper integridad del calendario ni estados del dominio.
+- Decision: Exponer `PUT /api/v1/reservations/{id}` y `PATCH /api/v1/reservations/{id}/cancel`; permitir edicion solo en estado `SCHEDULED`, permitir cancelacion idempotente de `SCHEDULED/CANCELLED` y bloquear cancelacion de `COMPLETED`; en edicion se reaplican horario/duracion/solapamiento excluyendo la propia reserva.
+- Impacto: Se habilita mantenimiento operativo de turnos con reglas consistentes y sin introducir cambios de seguridad o alcance extra.

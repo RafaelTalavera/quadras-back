@@ -16,6 +16,14 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 			LocalTime startTime
 	);
 
+	boolean existsByReservationDateAndStatusNotAndIdNotAndStartTimeLessThanAndEndTimeGreaterThan(
+			LocalDate reservationDate,
+			ReservationStatus status,
+			Long reservationId,
+			LocalTime endTime,
+			LocalTime startTime
+	);
+
 	List<Reservation> findAllByReservationDateOrderByStartTimeAsc(LocalDate reservationDate);
 
 	default List<Reservation> findAllOrderedByDateAndStartTime() {

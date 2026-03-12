@@ -129,6 +129,21 @@ public class Reservation {
 		return Duration.between(startTime, endTime).toMinutes();
 	}
 
+	public void reschedule(
+			String guestName,
+			LocalDate reservationDate,
+			LocalTime startTime,
+			LocalTime endTime,
+			String notes
+	) {
+		this.guestName = normalizeGuestName(guestName);
+		this.reservationDate = requireNonNullDate(reservationDate);
+		this.startTime = requireNonNullTime(startTime, "startTime");
+		this.endTime = requireNonNullTime(endTime, "endTime");
+		validateTimeWindow(this.startTime, this.endTime);
+		this.notes = normalizeNotes(notes);
+	}
+
 	public void markCancelled() {
 		this.status = ReservationStatus.CANCELLED;
 	}

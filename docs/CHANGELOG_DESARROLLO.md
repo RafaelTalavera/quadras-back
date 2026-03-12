@@ -398,3 +398,24 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Incorporar hash de commit documental de cierre backend en la fila consolidada del Hito 7.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 8 | Implementacion backend de edicion y cancelacion
+- Componente afectado: Backend (controller/service/repository/domain)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/controller/ReservationController.java`
+  - `src/main/java/com/axioma/quadras/service/ReservationService.java`
+  - `src/main/java/com/axioma/quadras/repository/ReservationRepository.java`
+  - `src/main/java/com/axioma/quadras/domain/model/Reservation.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/UpdateReservationDto.java`
+- Motivo del cambio: Habilitar operaciones de mantenimiento de reservas en API (`PUT` para editar y `PATCH` para cancelar) con control de estado y reglas de integridad.
+- Impacto funcional: Backend permite editar y cancelar reservas existentes, aplicando horario/duracion/solapamiento y validaciones por estado.
+
+## 2026-03-12 | Hito 8 | Pruebas y documentacion backend
+- Componente afectado: Backend (calidad + gobierno de hito)
+- Archivos tocados:
+  - `src/test/java/com/axioma/quadras/controller/ReservationControllerTest.java`
+  - `docs/HITOS.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Validar casos de exito/error de update/cancel en pruebas de integracion y registrar decisiones/estado del hito.
+- Impacto funcional: `mvnw test` en verde con cobertura de operaciones de mantenimiento del Hito 8.
