@@ -4,10 +4,10 @@
 - Proyecto: QUEDRAS
 - Backend: En progreso
 - Frontend: En progreso
-- Ultimo hito trabajado: Hito 8 - Edicion y cancelacion de reservas
+- Ultimo hito trabajado: Hito 9 - Conexion frontend-backend local
 - Ultima actualizacion: 2026-03-12
 - Riesgos abiertos: Inconsistencia de naming entre proyectos (`quedras` vs `quadras`).
-- Proximo paso recomendado: Iniciar Hito 9 (conexion frontend-backend local).
+- Proximo paso recomendado: Iniciar Hito 10 (validacion integral, documentacion final y preparacion para instalacion).
 
 ## Hitos
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |
@@ -20,12 +20,12 @@
 | 6 | Pantallas base de agenda y creacion de reserva | N/A (fase backend ejecutada) | Completado | Completado | Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`b51f932`, `63004fa`) | Hecho (`968fe87`) | Agenda diaria y alta operativa con validaciones y estados locales en memoria. |
 | 7 | Validacion de solapamientos y reglas de negocio | Completado | Completado | Completado | Backend OK (`mvnw test`, 15 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`7d6fb2e`, `d60aef0`) | Hecho (`26dab3b`) | Reglas de horario (07:00-23:00), duracion (60/90/120) y solapamientos aplicadas y alineadas entre API/UI. |
 | 8 | Edicion y cancelacion de reservas | Completado | Completado | Completado | Backend OK (`mvnw test`, 22 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`37f2a1b`, `2352674`) | Hecho (`a1008d3`) | API y UI permiten editar/cancelar reservas con reglas de estado y validaciones de integridad. |
-| 9 | Conexion frontend-backend local | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Integracion HTTP local, manejo de errores y estados. |
+| 9 | Conexion frontend-backend local | Completado | Completado | Completado | Backend OK (`mvnw test`, 22 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`dde3646`) | Hecho (`55f7234`) | Cliente Flutter conectado a API local de reservas con operaciones CRUD y manejo de errores de red/API. |
 | 10 | Validacion integral, documentacion final y preparacion para instalacion | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Checklist final para despliegue interno hotel. |
 
 ## Pendientes inmediatos
-- Iniciar Hito 9: integrar Flutter Desktop con backend local por HTTP.
-- Definir estrategia de manejo cuando el backend local no este disponible.
+- Iniciar Hito 10 con validacion integral de flujo completo en entorno local.
+- Consolidar checklist tecnico de instalacion/operacion para uso interno hotel.
 - Definir convencion de ramas (ejemplo: `main` + ramas por hito).
 - Definir criterio final de naming entre proyectos (`quedras` / `quadras`).
 

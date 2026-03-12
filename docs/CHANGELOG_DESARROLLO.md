@@ -464,3 +464,25 @@
   - `target/surefire-reports/` (generado, no versionado)
 - Motivo del cambio: Ejecutar `mvnw test` para confirmar estabilidad de endpoints y reglas antes de conectar frontend por HTTP real.
 - Impacto funcional: Backend validado en verde (`22 tests`) para continuar fase frontend del Hito 9.
+
+## 2026-03-12 | Hito 9 | Cierre frontend de integracion local
+- Componente afectado: Frontend (red + reservas + pruebas)
+- Archivos tocados:
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/core/network/api_client.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/core/network/local_http_client.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/reservations/infrastructure/http_reservation_app_service.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/app/quedras_app.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/test/features/reservations/infrastructure/http_reservation_app_service_test.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_PROGRESS.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_CHANGELOG.md`
+- Motivo del cambio: Conectar cliente de reservas a backend local por HTTP y cerrar trazabilidad de pruebas/documentacion en repo frontend.
+- Impacto funcional: Frontend consume endpoints reales de reservas y propaga errores de API/red a la UI.
+
+## 2026-03-12 | Hito 9 | Cierre global y actualizacion de tablero
+- Componente afectado: Backend (gobierno de proyecto)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Consolidar Hito 9 como completado en backend/frontend y habilitar inicio de Hito 10.
+- Impacto funcional: Sin cambios de runtime adicionales; fuente de verdad global actualizada.
