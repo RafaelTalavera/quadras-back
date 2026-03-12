@@ -125,3 +125,26 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Reflejar hash de commit backend (`6e6a46d`) y commit documental frontend (`bf91833`) del Hito 2.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 2 | Validacion de arranque local contra MySQL real
+- Componente afectado: Backend (validacion de integracion local)
+- Archivos tocados:
+  - `src/main/resources/application-local.properties` (usado en ejecucion)
+- Motivo del cambio: Ejecutar `spring-boot:run` con perfil `local` para validar conexion real a MySQL del entorno.
+- Impacto funcional: Se detecta bloqueo por credenciales (`Access denied`) con usuario `quadras` y tambien con `root`.
+
+## 2026-03-12 | Hito 2 | Reclasificacion de estado a bloqueado
+- Componente afectado: Backend (gobierno de hito)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Mantener trazabilidad real del hito tras falla de conectividad local por credenciales.
+- Impacto funcional: Sin cambios funcionales en API; hito no se cierra hasta resolver acceso MySQL.
+
+## 2026-03-12 | Hito 2 | Guia de provisionamiento MySQL local
+- Componente afectado: Backend (documentacion operativa)
+- Archivos tocados:
+  - `docs/MYSQL_LOCAL_SETUP.md`
+- Motivo del cambio: Documentar pasos concretos para crear DB/usuario esperados por `application-local.properties`.
+- Impacto funcional: Sin impacto funcional; reduce tiempo de desbloqueo del entorno local.

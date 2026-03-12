@@ -30,7 +30,7 @@ Backend levanta local, conecta a MySQL y pasa tests base.
 Riesgos:
 Dependencia de configuracion local de MySQL por ambiente.
 Estado:
-En progreso (configuracion y pruebas base listas; pendiente validacion contra MySQL real de entorno).
+Bloqueado (MySQL activo, pero credenciales locales no validas para cerrar conectividad real).
 
 ## Hito 3 - Configuracion base frontend Flutter Desktop + estructura del cliente
 Objetivo:
