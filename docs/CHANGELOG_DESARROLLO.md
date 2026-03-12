@@ -494,3 +494,21 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Incorporar hash del commit documental de cierre backend en la fila consolidada del Hito 9.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 10 | Implementacion backend para instalacion y smoke reproducible
+- Componente afectado: Backend (operacion + instalacion)
+- Archivos tocados:
+  - `scripts/backend_smoke_local.ps1`
+  - `docs/INSTALACION_BACKEND_HOTEL.md`
+- Motivo del cambio: Incorporar guia operativa de instalacion backend y script repetible para validar salud/flujo de reservas en entorno local.
+- Impacto funcional: Sin cambios de logica de negocio; mejora capacidad de despliegue y verificacion tecnica.
+
+## 2026-03-12 | Hito 10 | Validacion tecnica backend y evidencia integral
+- Componente afectado: Backend (calidad + trazabilidad)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/VALIDACION_INTEGRAL_HITO10.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Registrar estado de Hito 10 en progreso, decision tecnica de cierre de release y resultados de validaciones backend/frontend.
+- Impacto funcional: Se consolida evidencia de release y se explicita bloqueo de build desktop por Visual Studio incompleto.

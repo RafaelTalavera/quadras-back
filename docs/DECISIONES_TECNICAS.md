@@ -90,3 +90,10 @@
 - Contexto: Hito 9 requiere conectar Flutter Desktop con backend local sin dependencia de internet y con manejo claro de errores de conectividad.
 - Decision: Mantener API backend sin cambios de contrato y sustituir el servicio en memoria por un adaptador HTTP (`ReservationAppService`) que consume endpoints locales de reservas, propagando mensajes de error de API y fallos de red en formato entendible para UI.
 - Impacto: El flujo operativo pasa a datos persistidos en MySQL via backend local y la UI queda preparada para escenarios de backend no disponible.
+
+## DT-014 - Cierre de release con validacion reproducible y checklist de instalacion
+- Fecha: 2026-03-12
+- Estado: Activa
+- Contexto: Hito 10 exige preparar instalacion interna del hotel y dejar evidencia tecnica repetible de validaciones.
+- Decision: Formalizar en documentacion los comandos de validacion (`mvnw test`, `mvnw -DskipTests package`, `flutter test`, `flutter analyze`, `flutter build windows`) y un checklist operativo con prerequisitos minimos de backend/frontend.
+- Impacto: Reduce riesgo de despliegue, mejora trazabilidad de cierre y facilita reproduccion del proceso en nuevas estaciones de trabajo.

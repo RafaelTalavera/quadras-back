@@ -158,4 +158,4 @@ Checklist de aceptacion completo y ejecucion estable en entorno objetivo.
 Riesgos:
 Desvios de infraestructura entre entorno de desarrollo e instalacion final.
 Estado:
-Pendiente.
+En progreso.
