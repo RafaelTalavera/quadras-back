@@ -351,3 +351,22 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Incorporar hash documental final del backend en la fila consolidada del Hito 6.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 7 | Reglas backend de solapamiento y horario
+- Componente afectado: Backend (service/repository/domain)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/service/ReservationService.java`
+  - `src/main/java/com/axioma/quadras/repository/ReservationRepository.java`
+  - `src/main/java/com/axioma/quadras/domain/model/ReservationRules.java`
+- Motivo del cambio: Incorporar validaciones de negocio para conflictos de horario, ventana operativa y duraciones permitidas.
+- Impacto funcional: `POST /api/v1/reservations` ahora rechaza solapamientos y horarios no permitidos con codigos HTTP consistentes.
+
+## 2026-03-12 | Hito 7 | Pruebas de integracion y gobierno backend
+- Componente afectado: Backend (calidad + documentacion)
+- Archivos tocados:
+  - `src/test/java/com/axioma/quadras/controller/ReservationControllerTest.java`
+  - `docs/HITOS.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Cubrir casos de conflicto, horario invalido y duracion invalida, y registrar avance del hito.
+- Impacto funcional: Backend validado en `mvnw test` para continuar implementacion frontend de Hito 7.

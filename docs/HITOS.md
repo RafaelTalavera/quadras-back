@@ -110,7 +110,7 @@ No se permiten reservas superpuestas y se cubren casos limites.
 Riesgos:
 Reglas de negocio ambiguas sin politicas cerradas por operacion.
 Estado:
-Pendiente.
+En progreso.
 
 ## Hito 8 - Edicion y cancelacion de reservas
 Objetivo:

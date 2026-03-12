@@ -128,4 +128,66 @@ class ReservationControllerTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("guestName")));
 	}
+
+	@Test
+	void shouldReturnConflictWhenReservationOverlaps() throws Exception {
+		reservationRepository.save(Reservation.schedule(
+				"Guest Existing",
+				LocalDate.of(2026, 3, 13),
+				LocalTime.of(9, 0),
+				LocalTime.of(10, 0),
+				null
+		));
+
+		final String payload = """
+				{
+				  "guestName": "Nuevo Huesped",
+				  "reservationDate": "2026-03-13",
+				  "startTime": "09:30:00",
+				  "endTime": "10:30:00"
+				}
+				""";
+
+		mockMvc.perform(post("/api/v1/reservations")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("Reservation overlaps with an existing booking."));
+	}
+
+	@Test
+	void shouldReturnBadRequestWhenReservationIsOutsideOperatingHours() throws Exception {
+		final String payload = """
+				{
+				  "guestName": "Horario invalido",
+				  "reservationDate": "2026-03-13",
+				  "startTime": "06:00:00",
+				  "endTime": "07:00:00"
+				}
+				""";
+
+		mockMvc.perform(post("/api/v1/reservations")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("operating hours")));
+	}
+
+	@Test
+	void shouldReturnBadRequestWhenReservationDurationIsNotAllowed() throws Exception {
+		final String payload = """
+				{
+				  "guestName": "Duracion invalida",
+				  "reservationDate": "2026-03-13",
+				  "startTime": "09:00:00",
+				  "endTime": "09:45:00"
+				}
+				""";
+
+		mockMvc.perform(post("/api/v1/reservations")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("duration")));
+	}
 }

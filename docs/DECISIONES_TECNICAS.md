@@ -69,3 +69,10 @@
 - Contexto: Hito 6 prioriza experiencia de agenda/alta y validaciones de formulario; la integracion HTTP completa tiene hito dedicado (Hito 9).
 - Decision: Implementar `InMemoryReservationAppService` para soportar carga/error/exito locales en UI y mantener separacion via interfaz `ReservationAppService`.
 - Impacto: La UI avanza sin bloquearse por red local y mantiene bajo riesgo la futura sustitucion por adaptador HTTP real en Hito 9.
+
+## DT-011 - Reglas base de negocio para creacion de reservas
+- Fecha: 2026-03-12
+- Estado: Activa
+- Contexto: Hito 7 exige evitar reservas invalidas o conflictivas antes de exponer operaciones de mantenimiento.
+- Decision: Aplicar en backend validaciones de horario operativo (`07:00` a `23:00`), duraciones permitidas (`60/90/120` minutos) y bloqueo de solapamientos con respuesta `409 Conflict`.
+- Impacto: Mejora integridad del calendario y establece contrato de errores para alineacion de mensajes en frontend.
