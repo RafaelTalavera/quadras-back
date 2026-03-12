@@ -62,3 +62,10 @@
 - Contexto: Hito 5 requiere exponer operaciones base de consulta/alta sin introducir aun reglas avanzadas de negocio.
 - Decision: Publicar `POST /api/v1/reservations`, `GET /api/v1/reservations` y `GET /api/v1/reservations/{id}` con respuestas `201/200/404/400`, dejando solapamientos para Hito 7.
 - Impacto: Permite integracion temprana del cliente con una API estable y reduce acoplamiento prematuro a reglas aun no cerradas.
+
+## DT-010 - Hito 6 con estado local en memoria para flujo UI base
+- Fecha: 2026-03-12
+- Estado: Activa
+- Contexto: Hito 6 prioriza experiencia de agenda/alta y validaciones de formulario; la integracion HTTP completa tiene hito dedicado (Hito 9).
+- Decision: Implementar `InMemoryReservationAppService` para soportar carga/error/exito locales en UI y mantener separacion via interfaz `ReservationAppService`.
+- Impacto: La UI avanza sin bloquearse por red local y mantiene bajo riesgo la futura sustitucion por adaptador HTTP real en Hito 9.

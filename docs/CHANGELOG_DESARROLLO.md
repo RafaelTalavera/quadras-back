@@ -318,3 +318,28 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Iniciar formalmente Hito 6 respetando flujo secuencial con fase backend sin cambios funcionales.
 - Impacto funcional: Sin cambios en API backend; habilita implementacion ordenada de frontend.
+
+## 2026-03-12 | Hito 6 | Implementacion frontend de agenda y alta base
+- Componente afectado: Frontend (presentacion + estado local)
+- Archivos tocados:
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/schedule/presentation/schedule_page.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/reservations/presentation/new_reservation_page.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/reservations/application/reservation_app_service.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/features/home/presentation/shell_page.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/app/quedras_app.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/app/router/app_router.dart`
+- Motivo del cambio: Implementar vistas operativas del Hito 6 con validaciones de formulario y estados locales de carga/error.
+- Impacto funcional: Frontend permite alta y visualizacion diaria de reservas en modo local en memoria.
+
+## 2026-03-12 | Hito 6 | Pruebas de frontend y cierre global de hito
+- Componente afectado: Proyecto (calidad + gobernanza)
+- Archivos tocados:
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/test/features/reservations/application/reservation_app_service_test.dart`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_PROGRESS.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_CHANGELOG.md`
+  - `docs/HITOS.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Validar `flutter test`/`flutter analyze`, cerrar estado del Hito 6 y consolidar tablero.
+- Impacto funcional: Hito 6 cerrado con trazabilidad completa y base lista para reglas de conflicto del Hito 7.
