@@ -41,3 +41,10 @@
 - Contexto: El runtime del hotel usa MySQL local, pero las pruebas deben ejecutarse sin depender de infraestructura externa.
 - Decision: Usar perfil `local` para MySQL + Flyway en runtime y perfil `test` con H2 en memoria para pruebas automatizadas.
 - Impacto: Permite CI/desarrollo estable sin bloquear el avance por ausencia de MySQL en el entorno de pruebas.
+
+## DT-007 - Shell frontend con rutas base y cliente HTTP desacoplado
+- Fecha: 2026-03-12
+- Estado: Activa
+- Contexto: El Hito 3 requiere una base de UI desktop mantenible y lista para integrar backend local sin acoplamiento temprano.
+- Decision: Implementar `MaterialApp` con rutas nominales (`/`, `/agenda`, `/reservas/nueva`), shell responsive para desktop/mobile y capa `ApiClient` con implementacion `LocalHttpClient`.
+- Impacto: Permite evolucionar cada modulo de UI por separado y facilita pruebas sustituyendo el cliente HTTP por dobles de prueba.

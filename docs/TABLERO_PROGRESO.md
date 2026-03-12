@@ -4,17 +4,17 @@
 - Proyecto: QUEDRAS
 - Backend: En progreso
 - Frontend: En progreso
-- Ultimo hito trabajado: Hito 2 - Configuracion base backend Spring Boot + MySQL + estructura de capas
+- Ultimo hito trabajado: Hito 3 - Configuracion base frontend Flutter Desktop + estructura del cliente
 - Ultima actualizacion: 2026-03-12
 - Riesgos abiertos: Inconsistencia de naming entre proyectos (`quedras` vs `quadras`).
-- Proximo paso recomendado: Iniciar Hito 3 (configuracion base frontend Flutter Desktop + estructura del cliente).
+- Proximo paso recomendado: Iniciar Hito 4 (modelo de dominio de reservas) comenzando por backend.
 
 ## Hitos
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |
 |------|--------|---------|----------|----------------|-------|---------------|----------------|-----------------|---------------|
 | 1 | Inicializacion y orden del proyecto | Completado | Completado | Completado | Backend OK (`mvnw test`), Frontend OK (`flutter test`) | Completada | Hecho (`6da5aa9`, `390a9e0`, `781af62`) | Hecho (`7d60e05`, `ea8e76b`, `8ecd571`, `28a9d0e`) | Plan inicial, trazabilidad y validaciones base cerradas. |
 | 2 | Configuracion base backend Spring Boot + MySQL + estructura de capas | Completado | N/A | Completado | Backend OK en `mvnw test`, `mvnw -DskipTests package` y `spring-boot:run` local | Completada | Hecho (`6e6a46d`, `f1a124f`, `8d08cb8`) | Hecho documental (`bf91833`, `d3ccad1`, `0f6b3c2`) | Conectividad validada con `db_quadras` (`root/sasa`). |
-| 3 | Configuracion base frontend Flutter Desktop + estructura del cliente | N/A | Pendiente | Pendiente | Pendiente | Pendiente | N/A | Pendiente | Base tecnica Flutter Desktop orientada a red local. |
+| 3 | Configuracion base frontend Flutter Desktop + estructura del cliente | N/A (fase backend ejecutada) | Completado | Completado | Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`a755ef1`) | Hecho (`4cad6b8`) | Shell desktop operativo, rutas base y cliente HTTP desacoplado listos para integracion local. |
 | 4 | Modelo de dominio de reservas | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Definicion de entidades, DTOs y contratos base UI. |
 | 5 | API backend de reservas | Pendiente | N/A | Pendiente | Pendiente | Pendiente | Pendiente | N/A | Endpoints CRUD y validaciones basicas. |
 | 6 | Pantallas base de agenda y creacion de reserva | N/A | Pendiente | Pendiente | Pendiente | Pendiente | N/A | Pendiente | Vista de agenda y formulario inicial. |
@@ -24,9 +24,10 @@
 | 10 | Validacion integral, documentacion final y preparacion para instalacion | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Checklist final para despliegue interno hotel. |
 
 ## Pendientes inmediatos
-- Iniciar Hito 3: estructura base de frontend Flutter Desktop.
+- Iniciar Hito 4 en backend: entidad `Reserva`, migracion Flyway y DTOs base.
+- Definir contrato JSON compartido para reservas entre backend y frontend.
 - Definir convencion de ramas (ejemplo: `main` + ramas por hito).
-- Definir criterio de naming entre proyectos (`quedras` / `quadras`).
+- Definir criterio final de naming entre proyectos (`quedras` / `quadras`).
 
 ## Bloqueos
 - Ninguno activo.

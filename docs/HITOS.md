@@ -46,7 +46,7 @@ App desktop inicia sin errores y con estructura preparada para integracion.
 Riesgos:
 Diferencias de entorno Flutter/Windows entre estaciones de trabajo.
 Estado:
-En progreso.
+Completado.
 
 ## Hito 4 - Modelo de dominio de reservas
 Objetivo:

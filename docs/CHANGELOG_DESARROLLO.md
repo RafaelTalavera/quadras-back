@@ -197,3 +197,13 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Abrir formalmente el Hito 3 y ejecutar la fase backend requerida por metodologia, sin cambios funcionales de API.
 - Impacto funcional: Sin cambios en runtime backend; habilita inicio ordenado de la implementacion frontend.
+
+## 2026-03-12 | Hito 3 | Cierre de frontend base y consolidacion del tablero
+- Componente afectado: Backend (control global de proyecto)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Registrar finalizacion de Hito 3 con commit frontend estable y actualizar la fuente unica de verdad del proyecto.
+- Impacto funcional: Sin cambios en runtime backend; el hito queda cerrado y habilita inicio del Hito 4.
