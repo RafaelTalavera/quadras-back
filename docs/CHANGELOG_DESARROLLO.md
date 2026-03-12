@@ -512,3 +512,24 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Registrar estado de Hito 10 en progreso, decision tecnica de cierre de release y resultados de validaciones backend/frontend.
 - Impacto funcional: Se consolida evidencia de release y se explicita bloqueo de build desktop por Visual Studio incompleto.
+
+## 2026-03-12 | Hito 10 | Cierre frontend de documentacion de instalacion
+- Componente afectado: Frontend (documentacion + scripts)
+- Archivos tocados:
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/README.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/INSTALACION_FRONTEND_HOTEL.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/VALIDACION_FRONTEND_HITO10.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_PROGRESS.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/FRONT_CHANGELOG.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/scripts/frontend_preflight.ps1`
+- Motivo del cambio: Documentar instalacion/validacion de cliente desktop y registrar evidencia del bloqueo de build Windows.
+- Impacto funcional: Sin cambios de logica de UI; queda preparado proceso operativo de instalacion.
+
+## 2026-03-12 | Hito 10 | Actualizacion global de estado a bloqueado
+- Componente afectado: Backend (tablero + gobernanza)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Reflejar cierre parcial del Hito 10 con bloqueo externo de toolchain Visual Studio.
+- Impacto funcional: Proyecto queda trazado en estado bloqueado hasta resolver build desktop de frontend.

@@ -2,12 +2,12 @@
 
 ## Estado general
 - Proyecto: QUEDRAS
-- Backend: En progreso
-- Frontend: En progreso
-- Ultimo hito trabajado: Hito 9 - Conexion frontend-backend local
+- Backend: Completado (fase Hito 10)
+- Frontend: Bloqueado (fase Hito 10)
+- Ultimo hito trabajado: Hito 10 - Validacion integral, documentacion final y preparacion para instalacion
 - Ultima actualizacion: 2026-03-12
-- Riesgos abiertos: Inconsistencia de naming entre proyectos (`quedras` vs `quadras`).
-- Proximo paso recomendado: Iniciar Hito 10 (validacion integral, documentacion final y preparacion para instalacion).
+- Riesgos abiertos: Toolchain de Visual Studio incompleto para generar build desktop; inconsistencia de naming entre proyectos (`quedras` vs `quadras`).
+- Proximo paso recomendado: Completar instalacion de Visual Studio Build Tools y reintentar `flutter build windows --release`.
 
 ## Hitos
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |
@@ -21,17 +21,17 @@
 | 7 | Validacion de solapamientos y reglas de negocio | Completado | Completado | Completado | Backend OK (`mvnw test`, 15 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`7d6fb2e`, `d60aef0`) | Hecho (`26dab3b`) | Reglas de horario (07:00-23:00), duracion (60/90/120) y solapamientos aplicadas y alineadas entre API/UI. |
 | 8 | Edicion y cancelacion de reservas | Completado | Completado | Completado | Backend OK (`mvnw test`, 22 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`37f2a1b`, `2352674`) | Hecho (`a1008d3`) | API y UI permiten editar/cancelar reservas con reglas de estado y validaciones de integridad. |
 | 9 | Conexion frontend-backend local | Completado | Completado | Completado | Backend OK (`mvnw test`, 22 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`dde3646`, `c71d87a`) | Hecho (`55f7234`) | Cliente Flutter conectado a API local de reservas con operaciones CRUD y manejo de errores de red/API. |
-| 10 | Validacion integral, documentacion final y preparacion para instalacion | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Pendiente | Checklist final para despliegue interno hotel. |
+| 10 | Validacion integral, documentacion final y preparacion para instalacion | Completado | Bloqueado | Bloqueado | Backend OK (`mvnw test`, `mvnw -DskipTests package`, smoke HTTP local), Frontend OK en `flutter test`/`flutter analyze`, build Windows bloqueado | En progreso | Hecho (`1d6284e`) | Hecho (`f3a5963`) | Bloqueo externo: Visual Studio incompleto para generar instalable Windows. |
 
 ## Pendientes inmediatos
-- Iniciar Hito 10 con validacion integral de flujo completo en entorno local.
-- Consolidar checklist tecnico de instalacion/operacion para uso interno hotel.
+- Completar instalacion de Visual Studio Build Tools en equipo de build.
+- Reintentar `flutter build windows --release` y validar binarios en `build/windows/x64/runner/Release/`.
 - Definir convencion de ramas (ejemplo: `main` + ramas por hito).
 - Definir criterio final de naming entre proyectos (`quedras` / `quadras`).
 
 ## Bloqueos
-- Ninguno activo.
-- N/A.
+- `flutter build windows --release` bloqueado por `Unable to find suitable Visual Studio toolchain`.
+- `flutter doctor -v` informa `The current Visual Studio installation is incomplete`.
 
 ## Decisiones activas
 - Mantener `docs/TABLERO_PROGRESO.md` como unica fuente de verdad del proyecto.
