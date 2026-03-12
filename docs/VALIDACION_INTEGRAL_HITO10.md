@@ -10,6 +10,11 @@
 | Empaquetado release | `.\mvnw -DskipTests package` | OK (`target/quadras-0.0.1-SNAPSHOT.jar`) |
 | Smoke HTTP local (salud + create/update/cancel/list) | API sobre `http://127.0.0.1:8091` | OK (`health: UP`, flujo reservas operativo) |
 
+Revalidacion adicional de backend (mismo dia, cierre final):
+- `.\mvnw test`: OK (22 tests).
+- `.\mvnw -DskipTests package`: OK.
+- `.\scripts\backend_smoke_local.ps1 -SkipBuild`: OK (flujo create/update/cancel/list en local).
+
 Resultado de smoke HTTP:
 ```json
 {

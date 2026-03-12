@@ -541,3 +541,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Incorporar hash documental de actualizacion de estado bloqueado en la fila del Hito 10.
 - Impacto funcional: Sin impacto funcional.
+
+## 2026-03-12 | Hito 10 | Revalidacion backend previa al cierre final
+- Componente afectado: Backend (calidad + evidencia tecnica)
+- Archivos tocados:
+  - `docs/VALIDACION_INTEGRAL_HITO10.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Reejecutar validaciones backend (`mvnw test`, `mvnw -DskipTests package`, smoke local) para confirmar estabilidad antes del cierre global del hito.
+- Impacto funcional: Sin cambios de logica; backend ratificado en estado estable para cierre de Hito 10.
