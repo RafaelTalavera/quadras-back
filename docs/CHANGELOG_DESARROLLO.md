@@ -486,3 +486,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Consolidar Hito 9 como completado en backend/frontend y habilitar inicio de Hito 10.
 - Impacto funcional: Sin cambios de runtime adicionales; fuente de verdad global actualizada.
+
+## 2026-03-12 | Hito 9 | Sincronizacion final de hashes de cierre
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Incorporar hash del commit documental de cierre backend en la fila consolidada del Hito 9.
+- Impacto funcional: Sin impacto funcional.
