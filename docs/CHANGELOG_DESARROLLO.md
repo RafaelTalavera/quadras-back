@@ -1,4 +1,4 @@
-# CHANGELOG DE DESARROLLO - QUEDRAS
+# CHANGELOG DE DESARROLLO - COSTANORTE
 
 ## 2026-03-12 | Hito 1 | Inicializacion y orden del proyecto
 - Componente afectado: Backend (gestion documental y control de proyecto)
@@ -595,3 +595,27 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Registrar criterios, decision tecnica y guias operativas actualizadas para ejecutar COSTANORTE en entorno local del hotel.
 - Impacto funcional: Validaciones backend en verde (`mvnw test`, `mvnw -DskipTests package`, `backend_smoke_local.ps1`) con documentacion alineada al nuevo nombre.
+
+## 2026-03-14 | Hito 11 | Renombre seguro frontend a COSTANORTE (fase 1)
+- Componente afectado: Frontend (branding + build + configuracion)
+- Archivos tocados:
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/pubspec.yaml`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/lib/**`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/windows/**`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/test/**`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/README.md`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/docs/**`
+  - `C:/Users/Public/Documents/Proyectos/quedras-front/scripts/frontend_preflight.ps1`
+- Motivo del cambio: Completar renombre comercial de app/ejecutable a COSTANORTE manteniendo compatibilidad temporal con `QUEDRAS_API_BASE_URL`.
+- Impacto funcional: Frontend compila y genera `costanorte.exe` sin romper flujo de reservas ni integracion con backend local.
+
+## 2026-03-14 | Hito 11 | Cierre global y actualizacion de tablero
+- Componente afectado: Backend (gobernanza + seguimiento)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+  - `docs/VALIDACION_RENOMBRE_HITO11.md`
+- Motivo del cambio: Consolidar Hito 11 como completado para backend y frontend, actualizar riesgos activos y dejar evidencia centralizada del renombre seguro.
+- Impacto funcional: Proyecto pasa a identidad COSTANORTE con control de progreso y trazabilidad documental consistentes.

@@ -1,4 +1,4 @@
-# DECISIONES TECNICAS - QUEDRAS
+# DECISIONES TECNICAS - COSTANORTE
 
 ## DT-001 - Arquitectura local sin dependencia de internet
 - Fecha: 2026-03-12

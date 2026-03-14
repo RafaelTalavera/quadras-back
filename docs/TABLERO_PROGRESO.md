@@ -1,13 +1,13 @@
-# TABLERO DE PROGRESO - QUEDRAS
+# TABLERO DE PROGRESO - COSTANORTE
 
 ## Estado general
-- Proyecto: QUEDRAS
-- Backend: Completado (fase Hito 10)
-- Frontend: Completado (fase Hito 10)
-- Ultimo hito trabajado: Hito 10 - Validacion integral, documentacion final y preparacion para instalacion
-- Ultima actualizacion: 2026-03-12
-- Riesgos abiertos: Inconsistencia de naming entre proyectos (`quedras` vs `quadras`).
-- Proximo paso recomendado: Ejecutar instalacion piloto en puesto operativo del hotel con backend local y validar flujo E2E.
+- Proyecto: COSTANORTE
+- Backend: Completado (fase Hito 11)
+- Frontend: Completado (fase Hito 11)
+- Ultimo hito trabajado: Hito 11 - Renombre seguro de QUEDRAS a COSTANORTE (fase 1)
+- Ultima actualizacion: 2026-03-14
+- Riesgos abiertos: Pendiente fase 2 para migrar nombres internos legacy (`com.axioma.quadras`, rutas de repositorio).
+- Proximo paso recomendado: Iniciar Hito 12 con nuevas funcionalidades sobre base COSTANORTE ya renombrada y validada.
 
 ## Hitos
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |
@@ -22,17 +22,18 @@
 | 8 | Edicion y cancelacion de reservas | Completado | Completado | Completado | Backend OK (`mvnw test`, 22 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`37f2a1b`, `2352674`) | Hecho (`a1008d3`) | API y UI permiten editar/cancelar reservas con reglas de estado y validaciones de integridad. |
 | 9 | Conexion frontend-backend local | Completado | Completado | Completado | Backend OK (`mvnw test`, 22 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`dde3646`, `c71d87a`) | Hecho (`55f7234`) | Cliente Flutter conectado a API local de reservas con operaciones CRUD y manejo de errores de red/API. |
 | 10 | Validacion integral, documentacion final y preparacion para instalacion | Completado | Completado | Completado | Backend OK (`mvnw test`, `mvnw -DskipTests package`, smoke HTTP local), Frontend OK (`flutter test`, `flutter analyze`, `flutter doctor -v`, `flutter build windows --release`) | Completada | Hecho (`1d6284e`, `a27b60c`, `93d7b6b`, `16153f2`) | Hecho (`f3a5963`, `fc866ae`) | Build Windows release generado y validado sin bloqueos. |
+| 11 | Renombre seguro de QUEDRAS a COSTANORTE (fase 1) | Completado | Completado | Completado | Backend OK (`mvnw test`, `mvnw -DskipTests package`, `backend_smoke_local.ps1`), Frontend OK (`flutter pub get`, `flutter test`, `flutter analyze`, `flutter build windows --release`) | Completada | Hecho (`98d62f3`) | Hecho (`b035d21`) | Marca actualizada a COSTANORTE con compatibilidad temporal para configuraciones legacy. |
 
 ## Pendientes inmediatos
-- Ejecutar instalacion piloto de backend/frontend en equipo objetivo del hotel.
-- Validar conectividad real en red local hotel (IP fija y puerto de backend).
+- Definir alcance y prioridad del Hito 12 con los nuevos pedidos funcionales del cliente.
+- Planificar fase 2 de renombre interno (`package`, rutas repo, nombres legacy en historial tecnico).
 - Definir convencion de ramas (ejemplo: `main` + ramas por hito).
-- Definir criterio final de naming entre proyectos (`quedras` / `quadras`).
 
 ## Bloqueos
-- Sin bloqueos abiertos para el cierre del Hito 10.
+- Sin bloqueos abiertos para el cierre del Hito 11.
 
 ## Decisiones activas
 - Mantener `docs/TABLERO_PROGRESO.md` como unica fuente de verdad del proyecto.
 - Ejecutar cada hito en flujo secuencial: backend completo primero, frontend despues.
 - Estandarizar toolchain de build Windows con Visual Studio 2022 + workload C++ desktop para garantizar builds reproducibles de Flutter.
+- Ejecutar renombre por fases: identidad y configuracion primero, migracion interna profunda despues.

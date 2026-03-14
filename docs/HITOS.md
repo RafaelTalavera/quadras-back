@@ -30,7 +30,7 @@ Backend y frontend compilan, pruebas en verde y build release Windows generado c
 Riesgos:
 Referencias historicas en documentacion y automatizaciones externas que aun dependan de nombres legacy.
 Estado:
-En progreso.
+Completado.
 
 ## Hito 2 - Configuracion base backend Spring Boot + MySQL + estructura de capas
 Objetivo:
