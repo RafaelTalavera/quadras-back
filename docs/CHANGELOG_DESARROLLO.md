@@ -570,3 +570,28 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Marcar Hito 10 como completado en backend/frontend, cerrar bloqueos y actualizar decision tecnica de toolchain Windows.
 - Impacto funcional: Proyecto QUEDRAS cierra el plan de 10 hitos con estado estable y trazabilidad completa.
+
+## 2026-03-14 | Hito 11 | Renombre seguro backend a COSTANORTE (fase 1)
+- Componente afectado: Backend (configuracion + identidad tecnica)
+- Archivos tocados:
+  - `pom.xml`
+  - `src/main/resources/application.properties`
+  - `src/main/resources/application-local.properties`
+  - `src/main/java/com/axioma/quadras/service/SystemStatusService.java`
+  - `src/test/java/com/axioma/quadras/controller/SystemStatusControllerTest.java`
+  - `src/test/resources/application-test.properties`
+  - `src/main/java/com/axioma/quadras/{config,controller,repository,service}/package-info.java`
+  - `scripts/backend_smoke_local.ps1`
+- Motivo del cambio: Cambiar identidad de QUEDRAS a COSTANORTE sin romper operacion actual, agregando compatibilidad temporal de variables (`COSTANORTE_*` con fallback a `QUADRAS_*`).
+- Impacto funcional: Backend expone nombre de servicio `COSTANORTE-BACKEND`, compila artefacto `costanorte-0.0.1-SNAPSHOT.jar` y mantiene compatibilidad con configuraciones legacy.
+
+## 2026-03-14 | Hito 11 | Validacion backend del renombre seguro
+- Componente afectado: Backend (calidad + trazabilidad)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/INSTALACION_BACKEND_HOTEL.md`
+  - `docs/MYSQL_LOCAL_SETUP.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Registrar criterios, decision tecnica y guias operativas actualizadas para ejecutar COSTANORTE en entorno local del hotel.
+- Impacto funcional: Validaciones backend en verde (`mvnw test`, `mvnw -DskipTests package`, `backend_smoke_local.ps1`) con documentacion alineada al nuevo nombre.

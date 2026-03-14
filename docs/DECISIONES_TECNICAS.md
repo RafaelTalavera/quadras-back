@@ -104,3 +104,10 @@
 - Contexto: El bloqueo de Hito 10 se origino por instalacion incompleta de toolchain Visual Studio para compilar Windows release.
 - Decision: Estandarizar instalacion de `Visual Studio Community 2022` con workload `Desktop development with C++` y verificar con `flutter doctor -v` antes de ejecutar `flutter build windows --release`.
 - Impacto: Evita bloqueos de build por componentes faltantes y vuelve reproducible el cierre de release en estaciones nuevas.
+
+## DT-016 - Renombre seguro de marca a COSTANORTE con compatibilidad temporal
+- Fecha: 2026-03-14
+- Estado: Activa
+- Contexto: El cliente solicita renombrar el sistema de QUEDRAS a COSTANORTE y el entorno actual ya se encuentra instalado y validado.
+- Decision: Aplicar renombre por fases; en fase 1 actualizar nombres visibles y de configuracion, manteniendo compatibilidad hacia atras con variables legacy (`QUADRAS_*`) y rutas internas actuales (`com.axioma.quadras` / carpeta repo) hasta fase de migracion profunda.
+- Impacto: Permite cambiar identidad del producto sin riesgo de corte operativo ni necesidad de reinstalar toda la infraestructura en el mismo paso.

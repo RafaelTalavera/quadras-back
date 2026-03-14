@@ -1,4 +1,4 @@
 /**
- * Cross-cutting technical configuration for QUEDRAS backend.
+ * Cross-cutting technical configuration for COSTANORTE backend.
  */
 package com.axioma.quadras.config;

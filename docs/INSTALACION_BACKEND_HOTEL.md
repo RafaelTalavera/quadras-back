@@ -1,4 +1,4 @@
-# INSTALACION BACKEND - QUEDRAS
+# INSTALACION BACKEND - COSTANORTE
 
 ## Objetivo
 Dejar el backend Spring Boot operativo en la red local del hotel con MySQL.
@@ -11,12 +11,12 @@ Dejar el backend Spring Boot operativo en la red local del hotel con MySQL.
 
 ## Variables de entorno recomendadas (PowerShell)
 ```powershell
-$env:QUADRAS_DB_HOST = "localhost"
-$env:QUADRAS_DB_PORT = "3306"
-$env:QUADRAS_DB_NAME = "db_quadras"
-$env:QUADRAS_DB_USER = "root"
-$env:QUADRAS_DB_PASSWORD = "sasa"
-$env:QUADRAS_SERVER_PORT = "8080"
+$env:COSTANORTE_DB_HOST = "localhost"
+$env:COSTANORTE_DB_PORT = "3306"
+$env:COSTANORTE_DB_NAME = "db_quadras"
+$env:COSTANORTE_DB_USER = "root"
+$env:COSTANORTE_DB_PASSWORD = "sasa"
+$env:COSTANORTE_SERVER_PORT = "8080"
 ```
 
 ## Compilacion de release
@@ -25,11 +25,11 @@ $env:QUADRAS_SERVER_PORT = "8080"
 ```
 
 Artefacto esperado:
-- `target/quadras-0.0.1-SNAPSHOT.jar`
+- `target/costanorte-0.0.1-SNAPSHOT.jar`
 
 ## Ejecucion local
 ```powershell
-java -jar target/quadras-0.0.1-SNAPSHOT.jar --spring.profiles.active=local --server.port=8080
+java -jar target/costanorte-0.0.1-SNAPSHOT.jar --spring.profiles.active=local --server.port=8080
 ```
 
 ## Verificacion de salud
@@ -51,4 +51,5 @@ Respuesta esperada:
 
 ## Notas de instalacion
 - El backend no depende de internet para operar.
-- Si el puerto `8080` esta ocupado, definir `QUADRAS_SERVER_PORT` o usar `--server.port`.
+- Si el puerto `8080` esta ocupado, definir `COSTANORTE_SERVER_PORT` o usar `--server.port`.
+- Compatibilidad temporal: si el entorno aun usa variables legacy `QUADRAS_*`, el backend las sigue aceptando en esta fase.

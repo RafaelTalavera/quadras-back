@@ -10,9 +10,14 @@ if (-not $SkipBuild) {
     .\mvnw -DskipTests package
 }
 
-$jarPath = "target/quadras-0.0.1-SNAPSHOT.jar"
+$jarPath = "target/costanorte-0.0.1-SNAPSHOT.jar"
 if (-not (Test-Path $jarPath)) {
-    throw "Jar no encontrado en $jarPath"
+    $legacyJarPath = "target/quadras-0.0.1-SNAPSHOT.jar"
+    if (Test-Path $legacyJarPath) {
+        $jarPath = $legacyJarPath
+    } else {
+        throw "Jar no encontrado en $jarPath ni en $legacyJarPath"
+    }
 }
 
 $process = Start-Process -FilePath "java" `

@@ -1,4 +1,4 @@
-# Hitos del proyecto QUEDRAS
+# Hitos del proyecto COSTANORTE
 
 ## Hito 1 - Inicializacion y orden del proyecto
 Objetivo:
@@ -15,6 +15,22 @@ Riesgos:
 Convencion de ramas pendiente y naming entre proyectos a unificar (`quedras`/`quadras`).
 Estado:
 Completado.
+
+## Hito 11 - Renombre seguro de QUEDRAS a COSTANORTE (fase 1)
+Objetivo:
+Actualizar la identidad del sistema a COSTANORTE sin romper la operacion actual.
+Alcance:
+Renombre visible y de configuracion (backend + frontend) con compatibilidad temporal para variables y artefactos previos.
+Backend:
+Actualizar `spring.application.name`, estado de servicio tecnico, variables de entorno (`COSTANORTE_*` con fallback a `QUADRAS_*`) y metadatos de artefacto Maven.
+Frontend:
+Actualizar nombre de app, variable de endpoint (`COSTANORTE_API_BASE_URL` con fallback) y binario desktop Windows.
+Criterios de validacion:
+Backend y frontend compilan, pruebas en verde y build release Windows generado con el nuevo nombre.
+Riesgos:
+Referencias historicas en documentacion y automatizaciones externas que aun dependan de nombres legacy.
+Estado:
+En progreso.
 
 ## Hito 2 - Configuracion base backend Spring Boot + MySQL + estructura de capas
 Objetivo:

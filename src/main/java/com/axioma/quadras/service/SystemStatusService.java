@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 @Service
 public class SystemStatusService {
 
-	private static final String SERVICE_NAME = "QUEDRAS-BACKEND";
+	private static final String SERVICE_NAME = "COSTANORTE-BACKEND";
 
 	private final Environment environment;
 

@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.axioma</groupId>
-	<artifactId>quadras</artifactId>
+	<artifactId>costanorte</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>quadras</name>
-	<description> quadras hotel costa norte</description>
+	<name>costanorte</name>
+	<description>backend de reservas del hotel costa norte</description>
 	<url/>
 	<licenses>
 		<license/>

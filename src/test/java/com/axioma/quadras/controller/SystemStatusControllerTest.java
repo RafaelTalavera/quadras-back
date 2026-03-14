@@ -23,7 +23,7 @@ class SystemStatusControllerTest {
 	void shouldReturnSystemStatus() throws Exception {
 		mockMvc.perform(get("/api/v1/system/health"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.service").value("QUEDRAS-BACKEND"))
+				.andExpect(jsonPath("$.service").value("COSTANORTE-BACKEND"))
 				.andExpect(jsonPath("$.status").value("UP"));
 	}
 }
