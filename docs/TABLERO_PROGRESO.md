@@ -3,11 +3,11 @@
 ## Estado general
 - Proyecto: COSTANORTE
 - Backend: Completado (fase backend Hito 12)
-- Frontend: Pendiente (fase frontend Hito 12)
+- Frontend: Completado (fase frontend Hito 12)
 - Ultimo hito trabajado: Hito 12 - Seguridad de usuarios con JWT y rol inicial
 - Ultima actualizacion: 2026-03-14
-- Riesgos abiertos: Gestionar secreto JWT local con criterio operativo; definir integracion frontend para login/renovacion; ampliar modelo de autorizacion a multiples roles; pendiente fase 2 para migrar nombres internos legacy (`com.axioma.quadras`, rutas de repositorio).
-- Proximo paso recomendado: Abrir fase frontend del Hito 12 para consumir `/api/v1/auth/login`, persistir JWT y enviar `Authorization: Bearer <token>` en reservas.
+- Riesgos abiertos: Gestionar secreto JWT local con criterio operativo; ampliar modelo de autorizacion a multiples roles; definir estrategia de persistencia/renovacion de sesion si el producto evoluciona mas alla del uso local; pendiente fase 2 para migrar nombres internos legacy (`com.axioma.quadras`, rutas de repositorio).
+- Proximo paso recomendado: Diseñar el siguiente paquete de roles/permisos y la estrategia de autorizacion por pantalla/endpoint.
 
 ## Hitos
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |
@@ -23,16 +23,16 @@
 | 9 | Conexion frontend-backend local | Completado | Completado | Completado | Backend OK (`mvnw test`, 22 tests), Frontend OK (`flutter test`, `flutter analyze`) | Completada | Hecho (`dde3646`, `c71d87a`) | Hecho (`55f7234`) | Cliente Flutter conectado a API local de reservas con operaciones CRUD y manejo de errores de red/API. |
 | 10 | Validacion integral, documentacion final y preparacion para instalacion | Completado | Completado | Completado | Backend OK (`mvnw test`, `mvnw -DskipTests package`, smoke HTTP local), Frontend OK (`flutter test`, `flutter analyze`, `flutter doctor -v`, `flutter build windows --release`) | Completada | Hecho (`1d6284e`, `a27b60c`, `93d7b6b`, `16153f2`) | Hecho (`f3a5963`, `fc866ae`) | Build Windows release generado y validado sin bloqueos. |
 | 11 | Renombre seguro de QUEDRAS a COSTANORTE (fase 1) | Completado | Completado | Completado | Backend OK (`mvnw test`, `mvnw -DskipTests package`, `backend_smoke_local.ps1`), Frontend OK (`flutter pub get`, `flutter test`, `flutter analyze`, `flutter build windows --release`) | Completada | Hecho (`98d62f3`) | Hecho (`b035d21`) | Marca actualizada a COSTANORTE con compatibilidad temporal para configuraciones legacy. |
-| 12 | Seguridad de usuarios con JWT y rol inicial | Completado | Pendiente | En progreso | Backend OK (`mvnw test`, `mvnw -DskipTests package`, `backend_smoke_local.ps1 -SkipBuild` con login JWT); frontend pendiente | Completada | Hecho (`557c88e`) | Pendiente | Backend protegido con Spring Security, JWT firmado, rol `OPERATOR`, usuario demo documentado y endpoint `/api/v1/users/me` listo para integracion cliente. |
+| 12 | Seguridad de usuarios con JWT y rol inicial | Completado | Completado | Completado | Backend OK (`mvnw test`, `mvnw -DskipTests package`, `backend_smoke_local.ps1 -SkipBuild` con login JWT); Frontend OK (`flutter test`, `flutter analyze`, `flutter build windows --release`) | Completada | Hecho (`557c88e`) | Hecho (`3393a5e`) | JWT operativo extremo a extremo con login frontend, sesion en memoria, logout, guard de rutas y consumo autenticado de reservas. |
 
 ## Pendientes inmediatos
-- Abrir frontend del Hito 12: login, almacenamiento de JWT, envio de `Authorization` y manejo de expiracion.
 - Definir siguientes roles del sistema y politica de autorizacion por pantalla/endpoint.
+- Definir persistencia o renovacion de sesion si el flujo deja de ser estrictamente local.
 - Planificar fase 2 de renombre interno (`package`, rutas repo, nombres legacy en historial tecnico).
 - Definir convencion de ramas (ejemplo: `main` + ramas por hito).
 
 ## Bloqueos
-- Sin bloqueos abiertos; backend del Hito 12 completado.
+- Sin bloqueos abiertos; Hito 12 completo en backend y frontend.
 
 ## Decisiones activas
 - Mantener `docs/TABLERO_PROGRESO.md` como unica fuente de verdad del proyecto.
