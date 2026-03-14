@@ -659,3 +659,11 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Registrar el cierre backend del Hito 12, documentar credenciales demo/variables JWT y dejar evidencia operativa para integracion del frontend.
 - Impacto funcional: Equipo de frontend y operacion cuentan con un contrato autenticado estable y reproducible.
+
+## 2026-03-14 | Hito 12 | Sincronizacion final de hash backend
+- Componente afectado: Backend (tablero de progreso)
+- Archivos tocados:
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Registrar el hash real del commit backend del Hito 12 (`557c88e`) en la fuente unica de verdad del proyecto.
+- Impacto funcional: Sin impacto funcional; mejora trazabilidad exacta del cierre backend del hito.
