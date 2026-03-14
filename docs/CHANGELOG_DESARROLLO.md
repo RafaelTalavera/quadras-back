@@ -619,3 +619,43 @@
   - `docs/VALIDACION_RENOMBRE_HITO11.md`
 - Motivo del cambio: Consolidar Hito 11 como completado para backend y frontend, actualizar riesgos activos y dejar evidencia centralizada del renombre seguro.
 - Impacto funcional: Proyecto pasa a identidad COSTANORTE con control de progreso y trazabilidad documental consistentes.
+
+## 2026-03-14 | Hito 12 | Implementacion backend de seguridad JWT y usuario demo
+- Componente afectado: Backend (security + auth + persistencia)
+- Archivos tocados:
+  - `pom.xml`
+  - `src/main/java/com/axioma/quadras/config/*`
+  - `src/main/java/com/axioma/quadras/controller/AuthController.java`
+  - `src/main/java/com/axioma/quadras/controller/UserController.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/{AuthTokenDto,CurrentUserDto,LoginRequestDto}.java`
+  - `src/main/java/com/axioma/quadras/domain/model/{AppUser,AppUserRole}.java`
+  - `src/main/java/com/axioma/quadras/repository/AppUserRepository.java`
+  - `src/main/java/com/axioma/quadras/service/{ApplicationUserDetailsService,AuthService,AuthenticatedUserPrincipal,DemoUserInitializer,JwtService}.java`
+  - `src/main/resources/application.properties`
+  - `src/main/resources/db/migration/V3__create_users_security_domain.sql`
+- Motivo del cambio: Incorporar login JWT, usuario demo bootstrap, rol inicial `OPERATOR` y proteccion de endpoints de reservas para habilitar autenticacion del cliente.
+- Impacto funcional: La API deja de aceptar llamadas anonimas sobre reservas y expone contrato `POST /api/v1/auth/login` + `GET /api/v1/users/me`.
+
+## 2026-03-14 | Hito 12 | Pruebas automatizadas y smoke con autenticacion
+- Componente afectado: Backend (calidad + validacion)
+- Archivos tocados:
+  - `src/test/java/com/axioma/quadras/controller/AuthControllerTest.java`
+  - `src/test/java/com/axioma/quadras/controller/ReservationControllerTest.java`
+  - `src/test/java/com/axioma/quadras/infrastructure/FlywayReservationMigrationTest.java`
+  - `src/test/resources/application-test.properties`
+  - `scripts/backend_smoke_local.ps1`
+- Motivo del cambio: Validar login, proteccion de endpoints, rechazo de JWT invalido, migracion de usuarios y smoke local con encabezado `Authorization`.
+- Impacto funcional: `mvnw test` queda en verde con cobertura de seguridad y el smoke local confirma login JWT real contra MySQL.
+
+## 2026-03-14 | Hito 12 | Cierre documental de backend y contrato para frontend
+- Componente afectado: Backend (gobernanza + documentacion operativa)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/INSTALACION_BACKEND_HOTEL.md`
+  - `docs/MYSQL_LOCAL_SETUP.md`
+  - `docs/VALIDACION_SEGURIDAD_HITO12.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Registrar el cierre backend del Hito 12, documentar credenciales demo/variables JWT y dejar evidencia operativa para integracion del frontend.
+- Impacto funcional: Equipo de frontend y operacion cuentan con un contrato autenticado estable y reproducible.

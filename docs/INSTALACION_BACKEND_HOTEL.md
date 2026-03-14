@@ -17,6 +17,10 @@ $env:COSTANORTE_DB_NAME = "db_quadras"
 $env:COSTANORTE_DB_USER = "root"
 $env:COSTANORTE_DB_PASSWORD = "sasa"
 $env:COSTANORTE_SERVER_PORT = "8080"
+$env:COSTANORTE_JWT_SECRET = "costanorte-local-jwt-secret-change-me-2026"
+$env:COSTANORTE_DEMO_USER_USERNAME = "operador.demo"
+$env:COSTANORTE_DEMO_USER_PASSWORD = "Costanorte2026!"
+$env:COSTANORTE_DEMO_USER_ROLE = "OPERATOR"
 ```
 
 ## Compilacion de release
@@ -40,6 +44,23 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/v1/system/health" -Method Get
 Respuesta esperada:
 - `status: UP`
 
+## Login de prueba
+```powershell
+$loginBody = @{
+    username = "operador.demo"
+    password = "Costanorte2026!"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/v1/auth/login" `
+    -Method Post `
+    -ContentType "application/json" `
+    -Body $loginBody
+```
+
+Respuesta esperada:
+- `tokenType: Bearer`
+- `role: OPERATOR`
+
 ## Smoke de API de reservas (opcional recomendado)
 ```powershell
 .\scripts\backend_smoke_local.ps1 -Port 8091
@@ -52,4 +73,6 @@ Respuesta esperada:
 ## Notas de instalacion
 - El backend no depende de internet para operar.
 - Si el puerto `8080` esta ocupado, definir `COSTANORTE_SERVER_PORT` o usar `--server.port`.
+- El usuario demo `operador.demo / Costanorte2026!` se crea/actualiza al arrancar si `COSTANORTE_DEMO_USER_ENABLED=true`.
+- En entornos no locales se recomienda redefinir `COSTANORTE_JWT_SECRET` y la clave demo antes de exponer el backend a operadores reales.
 - Compatibilidad temporal: si el entorno aun usa variables legacy `QUADRAS_*`, el backend las sigue aceptando en esta fase.

@@ -33,4 +33,18 @@ class FlywayReservationMigrationTest {
 
 		assertThat(count).isEqualTo(1);
 	}
+
+	@Test
+	void shouldCreateUsersTableViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.TABLES
+				WHERE TABLE_NAME = 'APP_USERS'
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(1);
+	}
 }

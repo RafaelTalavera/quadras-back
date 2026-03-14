@@ -24,6 +24,7 @@ $env:COSTANORTE_DB_PASSWORD = "sasa"
 
 ## Resultado esperado
 - Spring Boot inicia sin errores.
-- Flyway aplica `V1__init_technical_baseline.sql`.
+- Flyway aplica `V1__init_technical_baseline.sql`, `V2__create_reservations_domain.sql` y `V3__create_users_security_domain.sql`.
 - Endpoint tecnico responde en `GET /api/v1/system/health`.
+- Usuario demo disponible para login: `operador.demo / Costanorte2026!`.
 - Compatibilidad temporal: el backend tambien acepta variables legacy `QUADRAS_*`.

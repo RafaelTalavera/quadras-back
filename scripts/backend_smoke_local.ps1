@@ -1,13 +1,23 @@
 param(
     [int]$Port = 8091,
     [string]$Profile = "local",
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [string]$Username = $env:COSTANORTE_DEMO_USER_USERNAME,
+    [string]$Password = $env:COSTANORTE_DEMO_USER_PASSWORD
 )
 
 $ErrorActionPreference = "Stop"
 
 if (-not $SkipBuild) {
     .\mvnw -DskipTests package
+}
+
+if ([string]::IsNullOrWhiteSpace($Username)) {
+    $Username = "operador.demo"
+}
+
+if ([string]::IsNullOrWhiteSpace($Password)) {
+    $Password = "Costanorte2026!"
 }
 
 $jarPath = "target/costanorte-0.0.1-SNAPSHOT.jar"
@@ -41,6 +51,16 @@ try {
         throw "Backend no respondio en /api/v1/system/health"
     }
 
+    $loginBody = @{
+        username = $Username
+        password = $Password
+    } | ConvertTo-Json
+
+    $login = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/v1/auth/login" -Method Post -ContentType "application/json" -Body $loginBody
+    $headers = @{
+        Authorization = "$($login.tokenType) $($login.accessToken)"
+    }
+
     $date = (Get-Date).ToString("yyyy-MM-dd")
     $createBody = @{
         guestName = "Smoke Script"
@@ -50,7 +70,7 @@ try {
         notes = "Smoke local"
     } | ConvertTo-Json
 
-    $created = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/v1/reservations" -Method Post -ContentType "application/json" -Body $createBody
+    $created = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/v1/reservations" -Method Post -ContentType "application/json" -Headers $headers -Body $createBody
     $reservationId = $created.id
 
     $updateBody = @{
@@ -61,13 +81,15 @@ try {
         notes = "Smoke local update"
     } | ConvertTo-Json
 
-    $updated = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/v1/reservations/$reservationId" -Method Put -ContentType "application/json" -Body $updateBody
-    $cancelled = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/v1/reservations/$reservationId/cancel" -Method Patch
-    $list = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/v1/reservations?reservationDate=$date" -Method Get
+    $updated = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/v1/reservations/$reservationId" -Method Put -ContentType "application/json" -Headers $headers -Body $updateBody
+    $cancelled = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/v1/reservations/$reservationId/cancel" -Method Patch -Headers $headers
+    $list = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/v1/reservations?reservationDate=$date" -Method Get -Headers $headers
 
     [ordered]@{
         date = $date
         healthStatus = $health.status
+        authUser = $login.username
+        authRole = $login.role
         reservationId = $reservationId
         createdStatus = $created.status
         updatedStatus = $updated.status

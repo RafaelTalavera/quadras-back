@@ -23,7 +23,7 @@
 
 ## DT-004 - Sin autenticacion en etapa inicial
 - Fecha: 2026-03-12
-- Estado: Activa
+- Estado: Cerrada (superada por DT-017)
 - Contexto: Alcance inicial excluye login/permisos.
 - Decision: No implementar seguridad de usuarios en los primeros hitos.
 - Impacto: Se reduce complejidad inicial y se acelera validacion de negocio principal.
@@ -111,3 +111,10 @@
 - Contexto: El cliente solicita renombrar el sistema de QUEDRAS a COSTANORTE y el entorno actual ya se encuentra instalado y validado.
 - Decision: Aplicar renombre por fases; en fase 1 actualizar nombres visibles y de configuracion, manteniendo compatibilidad hacia atras con variables legacy (`QUADRAS_*`) y rutas internas actuales (`com.axioma.quadras` / carpeta repo) hasta fase de migracion profunda.
 - Impacto: Permite cambiar identidad del producto sin riesgo de corte operativo ni necesidad de reinstalar toda la infraestructura en el mismo paso.
+
+## DT-017 - Seguridad stateless con JWT firmado y rol persistido
+- Fecha: 2026-03-14
+- Estado: Activa
+- Contexto: El Hito 12 requiere autenticar al usuario del cliente y autorizar operaciones sensibles del backend sin introducir sesion de servidor.
+- Decision: Implementar Spring Security stateless con JWT firmado por HMAC, claim `role` obligatorio y validado contra el usuario persistido; mantener un rol inicial `OPERATOR`, usuario demo bootstrap y endpoint `POST /api/v1/auth/login` como contrato base para el frontend.
+- Impacto: La API deja de ser anonima, el frontend puede operar con `Bearer` tokens y el sistema queda preparado para extender a multiples roles con cambios acotados en enum/migracion/autorizacion.

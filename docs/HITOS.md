@@ -32,6 +32,22 @@ Referencias historicas en documentacion y automatizaciones externas que aun depe
 Estado:
 Completado.
 
+## Hito 12 - Seguridad de usuarios con JWT y rol inicial
+Objetivo:
+Incorporar autenticacion de usuarios y autorizacion por rol para proteger la API backend.
+Alcance:
+Spring Security con JWT firmado, validacion de rol embebido en el token, un rol inicial y usuario demo operativo/documentado para pruebas.
+Backend:
+Tabla de usuarios, seed de usuario demo, endpoint de login, endpoints protegidos por rol, manejo uniforme de errores 401/403 y adaptacion de smoke tests.
+Frontend:
+Pendiente. La fase actual solo define contrato JWT para la futura integracion del cliente.
+Criterios de validacion:
+`mvnw test`, `mvnw -DskipTests package` y `backend_smoke_local.ps1` deben validar login JWT y acceso autenticado a endpoints protegidos.
+Riesgos:
+Gestion local de secreto JWT, futura estrategia de expiracion/renovacion y ampliacion ordenada a multiples roles.
+Estado:
+En progreso (backend completado, frontend pendiente).
+
 ## Hito 2 - Configuracion base backend Spring Boot + MySQL + estructura de capas
 Objetivo:
 Configurar backend para operar en red local con MySQL y base de capas clara.

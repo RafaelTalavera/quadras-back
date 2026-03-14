@@ -1,12 +1,15 @@
 package com.axioma.quadras.controller;
 
 import com.axioma.quadras.domain.model.Reservation;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.axioma.quadras.repository.ReservationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
@@ -38,9 +41,14 @@ class ReservationControllerTest {
 	@Autowired
 	private ReservationRepository reservationRepository;
 
+	private final ObjectMapper objectMapper = new ObjectMapper();
+
+	private String accessToken;
+
 	@BeforeEach
-	void cleanDb() {
+	void cleanDb() throws Exception {
 		reservationRepository.deleteAll();
+		accessToken = authenticate();
 	}
 
 	@Test
@@ -56,6 +64,7 @@ class ReservationControllerTest {
 				""";
 
 		mockMvc.perform(post("/api/v1/reservations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(payload))
 				.andExpect(status().isCreated())
@@ -83,6 +92,7 @@ class ReservationControllerTest {
 		));
 
 		mockMvc.perform(get("/api/v1/reservations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.param("reservationDate", "2026-03-13"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(2))
@@ -100,7 +110,8 @@ class ReservationControllerTest {
 				"Cancha preferente"
 		));
 
-		mockMvc.perform(get("/api/v1/reservations/{id}", saved.getId()))
+		mockMvc.perform(get("/api/v1/reservations/{id}", saved.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.id").value(saved.getId()))
 				.andExpect(jsonPath("$.guestName").value("Mario Sosa"));
@@ -108,7 +119,8 @@ class ReservationControllerTest {
 
 	@Test
 	void shouldReturnNotFoundWhenReservationDoesNotExist() throws Exception {
-		mockMvc.perform(get("/api/v1/reservations/{id}", 999999L))
+		mockMvc.perform(get("/api/v1/reservations/{id}", 999999L)
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.message").value("Reservation 999999 not found"));
 	}
@@ -125,6 +137,7 @@ class ReservationControllerTest {
 				""";
 
 		mockMvc.perform(post("/api/v1/reservations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(payload))
 				.andExpect(status().isBadRequest())
@@ -151,6 +164,7 @@ class ReservationControllerTest {
 				""";
 
 		mockMvc.perform(post("/api/v1/reservations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(payload))
 				.andExpect(status().isConflict())
@@ -169,6 +183,7 @@ class ReservationControllerTest {
 				""";
 
 		mockMvc.perform(post("/api/v1/reservations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(payload))
 				.andExpect(status().isBadRequest())
@@ -187,6 +202,7 @@ class ReservationControllerTest {
 				""";
 
 		mockMvc.perform(post("/api/v1/reservations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(payload))
 				.andExpect(status().isBadRequest())
@@ -214,6 +230,7 @@ class ReservationControllerTest {
 				""";
 
 		mockMvc.perform(put("/api/v1/reservations/{id}", saved.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(payload))
 				.andExpect(status().isOk())
@@ -236,6 +253,7 @@ class ReservationControllerTest {
 				""";
 
 		mockMvc.perform(put("/api/v1/reservations/{id}", 999999L)
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(payload))
 				.andExpect(status().isNotFound())
@@ -269,6 +287,7 @@ class ReservationControllerTest {
 				""";
 
 		mockMvc.perform(put("/api/v1/reservations/{id}", base.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(payload))
 				.andExpect(status().isConflict())
@@ -297,6 +316,7 @@ class ReservationControllerTest {
 				""";
 
 		mockMvc.perform(put("/api/v1/reservations/{id}", reservation.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(payload))
 				.andExpect(status().isConflict())
@@ -313,7 +333,8 @@ class ReservationControllerTest {
 				null
 		));
 
-		mockMvc.perform(patch("/api/v1/reservations/{id}/cancel", reservation.getId()))
+		mockMvc.perform(patch("/api/v1/reservations/{id}/cancel", reservation.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.id").value(reservation.getId()))
 				.andExpect(jsonPath("$.status").value("CANCELLED"));
@@ -321,7 +342,8 @@ class ReservationControllerTest {
 
 	@Test
 	void shouldReturnNotFoundWhenCancellingReservationDoesNotExist() throws Exception {
-		mockMvc.perform(patch("/api/v1/reservations/{id}/cancel", 999999L))
+		mockMvc.perform(patch("/api/v1/reservations/{id}/cancel", 999999L)
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.message").value("Reservation 999999 not found"));
 	}
@@ -338,8 +360,33 @@ class ReservationControllerTest {
 		reservation.markCompleted();
 		reservationRepository.save(reservation);
 
-		mockMvc.perform(patch("/api/v1/reservations/{id}/cancel", reservation.getId()))
+		mockMvc.perform(patch("/api/v1/reservations/{id}/cancel", reservation.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.message").value("Completed reservations cannot be cancelled."));
+	}
+
+	private String bearerToken() {
+		return "Bearer " + accessToken;
+	}
+
+	private String authenticate() throws Exception {
+		final String payload = """
+				{
+				  "username": "operador.demo",
+				  "password": "Costanorte2026!"
+				}
+				""";
+
+		final String responseBody = mockMvc.perform(post("/api/v1/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isOk())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+		final JsonNode response = objectMapper.readTree(responseBody);
+		return response.get("accessToken").asText();
 	}
 }
