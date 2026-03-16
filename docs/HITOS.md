@@ -40,13 +40,29 @@ Spring Security con JWT firmado, validacion de rol embebido en el token, un rol 
 Backend:
 Tabla de usuarios, seed de usuario demo, endpoint de login, endpoints protegidos por rol, manejo uniforme de errores 401/403 y adaptacion de smoke tests.
 Frontend:
-Pendiente. La fase actual solo define contrato JWT para la futura integracion del cliente.
+Login operativo, sesion JWT en memoria, guard de rutas, logout y consumo autenticado del modulo de reservas.
 Criterios de validacion:
-`mvnw test`, `mvnw -DskipTests package` y `backend_smoke_local.ps1` deben validar login JWT y acceso autenticado a endpoints protegidos.
+`mvnw test`, `mvnw -DskipTests package`, `backend_smoke_local.ps1`, `flutter test` y `flutter analyze` deben validar login JWT y acceso autenticado a endpoints protegidos.
 Riesgos:
 Gestion local de secreto JWT, futura estrategia de expiracion/renovacion y ampliacion ordenada a multiples roles.
 Estado:
-En progreso (backend completado, frontend pendiente).
+Completado.
+
+## Fase posterior a Hito 12 - Reenfoque comercial del frontend
+Objetivo:
+Reorientar la experiencia visible del cliente a servicios comerciales del hotel sin perder el layout base ya validado.
+Alcance:
+Reducir la navegacion visible a `Massagens`, `Quadras`, `Tours e Viagens` y `Configuracoes`, normalizar textos visibles a `pt-BR` y retirar contenido tecnico expuesto al operador.
+Backend:
+Sin cambios funcionales en esta fase; queda pendiente definir contratos dedicados para `Massagens` y `Tours e Viagens`, y evaluar normalizacion `pt-BR` extremo a extremo en mensajes de API.
+Frontend:
+Shell actualizado, `Quadras` unificado como modulo operativo, nuevas pantallas base para `Massagens` y `Tours e Viagens`, y textos visibles en portugues de Brasil.
+Criterios de validacion:
+`flutter analyze` y `flutter test` en verde con navegacion acotada al nuevo alcance visible.
+Riesgos:
+Falta de contrato backend para los nuevos modulos comerciales y necesidad de mantener consistencia de idioma entre UI y respuestas reales de API.
+Estado:
+En progreso (frontend base completada, backend pendiente).
 
 ## Hito 2 - Configuracion base backend Spring Boot + MySQL + estructura de capas
 Objetivo:

@@ -118,3 +118,10 @@
 - Contexto: El Hito 12 requiere autenticar al usuario del cliente y autorizar operaciones sensibles del backend sin introducir sesion de servidor.
 - Decision: Implementar Spring Security stateless con JWT firmado por HMAC, claim `role` obligatorio y validado contra el usuario persistido; mantener un rol inicial `OPERATOR`, usuario demo bootstrap y endpoint `POST /api/v1/auth/login` como contrato base para el frontend.
 - Impacto: La API deja de ser anonima, el frontend puede operar con `Bearer` tokens y el sistema queda preparado para extender a multiples roles con cambios acotados en enum/migracion/autorizacion.
+
+## DT-018 - Frontend comercial acotado a 3 modulos visibles y `pt-BR`
+- Fecha: 2026-03-16
+- Estado: Activa
+- Contexto: El producto deja de presentarse como panel tecnico de reservas y pasa a una experiencia comercial/operativa del hotel con alcance visible mas acotado.
+- Decision: Mantener el layout base del frontend, pero limitar la navegacion visible a `Massagens`, `Quadras`, `Tours e Viagens` y `Configuracoes`; retirar contenido tecnico visible al operador y normalizar la salida de UI a portugues de Brasil (`pt-BR`).
+- Impacto: La experiencia queda alineada a la marca Costa Norte, `Quadras` conserva el flujo real ya integrado y backend pasa a tener como siguiente paso la definicion de contratos dedicados para `Massagens` y `Tours e Viagens`.

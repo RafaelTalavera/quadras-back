@@ -2,12 +2,12 @@
 
 ## Estado general
 - Proyecto: COSTANORTE
-- Backend: Completado (fase backend Hito 12)
-- Frontend: Completado (fase frontend Hito 12)
-- Ultimo hito trabajado: Hito 12 - Seguridad de usuarios con JWT y rol inicial
-- Ultima actualizacion: 2026-03-14
-- Riesgos abiertos: Gestionar secreto JWT local con criterio operativo; ampliar modelo de autorizacion a multiples roles; definir estrategia de persistencia/renovacion de sesion si el producto evoluciona mas alla del uso local; pendiente fase 2 para migrar nombres internos legacy (`com.axioma.quadras`, rutas de repositorio).
-- Proximo paso recomendado: Diseñar el siguiente paquete de roles/permisos y la estrategia de autorizacion por pantalla/endpoint.
+- Backend: Completado (Hito 12 backend, sin cambios funcionales nuevos en esta fase)
+- Frontend: En progreso (fase posterior a Hito 12)
+- Ultimo hito trabajado: Fase posterior a Hito 12 - Reenfoque comercial del frontend
+- Ultima actualizacion: 2026-03-16
+- Riesgos abiertos: Definir contratos backend para `Massagens` y `Tours e Viagens`; mantener consistencia `pt-BR` extremo a extremo entre UI y API; definir estrategia de persistencia/renovacion de sesion si el producto evoluciona mas alla del uso local; pendiente fase 2 para migrar nombres internos legacy (`com.axioma.quadras`, rutas de repositorio).
+- Proximo paso recomendado: Definir el siguiente paquete funcional para `Massagens` y `Tours e Viagens`, y cerrar la normalizacion de mensajes `pt-BR` en backend donde la UI consuma errores directamente.
 
 ## Hitos
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |
@@ -25,14 +25,22 @@
 | 11 | Renombre seguro de QUEDRAS a COSTANORTE (fase 1) | Completado | Completado | Completado | Backend OK (`mvnw test`, `mvnw -DskipTests package`, `backend_smoke_local.ps1`), Frontend OK (`flutter pub get`, `flutter test`, `flutter analyze`, `flutter build windows --release`) | Completada | Hecho (`98d62f3`) | Hecho (`b035d21`) | Marca actualizada a COSTANORTE con compatibilidad temporal para configuraciones legacy. |
 | 12 | Seguridad de usuarios con JWT y rol inicial | Completado | Completado | Completado | Backend OK (`mvnw test`, `mvnw -DskipTests package`, `backend_smoke_local.ps1 -SkipBuild` con login JWT); Frontend OK (`flutter test`, `flutter analyze`, `flutter build windows --release`) | Completada | Hecho (`557c88e`) | Hecho (`3393a5e`) | JWT operativo extremo a extremo con login frontend, sesion en memoria, logout, guard de rutas y consumo autenticado de reservas. |
 
+## Actualizacion post Hito 12
+- Fecha: 2026-03-16
+- Commit frontend asociado: `384d38b`
+- Frontend reenfocado al alcance visible `Massagens`, `Quadras`, `Tours e Viagens` y `Configuracoes`, manteniendo el layout base ya validado.
+- `Quadras` conserva integracion real con backend; `Massagens` y `Tours e Viagens` quedan en estado frontend controlado hasta definir contrato dedicado.
+- La UI visible se normaliza a portugues de Brasil y se elimina contenido tecnico expuesto al operador.
+
 ## Pendientes inmediatos
-- Definir siguientes roles del sistema y politica de autorizacion por pantalla/endpoint.
+- Definir contratos backend para `Massagens`.
+- Definir contratos backend para `Tours e Viagens`.
 - Definir persistencia o renovacion de sesion si el flujo deja de ser estrictamente local.
 - Planificar fase 2 de renombre interno (`package`, rutas repo, nombres legacy en historial tecnico).
 - Definir convencion de ramas (ejemplo: `main` + ramas por hito).
 
 ## Bloqueos
-- Sin bloqueos abiertos; Hito 12 completo en backend y frontend.
+- Sin bloqueos tecnicos abiertos; hay dependencias funcionales pendientes para los nuevos modulos comerciales.
 
 ## Decisiones activas
 - Mantener `docs/TABLERO_PROGRESO.md` como unica fuente de verdad del proyecto.
@@ -40,3 +48,4 @@
 - Estandarizar toolchain de build Windows con Visual Studio 2022 + workload C++ desktop para garantizar builds reproducibles de Flutter.
 - Ejecutar renombre por fases: identidad y configuracion primero, migracion interna profunda despues.
 - Mantener JWT stateless con rol embebido en el token y validado contra usuario persistido para sostener evolucion futura a multiples roles.
+- Mantener el frontend con navegacion visible acotada a modulos comerciales y salida `pt-BR`.

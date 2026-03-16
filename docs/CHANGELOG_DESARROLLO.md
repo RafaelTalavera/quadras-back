@@ -667,3 +667,13 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Registrar el hash real del commit backend del Hito 12 (`557c88e`) en la fuente unica de verdad del proyecto.
 - Impacto funcional: Sin impacto funcional; mejora trazabilidad exacta del cierre backend del hito.
+
+## 2026-03-16 | Post Hito 12 | Reenfoque comercial del frontend y actualizacion global
+- Componente afectado: Backend (gobernanza + trazabilidad global)
+- Archivos tocados:
+  - `docs/HITOS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Registrar el nuevo alcance visible del frontend, que pasa a 3 modulos comerciales (`Massagens`, `Quadras`, `Tours e Viagens`) mas `Configuracoes`, con salida visible en `pt-BR`, y enlazar la trazabilidad al commit frontend `384d38b`.
+- Impacto funcional: Sin cambios nuevos en la API actual; el siguiente paso de backend queda enfocado en contratos dedicados para `Massagens` y `Tours e Viagens`, y en la coherencia de mensajes `pt-BR` donde la UI consuma errores reales.
