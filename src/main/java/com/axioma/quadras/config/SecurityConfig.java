@@ -48,6 +48,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(authorize -> authorize
 						.requestMatchers("/api/v1/system/health", "/api/v1/auth/**").permitAll()
 						.requestMatchers("/api/v1/reservations/**").hasRole(AppUserRole.OPERATOR.name())
+						.requestMatchers("/api/v1/massages/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/users/**").authenticated()
 						.anyRequest().authenticated()
 				)

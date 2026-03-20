@@ -677,3 +677,36 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Registrar el nuevo alcance visible del frontend, que pasa a 3 modulos comerciales (`Massagens`, `Quadras`, `Tours e Viagens`) mas `Configuracoes`, con salida visible en `pt-BR`, y enlazar la trazabilidad al commit frontend `384d38b`.
 - Impacto funcional: Sin cambios nuevos en la API actual; el siguiente paso de backend queda enfocado en contratos dedicados para `Massagens` y `Tours e Viagens`, y en la coherencia de mensajes `pt-BR` donde la UI consuma errores reales.
+
+## 2026-03-19 | Post Hito 12 | Implementacion backend del dominio de massagens
+- Componente afectado: Backend (massagens + persistencia + seguridad + pruebas)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/domain/model/{MassageProvider,MassageBooking}.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/{CreateMassageProviderDto,UpdateMassageProviderDto,MassageProviderDto,CreateMassageBookingDto,MassageBookingDto}.java`
+  - `src/main/java/com/axioma/quadras/repository/{MassageProviderRepository,MassageBookingRepository}.java`
+  - `src/main/java/com/axioma/quadras/service/{MassageProviderService,MassageBookingService}.java`
+  - `src/main/java/com/axioma/quadras/controller/{MassageProviderController,MassageBookingController}.java`
+  - `src/main/java/com/axioma/quadras/config/SecurityConfig.java`
+  - `src/main/resources/db/migration/V4__create_massages_domain.sql`
+  - `src/test/java/com/axioma/quadras/controller/MassageControllerTest.java`
+  - `src/test/java/com/axioma/quadras/infrastructure/FlywayReservationMigrationTest.java`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Incorporar contratos persistidos para `Massagens` y permitir que el frontend administre prestadores y agendamentos desde API real en lugar de listas manuales locales.
+- Impacto funcional: El backend expone `GET/POST/PUT /api/v1/massages/providers` y `GET/POST /api/v1/massages/bookings`, con validacion de prestador activo y bloqueo de doble reserva del mismo prestador en la misma fecha/hora.
+
+## 2026-03-20 | Post Hito 12 | Plan e implementacion de pagos completos para massagens
+- Componente afectado: Backend + documentacion
+- Archivos tocados:
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+  - `src/main/java/com/axioma/quadras/domain/model/{MassageBooking,MassagePaymentMethod}.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/{CreateMassageBookingDto,MassageBookingDto,UpdateMassagePaymentDto}.java`
+  - `src/main/java/com/axioma/quadras/repository/MassageBookingRepository.java`
+  - `src/main/java/com/axioma/quadras/service/MassageBookingService.java`
+  - `src/main/java/com/axioma/quadras/controller/MassageBookingController.java`
+  - `src/main/resources/db/migration/V5__extend_massage_payments.sql`
+  - `src/test/java/com/axioma/quadras/controller/MassageControllerTest.java`
+  - `src/test/java/com/axioma/quadras/infrastructure/FlywayReservationMigrationTest.java`
+- Motivo del cambio: Incorporar captura completa de pago al agendar, sumar flujo separado de informar pago y permitir busquedas operativas sobre masajes agendados.
+- Impacto funcional: La API de massagens pasa a soportar medio de pago, fecha y observaciones tanto en el alta como en un endpoint dedicado de pago.

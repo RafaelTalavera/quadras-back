@@ -47,4 +47,47 @@ class FlywayReservationMigrationTest {
 
 		assertThat(count).isEqualTo(1);
 	}
+
+	@Test
+	void shouldCreateMassageProvidersTableViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.TABLES
+				WHERE TABLE_NAME = 'MASSAGE_PROVIDERS'
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(1);
+	}
+
+	@Test
+	void shouldCreateMassageBookingsTableViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.TABLES
+				WHERE TABLE_NAME = 'MASSAGE_BOOKINGS'
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(1);
+	}
+
+	@Test
+	void shouldCreateMassagePaymentColumnsViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'MASSAGE_BOOKINGS'
+				  AND COLUMN_NAME IN ('PAYMENT_METHOD', 'PAYMENT_DATE', 'PAYMENT_NOTES')
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(3);
+	}
 }

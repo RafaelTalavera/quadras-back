@@ -125,3 +125,17 @@
 - Contexto: El producto deja de presentarse como panel tecnico de reservas y pasa a una experiencia comercial/operativa del hotel con alcance visible mas acotado.
 - Decision: Mantener el layout base del frontend, pero limitar la navegacion visible a `Massagens`, `Quadras`, `Tours e Viagens` y `Configuracoes`; retirar contenido tecnico visible al operador y normalizar la salida de UI a portugues de Brasil (`pt-BR`).
 - Impacto: La experiencia queda alineada a la marca Costa Norte, `Quadras` conserva el flujo real ya integrado y backend pasa a tener como siguiente paso la definicion de contratos dedicados para `Massagens` y `Tours e Viagens`.
+
+## DT-019 - Dominio backend dedicado para massagens con prestadores persistidos
+- Fecha: 2026-03-19
+- Estado: Activa
+- Contexto: La operacion de massagens debe dejar de depender de una planilla Excel y de listas cargadas manualmente en UI para prestadores.
+- Decision: Incorporar en backend el dominio `Massagens` con tablas y endpoints propios para `prestadores` y `agendamentos`, protegidos por JWT igual que `reservations`; validar que solo prestadores activos puedan ser elegidos y bloquear doble reserva del mismo prestador en la misma fecha/hora.
+- Impacto: El frontend puede cargar el combo de prestadores desde API persistida y el hotel dispone de una base estable para evolucionar agenda, mantenimiento y reportes de massagens.
+
+## DT-020 - Pago de massagens con captura completa en alta y registro posterior
+- Fecha: 2026-03-20
+- Estado: Activa
+- Contexto: La operacion necesita mantener el cobro opcional durante el agendamiento, pero tambien registrar pagos despues de que el masaje ya fue agendado, sin volver a usar planillas externas.
+- Decision: Extender `MassageBooking` con `paymentMethod`, `paymentDate` y `paymentNotes`; mantener `paid` en el alta y agregar un flujo independiente `PATCH /api/v1/massages/bookings/{id}/payment` para registrar o corregir el pago posteriormente. La busqueda operativa de masajes se resuelve sobre el mismo endpoint `GET /api/v1/massages/bookings` con filtros por fecha, cliente, referencia, prestador y estado de pago.
+- Impacto: El operador puede cobrar al crear el turno o mas tarde desde una pantalla dedicada, con trazabilidad basica de medio de pago (`CARD`, `CASH`, `PIX`), fecha y observaciones sin duplicar registros.
