@@ -16,11 +16,11 @@ ALTER TABLE massage_bookings
 ALTER TABLE massage_bookings
     ADD COLUMN cancelled_by VARCHAR(80);
 
-ALTER TABLE massage_bookings
-    DROP INDEX uk_massage_bookings_provider_slot;
-
 CREATE INDEX idx_massage_bookings_provider_slot
     ON massage_bookings (provider_id, booking_date, start_time);
+
+ALTER TABLE massage_bookings
+    DROP INDEX uk_massage_bookings_provider_slot;
 
 CREATE INDEX idx_massage_bookings_status
     ON massage_bookings (status, booking_date, provider_id);

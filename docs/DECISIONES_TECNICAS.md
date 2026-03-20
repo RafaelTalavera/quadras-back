@@ -153,3 +153,10 @@
 - Contexto: El frontend oficial ya necesita editar y cancelar atendimientos de massagens sin eliminar registros, con observacion obligatoria y trazabilidad por usuario autenticado.
 - Decision: Extender `MassageBooking` con `status`, `cancellationNotes`, `cancelledAt`, `createdBy`, `updatedBy` y `cancelledBy`; exponer `PUT /api/v1/massages/bookings/{id}` y `PATCH /api/v1/massages/bookings/{id}/cancel`; exigir observacion en cancelacion y tomar el usuario desde el JWT autenticado. El bloqueo de conflictos pasa a aplicarse solo sobre bookings `SCHEDULED`, permitiendo reutilizar un horario despues de cancelarlo.
 - Impacto: El backend de massagens deja de depender de borrados o reescrituras implícitas, gana trazabilidad operativa completa y queda alineado al frontend Flutter para mantenimiento de agenda.
+
+## DT-023 - Las migraciones de massagens deben preservar soporte de FK antes de soltar indices unicos
+- Fecha: 2026-03-20
+- Estado: Activa
+- Contexto: La migracion `V6__extend_massage_bookings_with_status_and_audit.sql` fallo en MySQL local porque intentaba eliminar `uk_massage_bookings_provider_slot` antes de crear un indice alternativo compatible con la FK por `provider_id`, dejando la version 6 en estado fallido dentro de Flyway.
+- Decision: En migraciones que reemplacen un indice unico usado indirectamente por una FK, crear primero un indice alternativo con el mismo prefijo requerido por MySQL y recien despues eliminar el indice original. Para `massage_bookings`, `idx_massage_bookings_provider_slot` debe existir antes de soltar `uk_massage_bookings_provider_slot`.
+- Impacto: Se evita que Flyway deje la base en estado parcial por orden incorrecto de DDL, mejora la reproducibilidad del arranque local y reduce intervenciones manuales sobre `flyway_schema_history`.

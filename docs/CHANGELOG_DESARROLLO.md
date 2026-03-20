@@ -735,3 +735,12 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Alinear el backend de massagens con la regla operativa de no eliminar registros, habilitando edicion, cancelacion con observacion obligatoria y auditoria por usuario autenticado.
 - Impacto funcional: La API de massagens ahora soporta `PUT /api/v1/massages/bookings/{id}` y `PATCH /api/v1/massages/bookings/{id}/cancel`, devuelve estado y metadata de auditoria, y permite reusar un horario despues de cancelar el atendimento anterior.
+
+## 2026-03-20 | Post Hito 12 | Correccion de V6 para arranque limpio con Flyway en MySQL
+- Componente afectado: Backend (`Massagens` + migraciones + documentacion)
+- Archivos tocados:
+  - `src/main/resources/db/migration/V6__extend_massage_bookings_with_status_and_audit.sql`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: La version 6 fallaba en bases MySQL locales al intentar eliminar `uk_massage_bookings_provider_slot` antes de crear un indice alternativo requerido para sostener la FK por `provider_id`.
+- Impacto funcional: Flyway puede aplicar `V6` sin dejar la base en estado parcial; el backend vuelve a arrancar de forma reproducible y la migracion mantiene la posibilidad de reutilizar horarios cancelados.
