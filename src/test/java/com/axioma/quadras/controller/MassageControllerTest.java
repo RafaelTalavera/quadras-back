@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.axioma.quadras.domain.model.MassageBooking;
+import com.axioma.quadras.domain.model.MassageBookingStatus;
 import com.axioma.quadras.domain.model.MassagePaymentMethod;
 import com.axioma.quadras.domain.model.MassageProvider;
 import com.axioma.quadras.repository.MassageBookingRepository;
@@ -156,7 +157,10 @@ class MassageControllerTest {
 				.andExpect(jsonPath("$.paid").value(true))
 				.andExpect(jsonPath("$.paymentMethod").value("CARD"))
 				.andExpect(jsonPath("$.paymentDate").value("2026-03-19"))
-				.andExpect(jsonPath("$.paymentNotes").value("Pago no balcao"));
+				.andExpect(jsonPath("$.paymentNotes").value("Pago no balcao"))
+				.andExpect(jsonPath("$.status").value("SCHEDULED"))
+				.andExpect(jsonPath("$.createdBy").value("operador.demo"))
+				.andExpect(jsonPath("$.updatedBy").value("operador.demo"));
 	}
 
 	@Test
@@ -175,7 +179,8 @@ class MassageControllerTest {
 				true,
 				MassagePaymentMethod.CASH,
 				LocalDate.of(2026, 3, 20),
-				"Pago direto"
+				"Pago direto",
+				"operador.demo"
 		));
 
 		mockMvc.perform(get("/api/v1/massages/bookings")
@@ -204,7 +209,8 @@ class MassageControllerTest {
 				false,
 				null,
 				null,
-				null
+				null,
+				"operador.demo"
 		));
 		massageBookingRepository.save(MassageBooking.schedule(
 				LocalDate.of(2026, 3, 20),
@@ -217,7 +223,8 @@ class MassageControllerTest {
 				true,
 				MassagePaymentMethod.PIX,
 				LocalDate.of(2026, 3, 20),
-				"Pago por chave"
+				"Pago por chave",
+				"operador.demo"
 		));
 
 		mockMvc.perform(get("/api/v1/massages/bookings")
@@ -246,7 +253,8 @@ class MassageControllerTest {
 				false,
 				null,
 				null,
-				null
+				null,
+				"operador.demo"
 		));
 		final String payload = """
 				{
@@ -265,7 +273,8 @@ class MassageControllerTest {
 				.andExpect(jsonPath("$.paid").value(true))
 				.andExpect(jsonPath("$.paymentMethod").value("PIX"))
 				.andExpect(jsonPath("$.paymentDate").value("2026-03-21"))
-				.andExpect(jsonPath("$.paymentNotes").value("Pago apos atendimento"));
+				.andExpect(jsonPath("$.paymentNotes").value("Pago apos atendimento"))
+				.andExpect(jsonPath("$.updatedBy").value("operador.demo"));
 	}
 
 	@Test
@@ -310,7 +319,8 @@ class MassageControllerTest {
 				true,
 				MassagePaymentMethod.CARD,
 				LocalDate.of(2026, 3, 19),
-				"Pago antecipado"
+				"Pago antecipado",
+				"operador.demo"
 		));
 		final String payload = """
 				{
@@ -369,6 +379,219 @@ class MassageControllerTest {
 				.andExpect(jsonPath("$.message").value(
 						"Inactive massage providers cannot receive bookings."
 				));
+	}
+
+	@Test
+	void shouldUpdateMassageBooking() throws Exception {
+		final MassageProvider provider = massageProviderRepository.save(
+				MassageProvider.create("David", "Relaxante", "98804-3392")
+		);
+		final MassageProvider otherProvider = massageProviderRepository.save(
+				MassageProvider.create("Danuska", "Drenagem", "Agenda interna")
+		);
+		final MassageBooking booking = massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 21),
+				LocalTime.of(17, 0),
+				"Paula Souza",
+				"Apto 203",
+				"Relaxante",
+				new BigDecimal("200.00"),
+				provider,
+				false,
+				null,
+				null,
+				null,
+				"operador.demo"
+		));
+		final String payload = """
+				{
+				  "bookingDate": "2026-03-21",
+				  "startTime": "18:00:00",
+				  "clientName": "Paula Souza",
+				  "guestReference": "Apto 305",
+				  "treatment": "Drenagem corporal",
+				  "amount": 240.00,
+				  "providerId": %d,
+				  "paid": true,
+				  "paymentMethod": "PIX",
+				  "paymentDate": "2026-03-21",
+				  "paymentNotes": "Pago apos ajuste"
+				}
+				""".formatted(otherProvider.getId());
+
+		mockMvc.perform(put("/api/v1/massages/bookings/{id}", booking.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(booking.getId()))
+				.andExpect(jsonPath("$.startTime").value("18:00:00"))
+				.andExpect(jsonPath("$.guestReference").value("Apto 305"))
+				.andExpect(jsonPath("$.treatment").value("Drenagem corporal"))
+				.andExpect(jsonPath("$.providerId").value(otherProvider.getId()))
+				.andExpect(jsonPath("$.paymentMethod").value("PIX"))
+				.andExpect(jsonPath("$.updatedBy").value("operador.demo"));
+	}
+
+	@Test
+	void shouldCancelMassageBookingWithObservation() throws Exception {
+		final MassageProvider provider = massageProviderRepository.save(
+				MassageProvider.create("David", "Relaxante", "98804-3392")
+		);
+		final MassageBooking booking = massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 21),
+				LocalTime.of(17, 0),
+				"Paula Souza",
+				"Apto 203",
+				"Relaxante",
+				new BigDecimal("200.00"),
+				provider,
+				false,
+				null,
+				null,
+				null,
+				"operador.demo"
+		));
+		final String payload = """
+				{
+				  "cancellationNotes": "Cliente desistiu do atendimento"
+				}
+				""";
+
+		mockMvc.perform(patch("/api/v1/massages/bookings/{id}/cancel", booking.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(booking.getId()))
+				.andExpect(jsonPath("$.status").value("CANCELLED"))
+				.andExpect(jsonPath("$.cancellationNotes").value("Cliente desistiu do atendimento"))
+				.andExpect(jsonPath("$.cancelledBy").value("operador.demo"))
+				.andExpect(jsonPath("$.updatedBy").value("operador.demo"));
+	}
+
+	@Test
+	void shouldRejectEditingCancelledMassageBooking() throws Exception {
+		final MassageProvider provider = massageProviderRepository.save(
+				MassageProvider.create("David", "Relaxante", "98804-3392")
+		);
+		final MassageBooking booking = massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 21),
+				LocalTime.of(17, 0),
+				"Paula Souza",
+				"Apto 203",
+				"Relaxante",
+				new BigDecimal("200.00"),
+				provider,
+				false,
+				null,
+				null,
+				null,
+				"operador.demo"
+		));
+		booking.markCancelled("Cliente desistiu", "operador.demo");
+		massageBookingRepository.save(booking);
+		final String payload = """
+				{
+				  "bookingDate": "2026-03-21",
+				  "startTime": "18:00:00",
+				  "clientName": "Paula Souza",
+				  "guestReference": "Apto 305",
+				  "treatment": "Drenagem corporal",
+				  "amount": 240.00,
+				  "providerId": %d,
+				  "paid": false,
+				  "paymentMethod": null,
+				  "paymentDate": null,
+				  "paymentNotes": null
+				}
+				""".formatted(provider.getId());
+
+		mockMvc.perform(put("/api/v1/massages/bookings/{id}", booking.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("Cancelled massage bookings cannot be edited."));
+	}
+
+	@Test
+	void shouldRequireCancellationObservation() throws Exception {
+		final MassageProvider provider = massageProviderRepository.save(
+				MassageProvider.create("David", "Relaxante", "98804-3392")
+		);
+		final MassageBooking booking = massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 21),
+				LocalTime.of(17, 0),
+				"Paula Souza",
+				"Apto 203",
+				"Relaxante",
+				new BigDecimal("200.00"),
+				provider,
+				false,
+				null,
+				null,
+				null,
+				"operador.demo"
+		));
+		final String payload = """
+				{
+				  "cancellationNotes": ""
+				}
+				""";
+
+		mockMvc.perform(patch("/api/v1/massages/bookings/{id}/cancel", booking.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("cancellationNotes: cancellationNotes is required"));
+	}
+
+	@Test
+	void shouldAllowRebookingSameSlotAfterCancellation() throws Exception {
+		final MassageProvider provider = massageProviderRepository.save(
+				MassageProvider.create("David", "Relaxante", "98804-3392")
+		);
+		final MassageBooking booking = massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 21),
+				LocalTime.of(17, 0),
+				"Paula Souza",
+				"Apto 203",
+				"Relaxante",
+				new BigDecimal("200.00"),
+				provider,
+				false,
+				null,
+				null,
+				null,
+				"operador.demo"
+		));
+		booking.markCancelled("Cliente desistiu", "operador.demo");
+		massageBookingRepository.save(booking);
+		final String payload = """
+				{
+				  "bookingDate": "2026-03-21",
+				  "startTime": "17:00:00",
+				  "clientName": "Nova Cliente",
+				  "guestReference": "Apto 305",
+				  "treatment": "Drenagem corporal",
+				  "amount": 240.00,
+				  "providerId": %d,
+				  "paid": false,
+				  "paymentMethod": null,
+				  "paymentDate": null,
+				  "paymentNotes": null
+				}
+				""".formatted(provider.getId());
+
+		mockMvc.perform(post("/api/v1/massages/bookings")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.clientName").value("Nova Cliente"))
+				.andExpect(jsonPath("$.status").value(MassageBookingStatus.SCHEDULED.name()));
 	}
 
 	private String bearerToken() {

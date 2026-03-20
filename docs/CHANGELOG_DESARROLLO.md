@@ -719,3 +719,19 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Dejar explicito que el agente debe trabajar solo sobre el entorno oficialmente documentado del proyecto y no asumir como oficial ningun frontend o componente no respaldado por la documentacion vigente.
 - Impacto funcional: Sin cambios funcionales en backend o frontend; se reduce el riesgo de desvio de implementacion y se refuerza la validacion previa del entorno antes de cualquier cambio.
+
+## 2026-03-20 | Post Hito 12 | Edicion, cancelacion y auditoria de massagens
+- Componente afectado: Backend (`Massagens` + seguridad + migraciones + pruebas)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/domain/model/{MassageBooking,MassageBookingStatus}.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/{MassageBookingDto,UpdateMassageBookingDto,CancelMassageBookingDto}.java`
+  - `src/main/java/com/axioma/quadras/repository/MassageBookingRepository.java`
+  - `src/main/java/com/axioma/quadras/service/MassageBookingService.java`
+  - `src/main/java/com/axioma/quadras/controller/MassageBookingController.java`
+  - `src/main/resources/db/migration/V6__extend_massage_bookings_with_status_and_audit.sql`
+  - `src/test/java/com/axioma/quadras/controller/MassageControllerTest.java`
+  - `src/test/java/com/axioma/quadras/infrastructure/FlywayReservationMigrationTest.java`
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Alinear el backend de massagens con la regla operativa de no eliminar registros, habilitando edicion, cancelacion con observacion obligatoria y auditoria por usuario autenticado.
+- Impacto funcional: La API de massagens ahora soporta `PUT /api/v1/massages/bookings/{id}` y `PATCH /api/v1/massages/bookings/{id}/cancel`, devuelve estado y metadata de auditoria, y permite reusar un horario despues de cancelar el atendimento anterior.

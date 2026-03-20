@@ -1,9 +1,12 @@
 package com.axioma.quadras.controller;
 
+import com.axioma.quadras.domain.dto.CancelMassageBookingDto;
 import com.axioma.quadras.domain.dto.CreateMassageBookingDto;
 import com.axioma.quadras.domain.dto.MassageBookingDto;
+import com.axioma.quadras.domain.dto.UpdateMassageBookingDto;
 import com.axioma.quadras.domain.dto.UpdateMassagePaymentDto;
 import com.axioma.quadras.service.MassageBookingService;
+import com.axioma.quadras.service.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.LocalDate;
@@ -11,9 +14,11 @@ import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -33,9 +38,10 @@ public class MassageBookingController {
 
 	@PostMapping
 	public ResponseEntity<MassageBookingDto> create(
-			@Valid @RequestBody CreateMassageBookingDto input
+			@Valid @RequestBody CreateMassageBookingDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
-		final MassageBookingDto created = massageBookingService.create(input);
+		final MassageBookingDto created = massageBookingService.create(input, principal.getUsername());
 		final URI location = ServletUriComponentsBuilder.fromCurrentRequest()
 				.path("/{id}")
 				.buildAndExpand(created.id())
@@ -64,12 +70,35 @@ public class MassageBookingController {
 		);
 	}
 
+	@PutMapping("/{bookingId}")
+	public ResponseEntity<MassageBookingDto> update(
+			@PathVariable Long bookingId,
+			@Valid @RequestBody UpdateMassageBookingDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
+	) {
+		return ResponseEntity.ok(
+				massageBookingService.update(bookingId, input, principal.getUsername())
+		);
+	}
+
 	@PatchMapping("/{bookingId}/payment")
 	public ResponseEntity<MassageBookingDto> updatePayment(
 			@PathVariable Long bookingId,
-			@Valid @RequestBody UpdateMassagePaymentDto input
+			@Valid @RequestBody UpdateMassagePaymentDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
 		return ResponseEntity.status(HttpStatus.OK)
-				.body(massageBookingService.updatePayment(bookingId, input));
+				.body(massageBookingService.updatePayment(bookingId, input, principal.getUsername()));
+	}
+
+	@PatchMapping("/{bookingId}/cancel")
+	public ResponseEntity<MassageBookingDto> cancel(
+			@PathVariable Long bookingId,
+			@Valid @RequestBody CancelMassageBookingDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
+	) {
+		return ResponseEntity.ok(
+				massageBookingService.cancel(bookingId, input, principal.getUsername())
+		);
 	}
 }

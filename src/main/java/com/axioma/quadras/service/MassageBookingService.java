@@ -1,10 +1,13 @@
 package com.axioma.quadras.service;
 
+import com.axioma.quadras.domain.dto.CancelMassageBookingDto;
 import com.axioma.quadras.domain.dto.CreateMassageBookingDto;
 import com.axioma.quadras.domain.dto.MassageBookingDto;
+import com.axioma.quadras.domain.dto.UpdateMassageBookingDto;
 import com.axioma.quadras.domain.dto.UpdateMassagePaymentDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.MassageBooking;
+import com.axioma.quadras.domain.model.MassageBookingStatus;
 import com.axioma.quadras.domain.model.MassageProvider;
 import com.axioma.quadras.repository.MassageBookingRepository;
 import java.time.LocalDate;
@@ -30,7 +33,7 @@ public class MassageBookingService {
 	}
 
 	@Transactional
-	public MassageBookingDto create(CreateMassageBookingDto input) {
+	public MassageBookingDto create(CreateMassageBookingDto input, String actorUsername) {
 		final MassageProvider provider = massageProviderService.findProviderOrThrow(input.providerId());
 		if (!provider.isActive()) {
 			throw new ApplicationException(
@@ -38,10 +41,11 @@ public class MassageBookingService {
 					"Inactive massage providers cannot receive bookings."
 			);
 		}
-		final boolean duplicated = massageBookingRepository.existsByProviderIdAndBookingDateAndStartTime(
+		final boolean duplicated = massageBookingRepository.existsByProviderIdAndBookingDateAndStartTimeAndStatus(
 				provider.getId(),
 				input.bookingDate(),
-				input.startTime()
+				input.startTime(),
+				MassageBookingStatus.SCHEDULED
 		);
 		if (duplicated) {
 			throw new ApplicationException(
@@ -62,10 +66,58 @@ public class MassageBookingService {
 						input.paid(),
 						input.paymentMethod(),
 						input.paymentDate(),
-						input.paymentNotes()
+						input.paymentNotes(),
+						actorUsername
 				)
 		);
 		return MassageBookingDto.from(saved);
+	}
+
+	@Transactional
+	public MassageBookingDto update(
+			Long bookingId,
+			UpdateMassageBookingDto input,
+			String actorUsername
+	) {
+		final MassageBooking booking = findBookingOrThrow(bookingId);
+		validateCanEdit(booking);
+		final MassageProvider provider = massageProviderService.findProviderOrThrow(input.providerId());
+		if (!provider.isActive()) {
+			throw new ApplicationException(
+					HttpStatus.CONFLICT,
+					"Inactive massage providers cannot receive bookings."
+			);
+		}
+		final boolean duplicated =
+				massageBookingRepository.existsByProviderIdAndBookingDateAndStartTimeAndStatusAndIdNot(
+						provider.getId(),
+						input.bookingDate(),
+						input.startTime(),
+						MassageBookingStatus.SCHEDULED,
+						bookingId
+				);
+		if (duplicated) {
+			throw new ApplicationException(
+					HttpStatus.CONFLICT,
+					"Massage provider already has a booking for the selected date and time."
+			);
+		}
+
+		booking.updateBooking(
+				input.bookingDate(),
+				input.startTime(),
+				input.clientName(),
+				input.guestReference(),
+				input.treatment(),
+				input.amount(),
+				provider,
+				input.paid(),
+				input.paymentMethod(),
+				input.paymentDate(),
+				input.paymentNotes(),
+				actorUsername
+		);
+		return MassageBookingDto.from(booking);
 	}
 
 	public List<MassageBookingDto> list(
@@ -89,17 +141,36 @@ public class MassageBookingService {
 	}
 
 	@Transactional
-	public MassageBookingDto updatePayment(Long bookingId, UpdateMassagePaymentDto input) {
-		final MassageBooking booking = massageBookingRepository.findById(bookingId)
-				.orElseThrow(() -> new ApplicationException(
-						HttpStatus.NOT_FOUND,
-						"Massage booking " + bookingId + " not found"
-				));
+	public MassageBookingDto updatePayment(
+			Long bookingId,
+			UpdateMassagePaymentDto input,
+			String actorUsername
+	) {
+		final MassageBooking booking = findBookingOrThrow(bookingId);
+		validateCanEdit(booking);
 		booking.markPayment(
 				input.paymentMethod(),
 				input.paymentDate(),
-				input.paymentNotes()
+				input.paymentNotes(),
+				actorUsername
 		);
+		return MassageBookingDto.from(booking);
+	}
+
+	@Transactional
+	public MassageBookingDto cancel(
+			Long bookingId,
+			CancelMassageBookingDto input,
+			String actorUsername
+	) {
+		final MassageBooking booking = findBookingOrThrow(bookingId);
+		if (booking.getStatus() == MassageBookingStatus.CANCELLED) {
+			throw new ApplicationException(
+					HttpStatus.CONFLICT,
+					"Cancelled massage bookings cannot be cancelled again."
+			);
+		}
+		booking.markCancelled(input.cancellationNotes(), actorUsername);
 		return MassageBookingDto.from(booking);
 	}
 
@@ -146,5 +217,22 @@ public class MassageBookingService {
 		return (root, query, builder) -> paid == null
 				? null
 				: builder.equal(root.get("paid"), paid);
+	}
+
+	private MassageBooking findBookingOrThrow(Long bookingId) {
+		return massageBookingRepository.findById(bookingId)
+				.orElseThrow(() -> new ApplicationException(
+						HttpStatus.NOT_FOUND,
+						"Massage booking " + bookingId + " not found"
+				));
+	}
+
+	private void validateCanEdit(MassageBooking booking) {
+		if (booking.getStatus() == MassageBookingStatus.CANCELLED) {
+			throw new ApplicationException(
+					HttpStatus.CONFLICT,
+					"Cancelled massage bookings cannot be edited."
+			);
+		}
 	}
 }

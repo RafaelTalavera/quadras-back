@@ -33,7 +33,6 @@
 - La UI visible se normaliza a portugues de Brasil y se elimina contenido tecnico expuesto al operador.
 
 ## Pendientes inmediatos
-- Definir contratos backend para `Massagens`.
 - Definir contratos backend para `Tours e Viagens`.
 - Definir persistencia o renovacion de sesion si el flujo deja de ser estrictamente local.
 - Planificar fase 2 de renombre interno (`package`, rutas repo, nombres legacy en historial tecnico).

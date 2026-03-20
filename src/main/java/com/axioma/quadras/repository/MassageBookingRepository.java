@@ -1,6 +1,7 @@
 package com.axioma.quadras.repository;
 
 import com.axioma.quadras.domain.model.MassageBooking;
+import com.axioma.quadras.domain.model.MassageBookingStatus;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -15,6 +16,21 @@ public interface MassageBookingRepository
 			Long providerId,
 			LocalDate bookingDate,
 			LocalTime startTime
+	);
+
+	boolean existsByProviderIdAndBookingDateAndStartTimeAndStatus(
+			Long providerId,
+			LocalDate bookingDate,
+			LocalTime startTime,
+			MassageBookingStatus status
+	);
+
+	boolean existsByProviderIdAndBookingDateAndStartTimeAndStatusAndIdNot(
+			Long providerId,
+			LocalDate bookingDate,
+			LocalTime startTime,
+			MassageBookingStatus status,
+			Long id
 	);
 
 	List<MassageBooking> findAllByBookingDateOrderByStartTimeAsc(LocalDate bookingDate);

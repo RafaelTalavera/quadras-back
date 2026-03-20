@@ -27,6 +27,8 @@ public class MassageBooking {
 	private static final int MAX_GUEST_REFERENCE_LENGTH = 120;
 	private static final int MAX_TREATMENT_LENGTH = 120;
 	private static final int MAX_PAYMENT_NOTES_LENGTH = 500;
+	private static final int MAX_CANCELLATION_NOTES_LENGTH = 500;
+	private static final int MAX_USERNAME_LENGTH = 80;
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -67,11 +69,30 @@ public class MassageBooking {
 	@Column(name = "payment_notes", length = MAX_PAYMENT_NOTES_LENGTH)
 	private String paymentNotes;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status", nullable = false, length = 20)
+	private MassageBookingStatus status;
+
+	@Column(name = "cancellation_notes", length = MAX_CANCELLATION_NOTES_LENGTH)
+	private String cancellationNotes;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private OffsetDateTime createdAt;
 
 	@Column(name = "updated_at", nullable = false)
 	private OffsetDateTime updatedAt;
+
+	@Column(name = "cancelled_at")
+	private OffsetDateTime cancelledAt;
+
+	@Column(name = "created_by", nullable = false, updatable = false, length = MAX_USERNAME_LENGTH)
+	private String createdBy;
+
+	@Column(name = "updated_by", nullable = false, length = MAX_USERNAME_LENGTH)
+	private String updatedBy;
+
+	@Column(name = "cancelled_by", length = MAX_USERNAME_LENGTH)
+	private String cancelledBy;
 
 	protected MassageBooking() {
 	}
@@ -87,7 +108,8 @@ public class MassageBooking {
 			boolean paid,
 			MassagePaymentMethod paymentMethod,
 			LocalDate paymentDate,
-			String paymentNotes
+			String paymentNotes,
+			String actorUsername
 	) {
 		this.bookingDate = requireDate(bookingDate);
 		this.startTime = requireTime(startTime);
@@ -100,6 +122,9 @@ public class MassageBooking {
 		this.treatment = normalize(treatment, "treatment", MAX_TREATMENT_LENGTH);
 		this.amount = requireAmount(amount);
 		this.provider = requireProvider(provider);
+		this.status = MassageBookingStatus.SCHEDULED;
+		this.createdBy = normalizeUsername(actorUsername, "createdBy");
+		this.updatedBy = this.createdBy;
 		applyPaymentStatus(paid, paymentMethod, paymentDate, paymentNotes);
 	}
 
@@ -114,7 +139,8 @@ public class MassageBooking {
 			boolean paid,
 			MassagePaymentMethod paymentMethod,
 			LocalDate paymentDate,
-			String paymentNotes
+			String paymentNotes,
+			String actorUsername
 	) {
 		return new MassageBooking(
 				bookingDate,
@@ -127,7 +153,8 @@ public class MassageBooking {
 				paid,
 				paymentMethod,
 				paymentDate,
-				paymentNotes
+				paymentNotes,
+				actorUsername
 		);
 	}
 
@@ -179,12 +206,36 @@ public class MassageBooking {
 		return paymentNotes;
 	}
 
+	public MassageBookingStatus getStatus() {
+		return status;
+	}
+
+	public String getCancellationNotes() {
+		return cancellationNotes;
+	}
+
 	public OffsetDateTime getCreatedAt() {
 		return createdAt;
 	}
 
 	public OffsetDateTime getUpdatedAt() {
 		return updatedAt;
+	}
+
+	public OffsetDateTime getCancelledAt() {
+		return cancelledAt;
+	}
+
+	public String getCreatedBy() {
+		return createdBy;
+	}
+
+	public String getUpdatedBy() {
+		return updatedBy;
+	}
+
+	public String getCancelledBy() {
+		return cancelledBy;
 	}
 
 	@PrePersist
@@ -199,12 +250,59 @@ public class MassageBooking {
 		this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
 	}
 
+	public void updateBooking(
+			LocalDate bookingDate,
+			LocalTime startTime,
+			String clientName,
+			String guestReference,
+			String treatment,
+			BigDecimal amount,
+			MassageProvider provider,
+			boolean paid,
+			MassagePaymentMethod paymentMethod,
+			LocalDate paymentDate,
+			String paymentNotes,
+			String actorUsername
+	) {
+		this.bookingDate = requireDate(bookingDate);
+		this.startTime = requireTime(startTime);
+		this.clientName = normalize(clientName, "clientName", MAX_CLIENT_NAME_LENGTH);
+		this.guestReference = normalize(
+				guestReference,
+				"guestReference",
+				MAX_GUEST_REFERENCE_LENGTH
+		);
+		this.treatment = normalize(treatment, "treatment", MAX_TREATMENT_LENGTH);
+		this.amount = requireAmount(amount);
+		this.provider = requireProvider(provider);
+		this.updatedBy = normalizeUsername(actorUsername, "updatedBy");
+		applyPaymentStatus(paid, paymentMethod, paymentDate, paymentNotes);
+	}
+
 	public void markPayment(
 			MassagePaymentMethod paymentMethod,
 			LocalDate paymentDate,
-			String paymentNotes
+			String paymentNotes,
+			String actorUsername
 	) {
+		this.updatedBy = normalizeUsername(actorUsername, "updatedBy");
 		applyPaymentStatus(true, paymentMethod, paymentDate, paymentNotes);
+	}
+
+	public void markCancelled(String cancellationNotes, String actorUsername) {
+		if (status == MassageBookingStatus.CANCELLED) {
+			throw new IllegalStateException("Cancelled massage bookings cannot be cancelled again.");
+		}
+		final String normalizedActor = normalizeUsername(actorUsername, "cancelledBy");
+		this.status = MassageBookingStatus.CANCELLED;
+		this.cancellationNotes = normalize(
+				cancellationNotes,
+				"cancellationNotes",
+				MAX_CANCELLATION_NOTES_LENGTH
+		);
+		this.cancelledAt = OffsetDateTime.now(ZoneOffset.UTC);
+		this.cancelledBy = normalizedActor;
+		this.updatedBy = normalizedActor;
 	}
 
 	private static String normalize(String value, String fieldName, int maxLength) {
@@ -227,6 +325,10 @@ public class MassageBooking {
 			throw new IllegalArgumentException(fieldName + " must be <= " + maxLength + " chars");
 		}
 		return normalized;
+	}
+
+	private static String normalizeUsername(String value, String fieldName) {
+		return normalize(value, fieldName, MAX_USERNAME_LENGTH).toLowerCase();
 	}
 
 	private static LocalDate requireDate(LocalDate value) {

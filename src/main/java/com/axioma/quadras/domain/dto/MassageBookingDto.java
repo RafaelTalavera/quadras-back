@@ -1,6 +1,7 @@
 package com.axioma.quadras.domain.dto;
 
 import com.axioma.quadras.domain.model.MassageBooking;
+import com.axioma.quadras.domain.model.MassageBookingStatus;
 import com.axioma.quadras.domain.model.MassagePaymentMethod;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,8 +23,14 @@ public record MassageBookingDto(
 		MassagePaymentMethod paymentMethod,
 		LocalDate paymentDate,
 		String paymentNotes,
+		MassageBookingStatus status,
+		String cancellationNotes,
 		OffsetDateTime createdAt,
-		OffsetDateTime updatedAt
+		OffsetDateTime updatedAt,
+		OffsetDateTime cancelledAt,
+		String createdBy,
+		String updatedBy,
+		String cancelledBy
 ) {
 	public static MassageBookingDto from(MassageBooking booking) {
 		return new MassageBookingDto(
@@ -41,8 +48,14 @@ public record MassageBookingDto(
 				booking.getPaymentMethod(),
 				booking.getPaymentDate(),
 				booking.getPaymentNotes(),
+				booking.getStatus(),
+				booking.getCancellationNotes(),
 				booking.getCreatedAt(),
-				booking.getUpdatedAt()
+				booking.getUpdatedAt(),
+				booking.getCancelledAt(),
+				booking.getCreatedBy(),
+				booking.getUpdatedBy(),
+				booking.getCancelledBy()
 		);
 	}
 }

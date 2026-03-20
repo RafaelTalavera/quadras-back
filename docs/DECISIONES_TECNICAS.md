@@ -146,3 +146,10 @@
 - Contexto: Se detecto un desvio de implementacion hacia un frontend web embebido en este repositorio, cuando la arquitectura oficial del proyecto ya define otro frontend y otro limite de trabajo.
 - Decision: El backend oficial del proyecto es este repositorio `quadras` en Spring Boot. El frontend oficial del proyecto es el repositorio separado `C:/Users/Public/Documents/Proyectos/quedras-front` en Flutter Desktop. El agente debe trabajar exclusivamente sobre los repositorios, stacks y componentes respaldados por la documentacion vigente del proyecto. La presencia de archivos auxiliares, experimentales o historicos dentro del workspace no redefine la arquitectura oficial. Si existe ambiguedad entre lo hallado en disco y lo documentado, el agente debe detenerse, verificar la documentacion y pedir confirmacion antes de implementar fuera del entorno definido.
 - Impacto: Reduce riesgo de cambios en componentes no oficiales, evita desalineacion entre backend/frontend y mantiene la trazabilidad tecnica del proyecto bajo una unica fuente de verdad documental.
+
+## DT-022 - Massagens con cancelacion auditable y sin borrado fisico
+- Fecha: 2026-03-20
+- Estado: Activa
+- Contexto: El frontend oficial ya necesita editar y cancelar atendimientos de massagens sin eliminar registros, con observacion obligatoria y trazabilidad por usuario autenticado.
+- Decision: Extender `MassageBooking` con `status`, `cancellationNotes`, `cancelledAt`, `createdBy`, `updatedBy` y `cancelledBy`; exponer `PUT /api/v1/massages/bookings/{id}` y `PATCH /api/v1/massages/bookings/{id}/cancel`; exigir observacion en cancelacion y tomar el usuario desde el JWT autenticado. El bloqueo de conflictos pasa a aplicarse solo sobre bookings `SCHEDULED`, permitiendo reutilizar un horario despues de cancelarlo.
+- Impacto: El backend de massagens deja de depender de borrados o reescrituras implícitas, gana trazabilidad operativa completa y queda alineado al frontend Flutter para mantenimiento de agenda.

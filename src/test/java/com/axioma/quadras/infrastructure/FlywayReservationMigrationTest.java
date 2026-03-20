@@ -90,4 +90,26 @@ class FlywayReservationMigrationTest {
 
 		assertThat(count).isEqualTo(3);
 	}
+
+	@Test
+	void shouldCreateMassageStatusAndAuditColumnsViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'MASSAGE_BOOKINGS'
+				  AND COLUMN_NAME IN (
+				    'STATUS',
+				    'CANCELLATION_NOTES',
+				    'CANCELLED_AT',
+				    'CREATED_BY',
+				    'UPDATED_BY',
+				    'CANCELLED_BY'
+				  )
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(6);
+	}
 }
