@@ -49,3 +49,4 @@
 - Ejecutar renombre por fases: identidad y configuracion primero, migracion interna profunda despues.
 - Mantener JWT stateless con rol embebido en el token y validado contra usuario persistido para sostener evolucion futura a multiples roles.
 - Mantener el frontend con navegacion visible acotada a modulos comerciales y salida `pt-BR`.
+- Regla operativa: cualquier implementacion del agente debe respetar el entorno oficialmente documentado. Backend oficial: este repo `quadras`. Frontend oficial: `C:/Users/Public/Documents/Proyectos/quedras-front`. No intervenir fuera de ese alcance sin confirmacion explicita del usuario y trazabilidad en documentacion.

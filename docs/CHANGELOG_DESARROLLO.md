@@ -710,3 +710,12 @@
   - `src/test/java/com/axioma/quadras/infrastructure/FlywayReservationMigrationTest.java`
 - Motivo del cambio: Incorporar captura completa de pago al agendar, sumar flujo separado de informar pago y permitir busquedas operativas sobre masajes agendados.
 - Impacto funcional: La API de massagens pasa a soportar medio de pago, fecha y observaciones tanto en el alta como en un endpoint dedicado de pago.
+
+## 2026-03-20 | Post Hito 12 | Refuerzo documental del entorno oficial de trabajo
+- Componente afectado: Documentacion de proyecto y gobierno operativo
+- Archivos tocados:
+  - `docs/DECISIONES_TECNICAS.md`
+  - `docs/TABLERO_PROGRESO.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Dejar explicito que el agente debe trabajar solo sobre el entorno oficialmente documentado del proyecto y no asumir como oficial ningun frontend o componente no respaldado por la documentacion vigente.
+- Impacto funcional: Sin cambios funcionales en backend o frontend; se reduce el riesgo de desvio de implementacion y se refuerza la validacion previa del entorno antes de cualquier cambio.

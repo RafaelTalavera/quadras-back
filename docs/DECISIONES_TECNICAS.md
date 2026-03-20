@@ -139,3 +139,10 @@
 - Contexto: La operacion necesita mantener el cobro opcional durante el agendamiento, pero tambien registrar pagos despues de que el masaje ya fue agendado, sin volver a usar planillas externas.
 - Decision: Extender `MassageBooking` con `paymentMethod`, `paymentDate` y `paymentNotes`; mantener `paid` en el alta y agregar un flujo independiente `PATCH /api/v1/massages/bookings/{id}/payment` para registrar o corregir el pago posteriormente. La busqueda operativa de masajes se resuelve sobre el mismo endpoint `GET /api/v1/massages/bookings` con filtros por fecha, cliente, referencia, prestador y estado de pago.
 - Impacto: El operador puede cobrar al crear el turno o mas tarde desde una pantalla dedicada, con trazabilidad basica de medio de pago (`CARD`, `CASH`, `PIX`), fecha y observaciones sin duplicar registros.
+
+## DT-021 - El agente debe operar solo sobre el entorno oficialmente documentado
+- Fecha: 2026-03-20
+- Estado: Activa
+- Contexto: Se detecto un desvio de implementacion hacia un frontend web embebido en este repositorio, cuando la arquitectura oficial del proyecto ya define otro frontend y otro limite de trabajo.
+- Decision: El backend oficial del proyecto es este repositorio `quadras` en Spring Boot. El frontend oficial del proyecto es el repositorio separado `C:/Users/Public/Documents/Proyectos/quedras-front` en Flutter Desktop. El agente debe trabajar exclusivamente sobre los repositorios, stacks y componentes respaldados por la documentacion vigente del proyecto. La presencia de archivos auxiliares, experimentales o historicos dentro del workspace no redefine la arquitectura oficial. Si existe ambiguedad entre lo hallado en disco y lo documentado, el agente debe detenerse, verificar la documentacion y pedir confirmacion antes de implementar fuera del entorno definido.
+- Impacto: Reduce riesgo de cambios en componentes no oficiales, evita desalineacion entre backend/frontend y mantiene la trazabilidad tecnica del proyecto bajo una unica fuente de verdad documental.
