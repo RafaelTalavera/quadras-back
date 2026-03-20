@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Agendamento de massagens</title>
+	<meta name="theme-color" content="#d8b03e">
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="/brand/theme.css">
+</head>
+<body>
+	<div class="shell">
+		<header class="topbar">
+			<div class="topbar-copy">
+				<p class="eyebrow">Costa Norte</p>
+				<h1>Agendamento de massagens</h1>
+				<p class="topbar-subtitle">Agenda do dia em primeiro plano, lancamento rapido e calendario compacto.</p>
+			</div>
+
+			<nav class="topbar-actions" aria-label="Acoes principais">
+				<a class="button button-primary" href="#novo-atendimento">Lancar atendimento</a>
+				<a class="button button-secondary" href="#prestadores">Prestadores</a>
+			</nav>
+		</header>
+
+		<main class="dashboard">
+			<section class="card card-hero">
+				<div class="section-heading">
+					<div>
+						<p class="eyebrow">Agenda</p>
+						<h2>Atendimentos do dia</h2>
+						<p class="selected-date" id="selected-date-label">Carregando data...</p>
+					</div>
+					<div class="clock-panel">
+						<strong id="current-date">--</strong>
+						<span id="current-time">--:--</span>
+					</div>
+				</div>
+
+				<div class="today-summary" aria-label="Resumo do dia selecionado">
+					<article class="metric-card">
+						<span class="metric-label">Agendados</span>
+						<strong id="metric-total">0</strong>
+					</article>
+					<article class="metric-card">
+						<span class="metric-label">Proximos</span>
+						<strong id="metric-upcoming">0</strong>
+					</article>
+					<article class="metric-card">
+						<span class="metric-label">Pagos</span>
+						<strong id="metric-paid">0</strong>
+					</article>
+				</div>
+
+				<div class="status-banner" id="status-banner">
+					Use um JWT salvo em localStorage com a chave authToken, token ou jwt para consultar a agenda real.
+				</div>
+
+				<div class="today-list" id="today-list" aria-live="polite">
+					<article class="booking-item booking-item-empty">
+						<p>Nenhum atendimento carregado.</p>
+					</article>
+				</div>
+			</section>
+
+			<section class="card card-form" id="novo-atendimento">
+				<div class="section-heading">
+					<div>
+						<p class="eyebrow">Novo atendimento</p>
+						<h2>Lancamento rapido</h2>
+					</div>
+					<p class="section-note">A data abre em hoje. Se marcar pago, informe metodo e data.</p>
+				</div>
+
+				<form id="booking-form" class="booking-form">
+					<label>
+						<span>Data</span>
+						<input type="date" name="bookingDate" required>
+					</label>
+					<label>
+						<span>Hora</span>
+						<input type="time" name="startTime" required>
+					</label>
+					<label>
+						<span>Cliente</span>
+						<input type="text" name="clientName" maxlength="120" required>
+					</label>
+					<label>
+						<span>Habitacion / referencia</span>
+						<input type="text" name="guestReference" maxlength="120" required>
+					</label>
+					<label>
+						<span>Tratamiento</span>
+						<input type="text" name="treatment" maxlength="120" required>
+					</label>
+					<label>
+						<span>Valor</span>
+						<input type="number" name="amount" min="0.01" step="0.01" required>
+					</label>
+					<label>
+						<span>Prestador</span>
+						<select name="providerId" id="provider-select" required>
+							<option value="">Selecione</option>
+						</select>
+					</label>
+					<label class="checkbox-field">
+						<input type="checkbox" name="paid" id="paid-checkbox">
+						<span>Pago</span>
+					</label>
+					<label class="payment-field is-disabled" data-payment-field>
+						<span>Metodo de pago</span>
+						<select name="paymentMethod" disabled>
+							<option value="">Selecione</option>
+							<option value="PIX">PIX</option>
+							<option value="CASH">Dinheiro</option>
+							<option value="CARD">Cartao</option>
+						</select>
+					</label>
+					<label class="payment-field is-disabled" data-payment-field>
+						<span>Data del pago</span>
+						<input type="date" name="paymentDate" disabled>
+					</label>
+					<label class="payment-field payment-notes is-disabled" data-payment-field>
+						<span>Observacion del pago</span>
+						<input type="text" name="paymentNotes" maxlength="500" disabled>
+					</label>
+
+					<div class="form-actions">
+						<button type="submit" class="button button-primary">Guardar atendimento</button>
+						<p id="form-feedback" class="form-feedback" aria-live="polite"></p>
+					</div>
+				</form>
+			</section>
+
+			<section class="dashboard-lower">
+				<section class="card card-calendar">
+					<div class="section-heading">
+						<div>
+							<p class="eyebrow">Calendario</p>
+							<h2 id="calendar-title">Carregando mes</h2>
+						</div>
+						<p class="section-note">Clique em um dia para ver os atendimentos acima.</p>
+					</div>
+					<div class="calendar-grid" id="calendar-grid" aria-live="polite"></div>
+				</section>
+
+				<aside class="card card-providers" id="prestadores">
+					<div class="section-heading">
+						<div>
+							<p class="eyebrow">Prestadores</p>
+							<h2>Equipe disponivel</h2>
+						</div>
+					</div>
+					<div class="provider-list" id="provider-list">
+						<p class="empty-copy">Nenhum prestador carregado.</p>
+					</div>
+				</aside>
+			</section>
+		</main>
+	</div>
+
+	<script src="/app.js" defer></script>
+</body>
+</html>
