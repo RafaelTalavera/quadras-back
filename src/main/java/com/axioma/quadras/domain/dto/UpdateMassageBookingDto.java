@@ -24,6 +24,8 @@ public record UpdateMassageBookingDto(
 		BigDecimal amount,
 		@NotNull(message = "providerId is required")
 		Long providerId,
+		@NotNull(message = "therapistId is required")
+		Long therapistId,
 		boolean paid,
 		MassagePaymentMethod paymentMethod,
 		LocalDate paymentDate,

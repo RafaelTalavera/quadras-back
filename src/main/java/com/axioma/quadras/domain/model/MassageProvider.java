@@ -5,11 +5,15 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "massage_providers")
@@ -40,6 +44,10 @@ public class MassageProvider {
 
 	@Column(name = "updated_at", nullable = false)
 	private OffsetDateTime updatedAt;
+
+	@OneToMany(mappedBy = "provider")
+	@OrderBy("name ASC")
+	private List<MassageTherapist> therapists = new ArrayList<>();
 
 	protected MassageProvider() {
 	}
@@ -81,6 +89,10 @@ public class MassageProvider {
 
 	public OffsetDateTime getUpdatedAt() {
 		return updatedAt;
+	}
+
+	public List<MassageTherapist> getTherapists() {
+		return List.copyOf(therapists);
 	}
 
 	public void update(String name, String specialty, String contact, boolean active) {

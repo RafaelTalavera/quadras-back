@@ -2,12 +2,12 @@
 
 ## Estado general
 - Proyecto: COSTANORTE
-- Backend: Completado (Hito 12 backend, sin cambios funcionales nuevos en esta fase)
+- Backend: En progreso controlado (fase posterior a Hito 12, `Massagens` en evolucion)
 - Frontend: En progreso (fase posterior a Hito 12)
-- Ultimo hito trabajado: Fase posterior a Hito 12 - Reenfoque comercial del frontend
-- Ultima actualizacion: 2026-03-16
-- Riesgos abiertos: Definir contratos backend para `Massagens` y `Tours e Viagens`; mantener consistencia `pt-BR` extremo a extremo entre UI y API; definir estrategia de persistencia/renovacion de sesion si el producto evoluciona mas alla del uso local; pendiente fase 2 para migrar nombres internos legacy (`com.axioma.quadras`, rutas de repositorio).
-- Proximo paso recomendado: Definir el siguiente paquete funcional para `Massagens` y `Tours e Viagens`, y cerrar la normalizacion de mensajes `pt-BR` en backend donde la UI consuma errores directamente.
+- Ultimo hito trabajado: Fase posterior a Hito 12 - Prestadores y masajistas de `Massagens`
+- Ultima actualizacion: 2026-03-24
+- Riesgos abiertos: Ejecutar regresion completa de agenda/edit de `Massagens`; definir contratos backend para `Tours e Viagens`; mantener consistencia `pt-BR` extremo a extremo entre UI y API; definir estrategia de persistencia/renovacion de sesion si el producto evoluciona mas alla del uso local; pendiente fase 2 para migrar nombres internos legacy (`com.axioma.quadras`, rutas de repositorio).
+- Proximo paso recomendado: cerrar regresion funcional de `Massagens` con historico e inactivos y luego definir el siguiente paquete funcional de `Tours e Viagens`.
 
 ## Hitos
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |
@@ -31,6 +31,22 @@
 - Frontend reenfocado al alcance visible `Massagens`, `Quadras`, `Tours e Viagens` y `Configuracoes`, manteniendo el layout base ya validado.
 - `Quadras` conserva integracion real con backend; `Massagens` y `Tours e Viagens` quedan en estado frontend controlado hasta definir contrato dedicado.
 - La UI visible se normaliza a portugues de Brasil y se elimina contenido tecnico expuesto al operador.
+
+## Actualizacion post Hito 12 - Massagens
+- Fecha: 2026-03-24
+- Backend:
+  - se incorporo el dominio `MassageTherapist`
+  - `MassageProvider` devuelve `therapists` embebidos
+  - se agregaron endpoints para crear y actualizar masajistas por prestador
+  - los bookings ahora exigen `therapistId`
+  - el conflicto horario se valida por masajista
+- Infraestructura:
+  - se agrego la migracion `V7__add_massage_therapists_domain.sql`
+  - se corrigio la migracion para MySQL usando `ORDER BY ... LIMIT 1`
+  - se limpio el estado fallido de Flyway local y el backend volvio a iniciar en `:8080`
+- Estado:
+  - contrato backend de `Massagens` alineado con el frontend para `prestador -> masajista`
+  - pendiente una pasada de regresion funcional completa
 
 ## Pendientes inmediatos
 - Definir contratos backend para `Tours e Viagens`.

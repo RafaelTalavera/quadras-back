@@ -77,6 +77,20 @@ class FlywayReservationMigrationTest {
 	}
 
 	@Test
+	void shouldCreateMassageTherapistsTableViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.TABLES
+				WHERE TABLE_NAME = 'MASSAGE_THERAPISTS'
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(1);
+	}
+
+	@Test
 	void shouldCreateMassagePaymentColumnsViaFlyway() {
 		final Integer count = jdbcTemplate.queryForObject(
 				"""
@@ -111,5 +125,20 @@ class FlywayReservationMigrationTest {
 		);
 
 		assertThat(count).isEqualTo(6);
+	}
+
+	@Test
+	void shouldCreateMassageTherapistColumnInBookingsViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'MASSAGE_BOOKINGS'
+				  AND COLUMN_NAME = 'THERAPIST_ID'
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(1);
 	}
 }

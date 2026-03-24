@@ -12,21 +12,21 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface MassageBookingRepository
 		extends JpaRepository<MassageBooking, Long>, JpaSpecificationExecutor<MassageBooking> {
 
-	boolean existsByProviderIdAndBookingDateAndStartTime(
-			Long providerId,
+	boolean existsByTherapistIdAndBookingDateAndStartTime(
+			Long therapistId,
 			LocalDate bookingDate,
 			LocalTime startTime
 	);
 
-	boolean existsByProviderIdAndBookingDateAndStartTimeAndStatus(
-			Long providerId,
+	boolean existsByTherapistIdAndBookingDateAndStartTimeAndStatus(
+			Long therapistId,
 			LocalDate bookingDate,
 			LocalTime startTime,
 			MassageBookingStatus status
 	);
 
-	boolean existsByProviderIdAndBookingDateAndStartTimeAndStatusAndIdNot(
-			Long providerId,
+	boolean existsByTherapistIdAndBookingDateAndStartTimeAndStatusAndIdNot(
+			Long therapistId,
 			LocalDate bookingDate,
 			LocalTime startTime,
 			MassageBookingStatus status,

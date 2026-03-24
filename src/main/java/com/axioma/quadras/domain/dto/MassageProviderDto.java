@@ -2,6 +2,7 @@ package com.axioma.quadras.domain.dto;
 
 import com.axioma.quadras.domain.model.MassageProvider;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 public record MassageProviderDto(
 		Long id,
@@ -9,6 +10,7 @@ public record MassageProviderDto(
 		String specialty,
 		String contact,
 		boolean active,
+		List<MassageTherapistDto> therapists,
 		OffsetDateTime createdAt,
 		OffsetDateTime updatedAt
 ) {
@@ -19,6 +21,7 @@ public record MassageProviderDto(
 				provider.getSpecialty(),
 				provider.getContact(),
 				provider.isActive(),
+				provider.getTherapists().stream().map(MassageTherapistDto::from).toList(),
 				provider.getCreatedAt(),
 				provider.getUpdatedAt()
 		);

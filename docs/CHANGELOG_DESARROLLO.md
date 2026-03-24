@@ -1,5 +1,38 @@
 # CHANGELOG DE DESARROLLO - COSTANORTE
 
+## 2026-03-24 | Post Hito 12 | Dominio de masajistas para Massagens
+- Componente afectado: Backend (`Massagens`)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/domain/model/MassageTherapist.java`
+  - `src/main/java/com/axioma/quadras/domain/model/MassageProvider.java`
+  - `src/main/java/com/axioma/quadras/domain/model/MassageBooking.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/CreateMassageTherapistDto.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/UpdateMassageTherapistDto.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/MassageTherapistDto.java`
+  - `src/main/java/com/axioma/quadras/controller/MassageProviderController.java`
+  - `src/main/java/com/axioma/quadras/service/MassageProviderService.java`
+  - `src/main/java/com/axioma/quadras/service/MassageBookingService.java`
+  - `src/main/java/com/axioma/quadras/repository/MassageTherapistRepository.java`
+  - `src/main/java/com/axioma/quadras/repository/MassageBookingRepository.java`
+  - `src/main/resources/db/migration/V7__add_massage_therapists_domain.sql`
+  - `src/test/java/com/axioma/quadras/controller/MassageControllerTest.java`
+  - `src/test/java/com/axioma/quadras/infrastructure/FlywayReservationMigrationTest.java`
+- Motivo del cambio: soportar multiples masajistas por prestador y exigir `therapistId` en bookings.
+- Impacto funcional:
+  - nuevos endpoints `POST/PUT /api/v1/massages/providers/{providerId}/therapists`
+  - validacion de conflicto horario por masajista
+  - rechazo de bookings sobre masajistas inactivos
+  - proveedores devuelven `therapists` embebidos para el frontend
+
+## 2026-03-24 | Post Hito 12 | Correccion operativa de Flyway V7 para MySQL
+- Componente afectado: Backend (`Massagens` / migraciones)
+- Archivos tocados:
+  - `src/main/resources/db/migration/V7__add_massage_therapists_domain.sql`
+- Motivo del cambio: corregir sintaxis no soportada por MySQL en el backfill inicial de `therapist_id`.
+- Impacto funcional:
+  - reemplazo de `FETCH FIRST ROW ONLY` por `ORDER BY ... LIMIT 1`
+  - arranque local del backend restaurado luego de limpiar el estado fallido de Flyway version `7`
+
 ## 2026-03-12 | Hito 1 | Inicializacion y orden del proyecto
 - Componente afectado: Backend (gestion documental y control de proyecto)
 - Archivos tocados:

@@ -56,6 +56,10 @@ public class MassageBooking {
 	@JoinColumn(name = "provider_id", nullable = false)
 	private MassageProvider provider;
 
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "therapist_id", nullable = false)
+	private MassageTherapist therapist;
+
 	@Column(name = "paid", nullable = false)
 	private boolean paid;
 
@@ -105,6 +109,7 @@ public class MassageBooking {
 			String treatment,
 			BigDecimal amount,
 			MassageProvider provider,
+			MassageTherapist therapist,
 			boolean paid,
 			MassagePaymentMethod paymentMethod,
 			LocalDate paymentDate,
@@ -122,6 +127,7 @@ public class MassageBooking {
 		this.treatment = normalize(treatment, "treatment", MAX_TREATMENT_LENGTH);
 		this.amount = requireAmount(amount);
 		this.provider = requireProvider(provider);
+		this.therapist = requireTherapist(therapist, provider);
 		this.status = MassageBookingStatus.SCHEDULED;
 		this.createdBy = normalizeUsername(actorUsername, "createdBy");
 		this.updatedBy = this.createdBy;
@@ -136,6 +142,7 @@ public class MassageBooking {
 			String treatment,
 			BigDecimal amount,
 			MassageProvider provider,
+			MassageTherapist therapist,
 			boolean paid,
 			MassagePaymentMethod paymentMethod,
 			LocalDate paymentDate,
@@ -150,6 +157,7 @@ public class MassageBooking {
 				treatment,
 				amount,
 				provider,
+				therapist,
 				paid,
 				paymentMethod,
 				paymentDate,
@@ -188,6 +196,10 @@ public class MassageBooking {
 
 	public MassageProvider getProvider() {
 		return provider;
+	}
+
+	public MassageTherapist getTherapist() {
+		return therapist;
 	}
 
 	public boolean isPaid() {
@@ -258,6 +270,7 @@ public class MassageBooking {
 			String treatment,
 			BigDecimal amount,
 			MassageProvider provider,
+			MassageTherapist therapist,
 			boolean paid,
 			MassagePaymentMethod paymentMethod,
 			LocalDate paymentDate,
@@ -275,6 +288,7 @@ public class MassageBooking {
 		this.treatment = normalize(treatment, "treatment", MAX_TREATMENT_LENGTH);
 		this.amount = requireAmount(amount);
 		this.provider = requireProvider(provider);
+		this.therapist = requireTherapist(therapist, provider);
 		this.updatedBy = normalizeUsername(actorUsername, "updatedBy");
 		applyPaymentStatus(paid, paymentMethod, paymentDate, paymentNotes);
 	}
@@ -357,6 +371,19 @@ public class MassageBooking {
 			throw new IllegalArgumentException("provider is required");
 		}
 		return provider;
+	}
+
+	private static MassageTherapist requireTherapist(
+			MassageTherapist therapist,
+			MassageProvider provider
+	) {
+		if (therapist == null) {
+			throw new IllegalArgumentException("therapist is required");
+		}
+		if (!therapist.getProvider().getId().equals(provider.getId())) {
+			throw new IllegalArgumentException("therapist must belong to provider");
+		}
+		return therapist;
 	}
 
 	private void applyPaymentStatus(

@@ -28,6 +28,8 @@ public record CreateMassageBookingDto(
 		BigDecimal amount,
 		@NotNull(message = "providerId is required")
 		Long providerId,
+		@NotNull(message = "therapistId is required")
+		Long therapistId,
 		@NotNull(message = "paid is required")
 		Boolean paid,
 		MassagePaymentMethod paymentMethod,

@@ -1,8 +1,11 @@
 package com.axioma.quadras.controller;
 
 import com.axioma.quadras.domain.dto.CreateMassageProviderDto;
+import com.axioma.quadras.domain.dto.CreateMassageTherapistDto;
 import com.axioma.quadras.domain.dto.MassageProviderDto;
+import com.axioma.quadras.domain.dto.MassageTherapistDto;
 import com.axioma.quadras.domain.dto.UpdateMassageProviderDto;
+import com.axioma.quadras.domain.dto.UpdateMassageTherapistDto;
 import com.axioma.quadras.service.MassageProviderService;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -53,5 +56,32 @@ public class MassageProviderController {
 			@RequestParam(defaultValue = "false") boolean activeOnly
 	) {
 		return ResponseEntity.ok(massageProviderService.list(activeOnly));
+	}
+
+	@PostMapping("/{providerId}/therapists")
+	public ResponseEntity<MassageTherapistDto> createTherapist(
+			@PathVariable Long providerId,
+			@Valid @RequestBody CreateMassageTherapistDto input
+	) {
+		final MassageTherapistDto created = massageProviderService.createTherapist(
+				providerId,
+				input
+		);
+		final URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+				.path("/{therapistId}")
+				.buildAndExpand(created.id())
+				.toUri();
+		return ResponseEntity.created(location).body(created);
+	}
+
+	@PutMapping("/{providerId}/therapists/{therapistId}")
+	public ResponseEntity<MassageTherapistDto> updateTherapist(
+			@PathVariable Long providerId,
+			@PathVariable Long therapistId,
+			@Valid @RequestBody UpdateMassageTherapistDto input
+	) {
+		return ResponseEntity.ok(
+				massageProviderService.updateTherapist(providerId, therapistId, input)
+		);
 	}
 }

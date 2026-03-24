@@ -9,6 +9,7 @@ import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.MassageBooking;
 import com.axioma.quadras.domain.model.MassageBookingStatus;
 import com.axioma.quadras.domain.model.MassageProvider;
+import com.axioma.quadras.domain.model.MassageTherapist;
 import com.axioma.quadras.repository.MassageBookingRepository;
 import java.time.LocalDate;
 import java.util.List;
@@ -35,14 +36,24 @@ public class MassageBookingService {
 	@Transactional
 	public MassageBookingDto create(CreateMassageBookingDto input, String actorUsername) {
 		final MassageProvider provider = massageProviderService.findProviderOrThrow(input.providerId());
+		final MassageTherapist therapist = massageProviderService.findTherapistOrThrow(
+				provider.getId(),
+				input.therapistId()
+		);
 		if (!provider.isActive()) {
 			throw new ApplicationException(
 					HttpStatus.CONFLICT,
 					"Inactive massage providers cannot receive bookings."
 			);
 		}
-		final boolean duplicated = massageBookingRepository.existsByProviderIdAndBookingDateAndStartTimeAndStatus(
-				provider.getId(),
+		if (!therapist.isActive()) {
+			throw new ApplicationException(
+					HttpStatus.CONFLICT,
+					"Inactive massage therapists cannot receive bookings."
+			);
+		}
+		final boolean duplicated = massageBookingRepository.existsByTherapistIdAndBookingDateAndStartTimeAndStatus(
+				therapist.getId(),
 				input.bookingDate(),
 				input.startTime(),
 				MassageBookingStatus.SCHEDULED
@@ -50,7 +61,7 @@ public class MassageBookingService {
 		if (duplicated) {
 			throw new ApplicationException(
 					HttpStatus.CONFLICT,
-					"Massage provider already has a booking for the selected date and time."
+					"Massage therapist already has a booking for the selected date and time."
 			);
 		}
 
@@ -63,6 +74,7 @@ public class MassageBookingService {
 						input.treatment(),
 						input.amount(),
 						provider,
+						therapist,
 						input.paid(),
 						input.paymentMethod(),
 						input.paymentDate(),
@@ -82,15 +94,25 @@ public class MassageBookingService {
 		final MassageBooking booking = findBookingOrThrow(bookingId);
 		validateCanEdit(booking);
 		final MassageProvider provider = massageProviderService.findProviderOrThrow(input.providerId());
+		final MassageTherapist therapist = massageProviderService.findTherapistOrThrow(
+				provider.getId(),
+				input.therapistId()
+		);
 		if (!provider.isActive()) {
 			throw new ApplicationException(
 					HttpStatus.CONFLICT,
 					"Inactive massage providers cannot receive bookings."
 			);
 		}
+		if (!therapist.isActive()) {
+			throw new ApplicationException(
+					HttpStatus.CONFLICT,
+					"Inactive massage therapists cannot receive bookings."
+			);
+		}
 		final boolean duplicated =
-				massageBookingRepository.existsByProviderIdAndBookingDateAndStartTimeAndStatusAndIdNot(
-						provider.getId(),
+				massageBookingRepository.existsByTherapistIdAndBookingDateAndStartTimeAndStatusAndIdNot(
+						therapist.getId(),
 						input.bookingDate(),
 						input.startTime(),
 						MassageBookingStatus.SCHEDULED,
@@ -99,7 +121,7 @@ public class MassageBookingService {
 		if (duplicated) {
 			throw new ApplicationException(
 					HttpStatus.CONFLICT,
-					"Massage provider already has a booking for the selected date and time."
+					"Massage therapist already has a booking for the selected date and time."
 			);
 		}
 
@@ -111,6 +133,7 @@ public class MassageBookingService {
 				input.treatment(),
 				input.amount(),
 				provider,
+				therapist,
 				input.paid(),
 				input.paymentMethod(),
 				input.paymentDate(),
