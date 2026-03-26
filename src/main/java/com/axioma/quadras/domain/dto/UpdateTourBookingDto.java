@@ -26,6 +26,7 @@ public record UpdateTourBookingDto(
 		String guestReference,
 		@NotNull(message = "providerId is required")
 		Long providerId,
+		Long providerOfferingId,
 		@NotNull(message = "amount is required")
 		@DecimalMin(value = "0.00", message = "amount must be >= 0")
 		BigDecimal amount,

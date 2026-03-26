@@ -1,11 +1,13 @@
 package com.axioma.quadras.domain.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.util.List;
 
 public record UpdateTourProviderDto(
 		@NotBlank(message = "name is required")
@@ -19,6 +21,7 @@ public record UpdateTourProviderDto(
 		@DecimalMax(value = "100.00", message = "defaultCommissionPercent must be <= 100")
 		BigDecimal defaultCommissionPercent,
 		@NotNull(message = "active is required")
-		Boolean active
+		Boolean active,
+		List<@Valid TourProviderOfferingInputDto> offerings
 ) {
 }

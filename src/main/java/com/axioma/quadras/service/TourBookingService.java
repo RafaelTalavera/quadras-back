@@ -10,6 +10,7 @@ import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.TourBooking;
 import com.axioma.quadras.domain.model.TourBookingStatus;
 import com.axioma.quadras.domain.model.TourProvider;
+import com.axioma.quadras.domain.model.TourProviderOffering;
 import com.axioma.quadras.domain.model.TourServiceType;
 import com.axioma.quadras.repository.TourBookingRepository;
 import java.math.BigDecimal;
@@ -43,6 +44,7 @@ public class TourBookingService {
 	public TourBookingDto create(CreateTourBookingDto input, String actorUsername) {
 		validateTimeWindow(input.startAt(), input.endAt());
 		final TourProvider provider = tourProviderService.findProviderOrThrow(input.providerId());
+		final TourProviderOffering providerOffering = resolveOffering(provider, input.providerOfferingId());
 		final TourBooking saved = tourBookingRepository.save(
 				TourBooking.schedule(
 						input.serviceType(),
@@ -51,6 +53,7 @@ public class TourBookingService {
 						input.clientName(),
 						input.guestReference(),
 						provider,
+						providerOffering,
 						input.amount(),
 						input.commissionPercent(),
 						input.description(),
@@ -70,6 +73,7 @@ public class TourBookingService {
 		validateCanEdit(booking);
 		validateTimeWindow(input.startAt(), input.endAt());
 		final TourProvider provider = tourProviderService.findProviderOrThrow(input.providerId());
+		final TourProviderOffering providerOffering = resolveOffering(provider, input.providerOfferingId());
 		booking.updateBooking(
 				input.serviceType(),
 				input.startAt(),
@@ -77,6 +81,7 @@ public class TourBookingService {
 				input.clientName(),
 				input.guestReference(),
 				provider,
+				providerOffering,
 				input.amount(),
 				input.commissionPercent(),
 				input.description(),
@@ -165,6 +170,20 @@ public class TourBookingService {
 		if (!startAt.isBefore(endAt)) {
 			throw new ApplicationException(HttpStatus.BAD_REQUEST, "endAt must be after startAt.");
 		}
+	}
+
+	private TourProviderOffering resolveOffering(TourProvider provider, Long providerOfferingId) {
+		if (providerOfferingId == null) {
+			return null;
+		}
+		final TourProviderOffering offering = tourProviderService.findOfferingOrThrow(providerOfferingId);
+		if (!offering.getProvider().getId().equals(provider.getId())) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"Tour provider offering does not belong to the selected provider."
+			);
+		}
+		return offering;
 	}
 
 	private Specification<TourBooking> inDateRange(LocalDate dateFrom, LocalDate dateTo) {

@@ -11,9 +11,11 @@ import com.axioma.quadras.domain.model.TourBooking;
 import com.axioma.quadras.domain.model.TourBookingStatus;
 import com.axioma.quadras.domain.model.TourPaymentMethod;
 import com.axioma.quadras.domain.model.TourProvider;
+import com.axioma.quadras.domain.model.TourProviderOffering;
 import com.axioma.quadras.domain.model.TourServiceType;
 import com.axioma.quadras.repository.TourBookingRepository;
 import com.axioma.quadras.repository.TourProviderRepository;
+import com.axioma.quadras.repository.TourProviderOfferingRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -48,6 +50,9 @@ class TourControllerTest {
 	@Autowired
 	private TourProviderRepository tourProviderRepository;
 
+	@Autowired
+	private TourProviderOfferingRepository tourProviderOfferingRepository;
+
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	private String accessToken;
@@ -55,6 +60,7 @@ class TourControllerTest {
 	@BeforeEach
 	void cleanDb() throws Exception {
 		tourBookingRepository.deleteAll();
+		tourProviderOfferingRepository.deleteAll();
 		tourProviderRepository.deleteAll();
 		accessToken = authenticate();
 	}
@@ -76,6 +82,7 @@ class TourControllerTest {
 				  "clientName": "Helena",
 				  "guestReference": "Apto 101",
 				  "providerId": %d,
+				  "providerOfferingId": null,
 				  "amount": 350.00,
 				  "commissionPercent": 10.00,
 				  "description": "Passeio de barco",
@@ -93,6 +100,7 @@ class TourControllerTest {
 				  "clientName": "Bruno",
 				  "guestReference": "Apto 202",
 				  "providerId": %d,
+				  "providerOfferingId": null,
 				  "amount": 500.00,
 				  "commissionPercent": 12.50,
 				  "description": "Traslado executivo",
@@ -138,6 +146,7 @@ class TourControllerTest {
 						"Camila",
 						"Apto 305",
 						provider,
+						null,
 						new BigDecimal("600.00"),
 						new BigDecimal("15.00"),
 						"Tour historico",
@@ -192,6 +201,7 @@ class TourControllerTest {
 						"Laura",
 						"Apto 101",
 						providerA,
+						null,
 						new BigDecimal("400.00"),
 						new BigDecimal("10.00"),
 						"Paseo maritimo",
@@ -210,6 +220,7 @@ class TourControllerTest {
 						"Diego",
 						"Apto 102",
 						providerA,
+						null,
 						new BigDecimal("300.00"),
 						new BigDecimal("10.00"),
 						"Traslado",
@@ -228,6 +239,7 @@ class TourControllerTest {
 						"Pedro",
 						"Apto 103",
 						providerB,
+						null,
 						new BigDecimal("800.00"),
 						new BigDecimal("20.00"),
 						"Tour integral",
@@ -264,7 +276,16 @@ class TourControllerTest {
 				{
 				  "name": "Agencia Nova",
 				  "contact": "nova@demo.local",
-				  "defaultCommissionPercent": 18.50
+				  "defaultCommissionPercent": 18.50,
+				  "offerings": [
+				    {
+				      "serviceType": "TOUR",
+				      "name": "Ilha do Campeche",
+				      "amount": 350.00,
+				      "description": "Passeio com desembarque",
+				      "active": true
+				    }
+				  ]
 				}
 				""";
 
@@ -274,6 +295,8 @@ class TourControllerTest {
 						.content(createPayload))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.name").value("Agencia Nova"))
+				.andExpect(jsonPath("$.offerings.length()").value(1))
+				.andExpect(jsonPath("$.offerings[0].name").value("Ilha do Campeche"))
 				.andReturn()
 				.getResponse()
 				.getContentAsString();
@@ -288,12 +311,74 @@ class TourControllerTest {
 								  "name": "Agencia Nova",
 								  "contact": "nova@demo.local",
 								  "defaultCommissionPercent": 20.00,
-								  "active": false
+								  "active": false,
+								  "offerings": [
+								    {
+								      "serviceType": "TRAVEL",
+								      "name": "Traslado VIP",
+								      "amount": 500.00,
+								      "description": "Transfer privado",
+								      "active": true
+								    },
+								    {
+								      "serviceType": "TOUR",
+								      "name": "Passeio Centro",
+								      "amount": 180.00,
+								      "description": "Com paradas",
+								      "active": false
+								    }
+								  ]
 								}
 								"""))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.defaultCommissionPercent").value(20.00))
-				.andExpect(jsonPath("$.active").value(false));
+				.andExpect(jsonPath("$.active").value(false))
+				.andExpect(jsonPath("$.offerings.length()").value(2))
+				.andExpect(jsonPath("$.offerings[0].name").value("Passeio Centro"))
+				.andExpect(jsonPath("$.offerings[1].name").value("Traslado VIP"));
+	}
+
+	@Test
+	void shouldCreateBookingUsingProviderOffering() throws Exception {
+		final TourProvider provider = tourProviderRepository.save(
+				TourProvider.create("Agencia A", "a@demo.local", new BigDecimal("10.00"), "system")
+		);
+		final TourProviderOffering offering = tourProviderOfferingRepository.save(
+				TourProviderOffering.create(
+						provider,
+						TourServiceType.TOUR,
+						"Ilha do Campeche",
+						new BigDecimal("350.00"),
+						"Passeio com desembarque",
+						true,
+						"system"
+				)
+		);
+
+		mockMvc.perform(post("/api/v1/tours/bookings")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "serviceType": "TOUR",
+								  "startAt": "2026-04-02T09:00:00",
+								  "endAt": "2026-04-02T11:00:00",
+								  "clientName": "Helena",
+								  "guestReference": "Apto 101",
+								  "providerId": %d,
+								  "providerOfferingId": %d,
+								  "amount": 350.00,
+								  "commissionPercent": 10.00,
+								  "description": "Passeio com desembarque e traslado",
+								  "paid": false,
+								  "paymentMethod": null,
+								  "paymentDate": null,
+								  "paymentNotes": null
+								}
+								""".formatted(provider.getId(), offering.getId())))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.providerOfferingId").value(offering.getId()))
+				.andExpect(jsonPath("$.providerOfferingName").value("Ilha do Campeche"));
 	}
 
 	private String bearerToken() {

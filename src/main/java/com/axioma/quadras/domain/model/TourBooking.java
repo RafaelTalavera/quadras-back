@@ -55,6 +55,13 @@ public class TourBooking {
 	@JoinColumn(name = "provider_id", nullable = false)
 	private TourProvider provider;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "provider_offering_id")
+	private TourProviderOffering providerOffering;
+
+	@Column(name = "provider_offering_name", length = MAX_NAME_LENGTH)
+	private String providerOfferingName;
+
 	@Column(name = "amount", nullable = false, precision = 10, scale = 2)
 	private BigDecimal amount;
 
@@ -115,6 +122,7 @@ public class TourBooking {
 			String clientName,
 			String guestReference,
 			TourProvider provider,
+			TourProviderOffering providerOffering,
 			BigDecimal amount,
 			BigDecimal commissionPercent,
 			String description,
@@ -132,6 +140,7 @@ public class TourBooking {
 				clientName,
 				guestReference,
 				provider,
+				providerOffering,
 				amount,
 				commissionPercent,
 				description
@@ -150,6 +159,7 @@ public class TourBooking {
 			String clientName,
 			String guestReference,
 			TourProvider provider,
+			TourProviderOffering providerOffering,
 			BigDecimal amount,
 			BigDecimal commissionPercent,
 			String description,
@@ -166,6 +176,7 @@ public class TourBooking {
 				clientName,
 				guestReference,
 				provider,
+				providerOffering,
 				amount,
 				commissionPercent,
 				description
@@ -229,6 +240,14 @@ public class TourBooking {
 
 	public TourProvider getProvider() {
 		return provider;
+	}
+
+	public TourProviderOffering getProviderOffering() {
+		return providerOffering;
+	}
+
+	public String getProviderOfferingName() {
+		return providerOfferingName;
 	}
 
 	public BigDecimal getAmount() {
@@ -314,6 +333,7 @@ public class TourBooking {
 			String clientName,
 			String guestReference,
 			TourProvider provider,
+			TourProviderOffering providerOffering,
 			BigDecimal amount,
 			BigDecimal commissionPercent,
 			String description
@@ -333,6 +353,10 @@ public class TourBooking {
 			throw new IllegalArgumentException("provider is required");
 		}
 		this.provider = provider;
+		this.providerOffering = providerOffering;
+		this.providerOfferingName = providerOffering == null
+				? null
+				: normalize(providerOffering.getName(), "providerOfferingName", MAX_NAME_LENGTH);
 		this.amount = requireNonNegativeAmount(amount, "amount");
 		this.commissionPercent = requireCommissionPercent(commissionPercent, "commissionPercent");
 		this.commissionAmount = calculateCommission(this.amount, this.commissionPercent);
