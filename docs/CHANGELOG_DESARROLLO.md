@@ -1,5 +1,27 @@
 # CHANGELOG DE DESARROLLO - COSTANORTE
 
+## 2026-03-26 | Post Hito 12 | Quadras con catalogo persistido y CRUD de profesores parceros
+- Componente afectado: Backend (`Quadras`)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/controller/CourtConfigurationController.java`
+  - `src/main/java/com/axioma/quadras/service/CourtConfigurationService.java`
+  - `src/main/java/com/axioma/quadras/service/CourtBookingService.java`
+  - `src/main/java/com/axioma/quadras/domain/model/CourtPartnerCoach.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/CourtPartnerCoachDto.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/CreateCourtPartnerCoachDto.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/UpdateCourtPartnerCoachDto.java`
+  - `src/main/java/com/axioma/quadras/repository/CourtPartnerCoachRepository.java`
+  - `src/main/resources/db/migration/V9__create_court_partner_coaches.sql`
+  - `src/test/java/com/axioma/quadras/controller/CourtBookingControllerTest.java`
+  - `src/test/java/com/axioma/quadras/controller/CourtConfigurationControllerTest.java`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: persistir el catalogo de profesores parceros, exponer su gestion operativa y validar que las reservas de `PARTNER_COACH` solo usen nombres activos predefinidos.
+- Impacto funcional:
+  - nuevos endpoints `GET/POST/PUT /api/v1/courts/partner-coaches`
+  - seed inicial de profesores parceros via migracion `V9`
+  - rechazo de bookings `PARTNER_COACH` con nombre fuera del catalogo activo
+  - cobertura de tests para listado, alta, edicion y validacion de reserva
+
 ## 2026-03-24 | Post Hito 12 | Dominio de masajistas para Massagens
 - Componente afectado: Backend (`Massagens`)
 - Archivos tocados:
