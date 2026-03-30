@@ -326,16 +326,30 @@ async function handleResponse(response) {
 		return response.json();
 	}
 
-	let message = "No fue posible completar la operacion.";
-	try {
-		const body = await response.json();
-		message = body.message || body.error || message;
-	} catch (_error) {
-		if (response.status === 401) {
-			message = "Falta autenticacao. Faca login e salve o JWT no localStorage.";
+	const message = await extractResponseErrorMessage(
+		response,
+		"No fue posible completar la operacion."
+	);
+	throw new Error(message);
+}
+
+async function extractResponseErrorMessage(response, fallbackMessage) {
+	const responseText = await response.text();
+	if (responseText) {
+		try {
+			const body = JSON.parse(responseText);
+			return body.message || body.error || fallbackMessage;
+		} catch (_error) {
+			const trimmedText = responseText.trim();
+			if (trimmedText) {
+				return trimmedText;
+			}
 		}
 	}
-	throw new Error(message);
+	if (response.status === 401) {
+		return "Falta autenticacao. Faca login e salve o JWT no localStorage.";
+	}
+	return fallbackMessage;
 }
 
 function readToken() {
