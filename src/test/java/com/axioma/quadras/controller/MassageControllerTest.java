@@ -259,6 +259,156 @@ class MassageControllerTest {
 	}
 
 	@Test
+	void shouldListMassageProviderSummaryReportByDateRange() throws Exception {
+		final MassageProvider provider = massageProviderRepository.save(
+				MassageProvider.create("Danuska", "Drenagem", "Agenda interna")
+		);
+		final MassageProvider otherProvider = massageProviderRepository.save(
+				MassageProvider.create("Spa Serena", "Relaxante", "Agenda interna")
+		);
+		final MassageTherapist therapist = createTherapist(provider, "Ana");
+		final MassageTherapist otherTherapist = createTherapist(otherProvider, "Bruna");
+		massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 20),
+				LocalTime.of(10, 0),
+				"Carla Mendes",
+				"Apto 101",
+				"Relaxante",
+				new BigDecimal("150.00"),
+				provider,
+				therapist,
+				false,
+				null,
+				null,
+				null,
+				"operador.demo"
+		));
+		massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 20),
+				LocalTime.of(11, 0),
+				"Roberta Lima",
+				"Apto 102",
+				"Drenagem",
+				new BigDecimal("180.00"),
+				provider,
+				therapist,
+				true,
+				MassagePaymentMethod.PIX,
+				LocalDate.of(2026, 3, 20),
+				"Pago por chave",
+				"operador.demo"
+		));
+		final MassageBooking cancelled = massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 21),
+				LocalTime.of(9, 0),
+				"Bianca Costa",
+				"Apto 103",
+				"Relaxante",
+				new BigDecimal("200.00"),
+				provider,
+				therapist,
+				false,
+				null,
+				null,
+				null,
+				"operador.demo"
+		));
+		cancelled.markCancelled("Cliente desistiu", "operador.demo");
+		massageBookingRepository.save(cancelled);
+		massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 22),
+				LocalTime.of(12, 0),
+				"Luana Prado",
+				"Apto 204",
+				"Premium",
+				new BigDecimal("220.00"),
+				otherProvider,
+				otherTherapist,
+				true,
+				MassagePaymentMethod.CARD,
+				LocalDate.of(2026, 3, 22),
+				"Pago no balcao",
+				"operador.demo"
+		));
+
+		mockMvc.perform(get("/api/v1/massages/reports/providers/summary")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-03-20")
+						.param("dateTo", "2026-03-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].providerName").value("Danuska"))
+				.andExpect(jsonPath("$[0].scheduledCount").value(2))
+				.andExpect(jsonPath("$[0].cancelledCount").value(1))
+				.andExpect(jsonPath("$[0].paidCount").value(1))
+				.andExpect(jsonPath("$[0].pendingCount").value(1))
+				.andExpect(jsonPath("$[0].grossAmount").value(330.00))
+				.andExpect(jsonPath("$[0].paidAmount").value(180.00))
+				.andExpect(jsonPath("$[0].pendingAmount").value(150.00));
+	}
+
+	@Test
+	void shouldReturnMassageProviderDetailReportByDateRange() throws Exception {
+		final MassageProvider provider = massageProviderRepository.save(
+				MassageProvider.create("Danuska", "Drenagem", "Agenda interna")
+		);
+		final MassageTherapist therapist = createTherapist(provider, "Ana");
+		massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 20),
+				LocalTime.of(10, 0),
+				"Carla Mendes",
+				"Apto 101",
+				"Relaxante",
+				new BigDecimal("150.00"),
+				provider,
+				therapist,
+				false,
+				null,
+				null,
+				null,
+				"operador.demo"
+		));
+		massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 20),
+				LocalTime.of(11, 0),
+				"Roberta Lima",
+				"Apto 102",
+				"Drenagem",
+				new BigDecimal("180.00"),
+				provider,
+				therapist,
+				true,
+				MassagePaymentMethod.PIX,
+				LocalDate.of(2026, 3, 20),
+				"Pago por chave",
+				"operador.demo"
+		));
+
+		mockMvc.perform(get("/api/v1/massages/reports/providers/{providerId}/details", provider.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-03-20")
+						.param("dateTo", "2026-03-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.providerId").value(provider.getId()))
+				.andExpect(jsonPath("$.providerName").value("Danuska"))
+				.andExpect(jsonPath("$.summary.scheduledCount").value(2))
+				.andExpect(jsonPath("$.summary.paidAmount").value(180.00))
+				.andExpect(jsonPath("$.items.length()").value(2))
+				.andExpect(jsonPath("$.items[0].clientName").value("Carla Mendes"))
+				.andExpect(jsonPath("$.items[1].paymentMethod").value("PIX"));
+	}
+
+	@Test
+	void shouldRejectInvalidMassageReportRange() throws Exception {
+		mockMvc.perform(get("/api/v1/massages/reports/providers/summary")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-03-31")
+						.param("dateTo", "2026-03-20"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("dateFrom must be before or equal to dateTo"));
+	}
+
+	@Test
 	void shouldFilterMassageBookingsByClientAndPaidStatus() throws Exception {
 		final MassageProvider provider = massageProviderRepository.save(
 				MassageProvider.create("Danuska", "Drenagem", "Agenda interna")
