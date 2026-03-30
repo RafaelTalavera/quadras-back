@@ -271,6 +271,278 @@ class TourControllerTest {
 	}
 
 	@Test
+	void shouldReturnPeriodSummary() throws Exception {
+		final TourProvider providerA = tourProviderRepository.save(
+				TourProvider.create("Agencia A", "a@demo.local", new BigDecimal("10.00"), "system")
+		);
+		final TourProvider providerB = tourProviderRepository.save(
+				TourProvider.create("Agencia B", "b@demo.local", new BigDecimal("20.00"), "system")
+		);
+		tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TOUR,
+						LocalDateTime.of(2026, 4, 10, 9, 0),
+						LocalDateTime.of(2026, 4, 10, 12, 0),
+						"Laura",
+						"Apto 101",
+						providerA,
+						null,
+						new BigDecimal("400.00"),
+						new BigDecimal("10.00"),
+						"Paseo maritimo",
+						true,
+						TourPaymentMethod.CARD,
+						LocalDate.of(2026, 4, 10),
+						"Pago",
+						"operador.demo"
+				)
+		);
+		tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TRAVEL,
+						LocalDateTime.of(2026, 4, 11, 7, 30),
+						LocalDateTime.of(2026, 4, 11, 9, 0),
+						"Diego",
+						"Apto 102",
+						providerA,
+						null,
+						new BigDecimal("300.00"),
+						new BigDecimal("10.00"),
+						"Traslado",
+						false,
+						null,
+						null,
+						null,
+						"operador.demo"
+				)
+		);
+		tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TOUR,
+						LocalDateTime.of(2026, 4, 13, 8, 0),
+						LocalDateTime.of(2026, 4, 13, 10, 30),
+						"Maria",
+						"Apto 104",
+						providerB,
+						null,
+						new BigDecimal("500.00"),
+						new BigDecimal("20.00"),
+						"Tour ilha",
+						true,
+						TourPaymentMethod.PIX,
+						LocalDate.of(2026, 4, 13),
+						"Pix",
+						"operador.demo"
+				)
+		);
+		final TourBooking cancelled = tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TOUR,
+						LocalDateTime.of(2026, 4, 12, 8, 0),
+						LocalDateTime.of(2026, 4, 12, 11, 0),
+						"Pedro",
+						"Apto 103",
+						providerB,
+						null,
+						new BigDecimal("800.00"),
+						new BigDecimal("20.00"),
+						"Tour integral",
+						false,
+						null,
+						null,
+						null,
+						"operador.demo"
+				)
+		);
+		cancelled.markCancelled("Clima ruim", "operador.demo");
+		tourBookingRepository.save(cancelled);
+
+		mockMvc.perform(get("/api/v1/tours/reports/summary")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-04-01")
+						.param("dateTo", "2026-04-30"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.scheduledCount").value(3))
+				.andExpect(jsonPath("$.cancelledCount").value(1))
+				.andExpect(jsonPath("$.paidCount").value(2))
+				.andExpect(jsonPath("$.pendingCount").value(1))
+				.andExpect(jsonPath("$.totalHours").value(7.00))
+				.andExpect(jsonPath("$.grossAmount").value(1200.00))
+				.andExpect(jsonPath("$.paidAmount").value(900.00))
+				.andExpect(jsonPath("$.pendingAmount").value(300.00))
+				.andExpect(jsonPath("$.commissionAmount").value(170.00))
+				.andExpect(jsonPath("$.netAmount").value(1030.00))
+				.andExpect(jsonPath("$.averageTicket").value(400.00))
+				.andExpect(jsonPath("$.providerBreakdown.length()").value(2))
+				.andExpect(jsonPath("$.providerBreakdown[0].label").value("Agencia A"))
+				.andExpect(jsonPath("$.providerBreakdown[0].scheduledCount").value(2))
+				.andExpect(jsonPath("$.providerBreakdown[0].grossAmount").value(700.00))
+				.andExpect(jsonPath("$.serviceTypeBreakdown[0].code").value("TOUR"))
+				.andExpect(jsonPath("$.serviceTypeBreakdown[0].scheduledCount").value(2))
+				.andExpect(jsonPath("$.serviceTypeBreakdown[1].code").value("TRAVEL"))
+				.andExpect(jsonPath("$.serviceTypeBreakdown[1].pendingAmount").value(300.00))
+				.andExpect(jsonPath("$.paymentMethodBreakdown[0].code").value("PIX"))
+				.andExpect(jsonPath("$.paymentMethodBreakdown[0].grossAmount").value(500.00))
+				.andExpect(jsonPath("$.paymentMethodBreakdown[1].code").value("CARD"))
+				.andExpect(jsonPath("$.paymentMethodBreakdown[1].grossAmount").value(400.00))
+				.andExpect(jsonPath("$.paymentMethodBreakdown[2].code").value("CASH"))
+				.andExpect(jsonPath("$.paymentMethodBreakdown[2].grossAmount").value(0.00))
+				.andExpect(jsonPath("$.paymentMethodBreakdown[3].code").value("TRANSFER"))
+				.andExpect(jsonPath("$.paymentMethodBreakdown[3].grossAmount").value(0.00));
+	}
+
+	@Test
+	void shouldRejectInvalidSummaryRange() throws Exception {
+		mockMvc.perform(get("/api/v1/tours/reports/summary")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-04-30")
+						.param("dateTo", "2026-04-01"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("dateFrom must be before or equal to dateTo"));
+	}
+
+	@Test
+	void shouldReturnProviderSummaryDetails() throws Exception {
+		final TourProvider providerA = tourProviderRepository.save(
+				TourProvider.create("Agencia A", "a@demo.local", new BigDecimal("10.00"), "system")
+		);
+		final TourProvider providerB = tourProviderRepository.save(
+				TourProvider.create("Agencia B", "b@demo.local", new BigDecimal("20.00"), "system")
+		);
+		tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TOUR,
+						LocalDateTime.of(2026, 4, 10, 9, 0),
+						LocalDateTime.of(2026, 4, 10, 12, 0),
+						"Laura",
+						"Apto 101",
+						providerA,
+						null,
+						new BigDecimal("400.00"),
+						new BigDecimal("10.00"),
+						"Paseo maritimo",
+						true,
+						TourPaymentMethod.CARD,
+						LocalDate.of(2026, 4, 10),
+						"Pago",
+						"operador.demo"
+				)
+		);
+		tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TRAVEL,
+						LocalDateTime.of(2026, 4, 11, 7, 30),
+						LocalDateTime.of(2026, 4, 11, 9, 0),
+						"Diego",
+						"Apto 102",
+						providerA,
+						null,
+						new BigDecimal("300.00"),
+						new BigDecimal("10.00"),
+						"Traslado",
+						false,
+						null,
+						null,
+						null,
+						"operador.demo"
+				)
+		);
+		final TourBooking cancelled = tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TOUR,
+						LocalDateTime.of(2026, 4, 12, 8, 0),
+						LocalDateTime.of(2026, 4, 12, 11, 0),
+						"Pedro",
+						"Apto 103",
+						providerA,
+						null,
+						new BigDecimal("800.00"),
+						new BigDecimal("10.00"),
+						"Tour cancelado",
+						false,
+						null,
+						null,
+						null,
+						"operador.demo"
+				)
+		);
+		cancelled.markCancelled("Clima ruim", "operador.demo");
+		tourBookingRepository.save(cancelled);
+		tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TOUR,
+						LocalDateTime.of(2026, 4, 13, 8, 0),
+						LocalDateTime.of(2026, 4, 13, 10, 30),
+						"Maria",
+						"Apto 104",
+						providerB,
+						null,
+						new BigDecimal("500.00"),
+						new BigDecimal("20.00"),
+						"Tour ilha",
+						true,
+						TourPaymentMethod.PIX,
+						LocalDate.of(2026, 4, 13),
+						"Pix",
+						"operador.demo"
+				)
+		);
+
+		mockMvc.perform(get("/api/v1/tours/reports/summary/details")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("groupBy", "PROVIDER")
+						.param("code", String.valueOf(providerA.getId()))
+						.param("dateFrom", "2026-04-01")
+						.param("dateTo", "2026-04-30"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.groupBy").value("PROVIDER"))
+				.andExpect(jsonPath("$.code").value(String.valueOf(providerA.getId())))
+				.andExpect(jsonPath("$.label").value("Agencia A"))
+				.andExpect(jsonPath("$.summary.scheduledCount").value(2))
+				.andExpect(jsonPath("$.summary.grossAmount").value(700.00))
+				.andExpect(jsonPath("$.items.length()").value(2))
+				.andExpect(jsonPath("$.items[0].clientName").value("Laura"))
+				.andExpect(jsonPath("$.items[1].serviceType").value("TRAVEL"));
+	}
+
+	@Test
+	void shouldReturnServiceTypeSummaryDetails() throws Exception {
+		final TourProvider provider = tourProviderRepository.save(
+				TourProvider.create("Agencia A", "a@demo.local", new BigDecimal("10.00"), "system")
+		);
+		tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TRAVEL,
+						LocalDateTime.of(2026, 4, 10, 9, 0),
+						LocalDateTime.of(2026, 4, 10, 10, 0),
+						"Laura",
+						"Apto 101",
+						provider,
+						null,
+						new BigDecimal("200.00"),
+						new BigDecimal("10.00"),
+						"Transfer hotel",
+						true,
+						TourPaymentMethod.CARD,
+						LocalDate.of(2026, 4, 10),
+						"Pago",
+						"operador.demo"
+				)
+		);
+
+		mockMvc.perform(get("/api/v1/tours/reports/summary/details")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("groupBy", "SERVICE_TYPE")
+						.param("code", "TRAVEL")
+						.param("dateFrom", "2026-04-01")
+						.param("dateTo", "2026-04-30"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.label").value("Traslado"))
+				.andExpect(jsonPath("$.summary.scheduledCount").value(1))
+				.andExpect(jsonPath("$.items[0].description").value("Transfer hotel"));
+	}
+
+	@Test
 	void shouldCreateAndUpdateProvider() throws Exception {
 		final String createPayload = """
 				{

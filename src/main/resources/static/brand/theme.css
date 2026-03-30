@@ -281,6 +281,31 @@ button {
 	gap: 16px;
 }
 
+.summary-filter-form {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	margin-bottom: 18px;
+}
+
+.summary-filter-form label {
+	display: grid;
+	gap: 8px;
+	min-width: 220px;
+	font-weight: 700;
+	color: var(--cn-blue-deep);
+}
+
+.summary-filter-form input {
+	width: 100%;
+	min-height: 48px;
+	padding: 0 14px;
+	border-radius: 14px;
+	border: 1px solid rgba(23, 50, 77, 0.14);
+	background: #fffefb;
+	color: var(--cn-ink);
+}
+
 .booking-form label {
 	display: grid;
 	gap: 8px;
@@ -337,6 +362,116 @@ button {
 	display: grid;
 	grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
 	gap: 24px;
+}
+
+.dashboard-lower-stacked {
+	grid-template-columns: 1fr;
+}
+
+.today-summary-large {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.report-table-wrap {
+	overflow-x: auto;
+}
+
+.report-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.report-table th,
+.report-table td {
+	padding: 14px 12px;
+	border-bottom: 1px solid rgba(23, 50, 77, 0.08);
+	text-align: left;
+	vertical-align: middle;
+}
+
+.report-table th {
+	font-size: 0.78rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--cn-blue);
+}
+
+.report-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.report-empty {
+	color: var(--cn-muted);
+}
+
+.report-subtag {
+	display: inline-flex;
+	margin-left: 8px;
+	padding: 0.25rem 0.55rem;
+	border-radius: 999px;
+	background: rgba(23, 50, 77, 0.08);
+	color: var(--cn-muted);
+	font-size: 0.72rem;
+	font-weight: 800;
+	text-transform: uppercase;
+}
+
+.table-link-button {
+	padding: 0;
+	background: transparent;
+	color: var(--cn-blue-deep);
+	font-weight: 800;
+	text-align: left;
+	cursor: pointer;
+}
+
+.table-link-button:hover,
+.table-link-button:focus-visible {
+	text-decoration: underline;
+}
+
+.table-secondary-copy {
+	margin-top: 4px;
+	color: var(--cn-muted);
+}
+
+.modal-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 20;
+	display: grid;
+	place-items: center;
+	padding: 24px;
+	background: rgba(16, 28, 42, 0.42);
+	backdrop-filter: blur(12px);
+}
+
+.modal-backdrop.is-hidden {
+	display: none;
+}
+
+.modal-card {
+	width: min(1100px, 100%);
+	max-height: min(88vh, 920px);
+	overflow: auto;
+	padding: 28px;
+	border-radius: 28px;
+	background: rgba(255, 255, 255, 0.96);
+	border: 1px solid var(--cn-border);
+	box-shadow: var(--cn-shadow);
+}
+
+.modal-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 20px;
+}
+
+.modal-close-button {
+	flex: none;
 }
 
 .calendar-grid {
@@ -396,6 +531,10 @@ button {
 	.payment-notes {
 		grid-column: span 1;
 	}
+
+	.today-summary-large {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 
 @media (max-width: 720px) {
@@ -406,6 +545,7 @@ button {
 
 	.topbar,
 	.section-heading,
+	.modal-header,
 	.booking-item,
 	.today-summary,
 	.booking-form {

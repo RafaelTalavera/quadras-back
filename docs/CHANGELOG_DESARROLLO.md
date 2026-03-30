@@ -799,3 +799,32 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: La version 6 fallaba en bases MySQL locales al intentar eliminar `uk_massage_bookings_provider_slot` antes de crear un indice alternativo requerido para sostener la FK por `provider_id`.
 - Impacto funcional: Flyway puede aplicar `V6` sin dejar la base en estado parcial; el backend vuelve a arrancar de forma reproducible y la migracion mantiene la posibilidad de reutilizar horarios cancelados.
+
+## 2026-03-26 | Tours e Viagens | Resumen estandar de periodo y pantalla estatica
+- Componente afectado: Backend + frontend estatico + documentacion
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/domain/dto/{TourSummaryReportDto,TourSummaryBreakdownDto}.java`
+  - `src/main/java/com/axioma/quadras/service/TourBookingService.java`
+  - `src/main/java/com/axioma/quadras/controller/TourReportController.java`
+  - `src/test/java/com/axioma/quadras/controller/TourControllerTest.java`
+  - `src/main/resources/static/{tours-summary.html,tours-summary.js}`
+  - `src/main/resources/static/brand/theme.css`
+  - `docs/TOURS_BACKEND_IMPLEMENTATION.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Alinear `Tours e Viagens` al estandar de resumen de periodo ya usado como referencia en `Quadras`, sin romper el reporte legacy por proveedor y dejando una pantalla estatica que consuma el nuevo contrato.
+- Impacto funcional: La API agrega `GET /api/v1/tours/reports/summary` con validacion estricta de rango y breakdowns por prestador, tipo de servicio y medio de pago; el frontend del repo incorpora `tours-summary.html` para consultar el resumen consolidado del periodo.
+
+## 2026-03-26 | Tours e Viagens | Detalle interactivo en tablas de resumen
+- Componente afectado: Backend + frontend estatico + documentacion
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/domain/model/TourSummaryGroupBy.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/{TourSummaryDetailDto,TourSummaryDetailItemDto}.java`
+  - `src/main/java/com/axioma/quadras/service/TourBookingService.java`
+  - `src/main/java/com/axioma/quadras/controller/TourReportController.java`
+  - `src/test/java/com/axioma/quadras/controller/TourControllerTest.java`
+  - `src/main/resources/static/{tours-summary.html,tours-summary.js}`
+  - `src/main/resources/static/brand/theme.css`
+  - `docs/TOURS_BACKEND_IMPLEMENTATION.md`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: Completar el resumen de periodo con navegacion de detalle por fila, de modo que el operador pueda abrir una ventana emergente y ver los bookings reales detras de cada total agregado.
+- Impacto funcional: La API agrega `GET /api/v1/tours/reports/summary/details` y la pantalla `tours-summary.html` pasa a soportar click por fila con modal de detalle para prestadores, tipos de servicio y medios de pago.
