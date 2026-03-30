@@ -6,6 +6,7 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -46,6 +47,22 @@ public class ApiExceptionHandler {
 				status.value(),
 				status.getReasonPhrase(),
 				ex.getMessage(),
+				request.getRequestURI()
+		);
+		return ResponseEntity.status(status).body(body);
+	}
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ApiError> handleHttpMessageNotReadableException(
+			HttpMessageNotReadableException ex,
+			HttpServletRequest request
+	) {
+		HttpStatus status = HttpStatus.BAD_REQUEST;
+		ApiError body = new ApiError(
+				OffsetDateTime.now(),
+				status.value(),
+				status.getReasonPhrase(),
+				"Request body is invalid or uses unsupported character encoding.",
 				request.getRequestURI()
 		);
 		return ResponseEntity.status(status).body(body);

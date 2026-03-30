@@ -18,6 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -65,6 +66,29 @@ class AuthControllerTest {
 						.content(loginPayload("operador.demo", "clave-invalida")))
 				.andExpect(status().isUnauthorized())
 				.andExpect(jsonPath("$.message").value("Invalid username or password."));
+	}
+
+	@Test
+	void shouldRejectInvalidCredentialsWithNonAsciiPassword() throws Exception {
+		mockMvc.perform(post("/api/v1/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(loginPayload("operador.demo", "Costanorte2026ª")))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.message").value("Invalid username or password."));
+	}
+
+	@Test
+	void shouldReturnBadRequestWhenLoginPayloadUsesUnsupportedEncoding() throws Exception {
+		final byte[] latin1Payload = loginPayload("operador.demo", "costanorte2026ª")
+				.getBytes(StandardCharsets.ISO_8859_1);
+
+		mockMvc.perform(post("/api/v1/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(latin1Payload))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value(
+						"Request body is invalid or uses unsupported character encoding."
+				));
 	}
 
 	@Test
