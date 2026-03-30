@@ -1,0 +1,72 @@
+package com.axioma.quadras.domain.dto;
+
+import com.axioma.quadras.domain.model.MaintenanceLocationType;
+import com.axioma.quadras.domain.model.MaintenanceOrder;
+import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
+import com.axioma.quadras.domain.model.MaintenancePriority;
+import com.axioma.quadras.domain.model.MaintenanceProviderType;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+public record MaintenanceOrderDto(
+		Long id,
+		Long locationId,
+		MaintenanceLocationType locationTypeSnapshot,
+		String locationCodeSnapshot,
+		String locationLabelSnapshot,
+		Long providerId,
+		MaintenanceProviderType providerTypeSnapshot,
+		String providerNameSnapshot,
+		String serviceLabelSnapshot,
+		String title,
+		String description,
+		MaintenancePriority priority,
+		MaintenanceOrderStatus status,
+		OffsetDateTime reportedAt,
+		LocalDateTime scheduledStartAt,
+		LocalDateTime scheduledEndAt,
+		OffsetDateTime startedAt,
+		OffsetDateTime completedAt,
+		String resolutionNotes,
+		String cancellationNotes,
+		List<MaintenanceOrderAttachmentDto> attachments,
+		OffsetDateTime createdAt,
+		OffsetDateTime updatedAt,
+		OffsetDateTime cancelledAt,
+		String createdBy,
+		String updatedBy,
+		String cancelledBy
+) {
+	public static MaintenanceOrderDto from(MaintenanceOrder order) {
+		return new MaintenanceOrderDto(
+				order.getId(),
+				order.getLocation().getId(),
+				order.getLocationTypeSnapshot(),
+				order.getLocationCodeSnapshot(),
+				order.getLocationLabelSnapshot(),
+				order.getProvider().getId(),
+				order.getProviderTypeSnapshot(),
+				order.getProviderNameSnapshot(),
+				order.getServiceLabelSnapshot(),
+				order.getTitle(),
+				order.getDescription(),
+				order.getPriority(),
+				order.getStatus(),
+				order.getReportedAt(),
+				order.getScheduledStartAt(),
+				order.getScheduledEndAt(),
+				order.getStartedAt(),
+				order.getCompletedAt(),
+				order.getResolutionNotes(),
+				order.getCancellationNotes(),
+				order.getAttachments().stream().map(MaintenanceOrderAttachmentDto::from).toList(),
+				order.getCreatedAt(),
+				order.getUpdatedAt(),
+				order.getCancelledAt(),
+				order.getCreatedBy(),
+				order.getUpdatedBy(),
+				order.getCancelledBy()
+		);
+	}
+}
