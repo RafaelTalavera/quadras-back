@@ -1,5 +1,17 @@
 # CHANGELOG DE DESARROLLO - COSTANORTE
 
+## 2026-04-01 | Recuperacion operativa | Script de carga masiva para Quadras entre enero y julio 2026
+- Componente afectado: Backend (`Quadras` / operacion local)
+- Archivos tocados:
+  - `scripts/seed_court_bookings_jan_jul_2026.ps1`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: reponer rapidamente datos operativos perdidos en `court_bookings` luego de una migracion fallida, sin tocar la base a mano y respetando las validaciones reales del backend.
+- Impacto funcional:
+  - el script autentica contra el backend local y crea reservas por API entre `2026-01-01` y `2026-07-31`
+  - la distribucion prioriza `PARTNER_COACH` y `EXTERNAL`, dejando bajo volumen para `VIP` y `GUEST`
+  - si faltan profesores parceiros, el script los crea antes de sembrar reservas
+  - el script incorpora corte temprano cuando el volumen objetivo ya existe para evitar repetir la carga
+
 ## 2026-03-26 | Post Hito 12 | Quadras con catalogo persistido y CRUD de profesores parceros
 - Componente afectado: Backend (`Quadras`)
 - Archivos tocados:
