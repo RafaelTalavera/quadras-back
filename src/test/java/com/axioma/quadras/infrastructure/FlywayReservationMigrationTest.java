@@ -2,6 +2,7 @@ package com.axioma.quadras.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,6 +13,7 @@ import org.springframework.test.context.TestPropertySource;
 @SpringBootTest
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
+		"spring.datasource.url=jdbc:h2:mem:flyway_migration_test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
 		"spring.flyway.enabled=true",
 		"spring.jpa.hibernate.ddl-auto=validate"
 })
@@ -140,5 +142,71 @@ class FlywayReservationMigrationTest {
 		);
 
 		assertThat(count).isEqualTo(1);
+	}
+
+	@Test
+	void shouldSeedCanonicalMassageProvidersViaFlyway() {
+		final List<String> providers = jdbcTemplate.queryForList(
+				"""
+				SELECT name
+				FROM massage_providers
+				ORDER BY name
+				""",
+				String.class
+		);
+
+		assertThat(providers).containsExactly("Danuska", "David");
+	}
+
+	@Test
+	void shouldSeedCanonicalMassageTherapistsViaFlyway() {
+		final List<String> therapists = jdbcTemplate.queryForList(
+				"""
+				SELECT CONCAT(mp.name, ':', mt.name)
+				FROM massage_therapists mt
+				JOIN massage_providers mp ON mp.id = mt.provider_id
+				ORDER BY mp.name, mt.name
+				""",
+				String.class
+		);
+
+		assertThat(therapists).containsExactly(
+				"Danuska:Danuska",
+				"David:David",
+				"David:Isabelita",
+				"David:Maria"
+		);
+	}
+
+	@Test
+	void shouldSeedMassageBookingsForAprilAndMayViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM massage_bookings
+				WHERE booking_date BETWEEN DATE '2026-04-01' AND DATE '2026-05-31'
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(123);
+	}
+
+	@Test
+	void shouldKeepDailyMassageSeedBetweenOneAndThreeBookings() {
+		final List<Integer> dailyCounts = jdbcTemplate.queryForList(
+				"""
+				SELECT COUNT(*)
+				FROM massage_bookings
+				WHERE booking_date BETWEEN DATE '2026-04-01' AND DATE '2026-05-31'
+				GROUP BY booking_date
+				ORDER BY booking_date
+				""",
+				Integer.class
+		);
+
+		assertThat(dailyCounts).hasSize(61);
+		assertThat(dailyCounts).allMatch(count -> count >= 1 && count <= 3);
+		assertThat(dailyCounts).contains(1, 2, 3);
 	}
 }
