@@ -220,6 +220,57 @@ class MaintenanceControllerTest {
 	}
 
 	@Test
+	void shouldMarkMaintenanceOrderPayment() throws Exception {
+		final long locationId = createLocation(
+				"ROOM",
+				"409",
+				"Habitacion 409",
+				"4",
+				"Cuarto con vista interna"
+		);
+		final long providerId = createProvider(
+				"EXTERNAL",
+				"Electric Sul",
+				"Servicio electrico",
+				"Atiende fallas y reparaciones de energia"
+		);
+		final long orderId = createOrder(
+				locationId,
+				providerId,
+				"Revisar tomacorriente",
+				"Cliente reporta chispa intermitente",
+				"HIGH",
+				"2026-04-14T15:00:00",
+				"2026-04-14T16:00:00"
+		);
+
+		mockMvc.perform(patch("/api/v1/maintenance/orders/{orderId}/payment", orderId)
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "paymentMethod": "PIX",
+								  "paymentDate": "2026-04-14",
+								  "paymentNotes": "Pago confirmado con comprobante"
+								}
+								"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.paid").value(true))
+				.andExpect(jsonPath("$.paymentMethod").value("PIX"))
+				.andExpect(jsonPath("$.paymentDate").value("2026-04-14"))
+				.andExpect(jsonPath("$.paymentNotes").value("Pago confirmado con comprobante"));
+
+		mockMvc.perform(get("/api/v1/maintenance/orders")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-04-14")
+						.param("dateTo", "2026-04-14"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].id").value(orderId))
+				.andExpect(jsonPath("$[0].paid").value(true))
+				.andExpect(jsonPath("$[0].paymentMethod").value("PIX"));
+	}
+
+	@Test
 	void shouldReturnMaintenanceSummaryAndDetails() throws Exception {
 		final MaintenanceLocation room = maintenanceLocationRepository.save(
 				MaintenanceLocation.create(

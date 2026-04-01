@@ -9,6 +9,7 @@ import com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.StartMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenanceOrderDto;
+import com.axioma.quadras.domain.dto.UpdateMaintenancePaymentDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenanceOrderAttachment;
@@ -143,6 +144,22 @@ public class MaintenanceOrderService {
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
 		order.start(input == null ? null : input.startedAt(), actorUsername);
+		return MaintenanceOrderDto.from(order);
+	}
+
+	@Transactional
+	public MaintenanceOrderDto updatePayment(
+			Long orderId,
+			UpdateMaintenancePaymentDto input,
+			String actorUsername
+	) {
+		final MaintenanceOrder order = findOrThrow(orderId);
+		order.markPayment(
+				input.paymentMethod(),
+				input.paymentDate(),
+				input.paymentNotes(),
+				actorUsername
+		);
 		return MaintenanceOrderDto.from(order);
 	}
 

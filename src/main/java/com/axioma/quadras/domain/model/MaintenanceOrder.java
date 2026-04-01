@@ -15,6 +15,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -32,6 +33,7 @@ public class MaintenanceOrder {
 	private static final int MAX_SERVICE_LABEL_LENGTH = 120;
 	private static final int MAX_TITLE_LENGTH = 160;
 	private static final int MAX_DESCRIPTION_LENGTH = 1500;
+	private static final int MAX_PAYMENT_NOTES_LENGTH = 500;
 	private static final int MAX_RESOLUTION_NOTES_LENGTH = 1500;
 	private static final int MAX_CANCELLATION_NOTES_LENGTH = 500;
 	private static final int MAX_USERNAME_LENGTH = 120;
@@ -97,6 +99,19 @@ public class MaintenanceOrder {
 	@Column(name = "completed_at")
 	private OffsetDateTime completedAt;
 
+	@Column(name = "paid", nullable = false)
+	private boolean paid;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "payment_method", length = 30)
+	private MaintenancePaymentMethod paymentMethod;
+
+	@Column(name = "payment_date")
+	private LocalDate paymentDate;
+
+	@Column(name = "payment_notes", length = MAX_PAYMENT_NOTES_LENGTH)
+	private String paymentNotes;
+
 	@Column(name = "resolution_notes", length = MAX_RESOLUTION_NOTES_LENGTH)
 	private String resolutionNotes;
 
@@ -142,6 +157,7 @@ public class MaintenanceOrder {
 		order.updatedBy = order.createdBy;
 		order.reportedAt = OffsetDateTime.now(ZoneOffset.UTC);
 		order.applyCoreState(location, provider, title, description, priority, scheduledStartAt, scheduledEndAt);
+		order.applyPaymentStatus(false, null, null, null);
 		return order;
 	}
 
@@ -184,6 +200,19 @@ public class MaintenanceOrder {
 		}
 		this.resolutionNotes = normalize(resolutionNotes, "resolutionNotes", MAX_RESOLUTION_NOTES_LENGTH);
 		this.updatedBy = normalizeActor(actorUsername, "updatedBy");
+	}
+
+	public void markPayment(
+			MaintenancePaymentMethod paymentMethod,
+			LocalDate paymentDate,
+			String paymentNotes,
+			String actorUsername
+	) {
+		if (status == MaintenanceOrderStatus.CANCELLED) {
+			throw new IllegalStateException("Cancelled maintenance orders cannot be marked as paid.");
+		}
+		this.updatedBy = normalizeActor(actorUsername, "updatedBy");
+		applyPaymentStatus(true, paymentMethod, paymentDate, paymentNotes);
 	}
 
 	public void cancel(String cancellationNotes, String actorUsername) {
@@ -286,6 +315,22 @@ public class MaintenanceOrder {
 
 	public OffsetDateTime getCompletedAt() {
 		return completedAt;
+	}
+
+	public boolean isPaid() {
+		return paid;
+	}
+
+	public MaintenancePaymentMethod getPaymentMethod() {
+		return paymentMethod;
+	}
+
+	public LocalDate getPaymentDate() {
+		return paymentDate;
+	}
+
+	public String getPaymentNotes() {
+		return paymentNotes;
 	}
 
 	public String getResolutionNotes() {
@@ -448,5 +493,41 @@ public class MaintenanceOrder {
 			throw new IllegalArgumentException(fieldName + " must be <= " + MAX_USERNAME_LENGTH + " chars");
 		}
 		return normalized;
+	}
+
+	private void applyPaymentStatus(
+			boolean paid,
+			MaintenancePaymentMethod paymentMethod,
+			LocalDate paymentDate,
+			String paymentNotes
+	) {
+		if (!paid) {
+			if (paymentMethod != null || paymentDate != null || (paymentNotes != null && !paymentNotes.isBlank())) {
+				throw new IllegalArgumentException(
+						"paymentMethod, paymentDate and paymentNotes require paid=true"
+				);
+			}
+			this.paid = false;
+			this.paymentMethod = null;
+			this.paymentDate = null;
+			this.paymentNotes = null;
+			return;
+		}
+
+		if (paymentMethod == null) {
+			throw new IllegalArgumentException("paymentMethod is required when paid is true");
+		}
+		if (paymentDate == null) {
+			throw new IllegalArgumentException("paymentDate is required when paid is true");
+		}
+
+		this.paid = true;
+		this.paymentMethod = paymentMethod;
+		this.paymentDate = paymentDate;
+		this.paymentNotes = normalizeOptional(
+				paymentNotes,
+				"paymentNotes",
+				MAX_PAYMENT_NOTES_LENGTH
+		);
 	}
 }

@@ -3,8 +3,10 @@ package com.axioma.quadras.domain.dto;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
+import com.axioma.quadras.domain.model.MaintenancePaymentMethod;
 import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -28,6 +30,10 @@ public record MaintenanceOrderDto(
 		LocalDateTime scheduledEndAt,
 		OffsetDateTime startedAt,
 		OffsetDateTime completedAt,
+		boolean paid,
+		MaintenancePaymentMethod paymentMethod,
+		LocalDate paymentDate,
+		String paymentNotes,
 		String resolutionNotes,
 		String cancellationNotes,
 		List<MaintenanceOrderAttachmentDto> attachments,
@@ -58,6 +64,10 @@ public record MaintenanceOrderDto(
 				order.getScheduledEndAt(),
 				order.getStartedAt(),
 				order.getCompletedAt(),
+				order.isPaid(),
+				order.getPaymentMethod(),
+				order.getPaymentDate(),
+				order.getPaymentNotes(),
 				order.getResolutionNotes(),
 				order.getCancellationNotes(),
 				order.getAttachments().stream().map(MaintenanceOrderAttachmentDto::from).toList(),

@@ -9,6 +9,7 @@ import com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.StartMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenanceOrderDto;
+import com.axioma.quadras.domain.dto.UpdateMaintenancePaymentDto;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
@@ -124,6 +125,17 @@ public class MaintenanceOrderController {
 	) {
 		return ResponseEntity.ok(
 				maintenanceOrderService.start(orderId, input, principal.getUsername())
+		);
+	}
+
+	@PatchMapping("/{orderId}/payment")
+	public ResponseEntity<MaintenanceOrderDto> updatePayment(
+			@PathVariable Long orderId,
+			@Valid @RequestBody UpdateMaintenancePaymentDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
+	) {
+		return ResponseEntity.ok(
+				maintenanceOrderService.updatePayment(orderId, input, principal.getUsername())
 		);
 	}
 
