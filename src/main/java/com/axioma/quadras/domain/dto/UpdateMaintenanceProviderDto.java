@@ -1,6 +1,7 @@
 package com.axioma.quadras.domain.dto;
 
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
+import com.axioma.quadras.domain.model.MaintenanceProviderSpecialty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -8,6 +9,8 @@ import jakarta.validation.constraints.Size;
 public record UpdateMaintenanceProviderDto(
 		@NotNull(message = "providerType is required")
 		MaintenanceProviderType providerType,
+		@NotNull(message = "specialty is required")
+		MaintenanceProviderSpecialty specialty,
 		@NotBlank(message = "name is required")
 		@Size(max = 120, message = "name must be <= 120 chars")
 		String name,

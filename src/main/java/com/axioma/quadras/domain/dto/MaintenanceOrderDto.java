@@ -1,10 +1,12 @@
 package com.axioma.quadras.domain.dto;
 
+import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenancePaymentMethod;
 import com.axioma.quadras.domain.model.MaintenancePriority;
+import com.axioma.quadras.domain.model.MaintenanceRequestOrigin;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,6 +26,16 @@ public record MaintenanceOrderDto(
 		String title,
 		String description,
 		MaintenancePriority priority,
+		MaintenanceRequestOrigin requestOrigin,
+		Boolean requestedForGuest,
+		String guestName,
+		String guestReference,
+		String requestedByUsername,
+		String requestedByRole,
+		MaintenanceBusinessPriority businessPriority,
+		Integer estimatedExecutionMinutes,
+		String assignedUsername,
+		OffsetDateTime assignedAt,
 		MaintenanceOrderStatus status,
 		OffsetDateTime reportedAt,
 		LocalDateTime scheduledStartAt,
@@ -51,13 +63,23 @@ public record MaintenanceOrderDto(
 				order.getLocationTypeSnapshot(),
 				order.getLocationCodeSnapshot(),
 				order.getLocationLabelSnapshot(),
-				order.getProvider().getId(),
+				order.getProvider() == null ? null : order.getProvider().getId(),
 				order.getProviderTypeSnapshot(),
 				order.getProviderNameSnapshot(),
 				order.getServiceLabelSnapshot(),
 				order.getTitle(),
 				order.getDescription(),
 				order.getPriority(),
+				order.getRequestOrigin(),
+				order.isRequestedForGuest(),
+				order.getGuestName(),
+				order.getGuestReference(),
+				order.getRequestedByUsername(),
+				order.getRequestedByRole(),
+				order.getBusinessPriority(),
+				order.getEstimatedExecutionMinutes(),
+				order.getAssignedUsername(),
+				order.getAssignedAt(),
 				order.getStatus(),
 				order.getReportedAt(),
 				order.getScheduledStartAt(),

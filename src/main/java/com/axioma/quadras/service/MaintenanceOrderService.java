@@ -68,7 +68,8 @@ public class MaintenanceOrderService {
 		return maintenanceOrderRepository.findAllOrdered().stream()
 				.filter(order -> matchesDateRange(order, dateFrom, dateTo))
 				.filter(order -> locationId == null || order.getLocation().getId().equals(locationId))
-				.filter(order -> providerId == null || order.getProvider().getId().equals(providerId))
+				.filter(order -> providerId == null
+						|| (order.getProvider() != null && order.getProvider().getId().equals(providerId)))
 				.filter(order -> providerType == null || order.getProviderTypeSnapshot() == providerType)
 				.filter(order -> status == null || order.getStatus() == status)
 				.filter(order -> priority == null || order.getPriority() == priority)
@@ -78,7 +79,11 @@ public class MaintenanceOrderService {
 	}
 
 	@Transactional
-	public MaintenanceOrderDto create(CreateMaintenanceOrderDto input, String actorUsername) {
+	public MaintenanceOrderDto create(
+			CreateMaintenanceOrderDto input,
+			String actorUsername,
+			String actorRole
+	) {
 		final MaintenanceOrder order = maintenanceOrderRepository.save(
 				MaintenanceOrder.report(
 						requireActiveLocation(input.locationId()),
@@ -86,9 +91,17 @@ public class MaintenanceOrderService {
 						input.title(),
 						input.description(),
 						input.priority(),
+						input.requestOrigin(),
+						input.requestedForGuest() != null && input.requestedForGuest(),
+						input.guestName(),
+						input.guestReference(),
+						input.businessPriority(),
+						input.estimatedExecutionMinutes(),
+						input.assignedUsername(),
 						input.scheduledStartAt(),
 						input.scheduledEndAt(),
-						actorUsername
+						actorUsername,
+						actorRole
 				)
 		);
 		return MaintenanceOrderDto.from(order);
@@ -103,6 +116,13 @@ public class MaintenanceOrderService {
 				input.title(),
 				input.description(),
 				input.priority(),
+				input.requestOrigin(),
+				input.requestedForGuest() != null && input.requestedForGuest(),
+				input.guestName(),
+				input.guestReference(),
+				input.businessPriority(),
+				input.estimatedExecutionMinutes(),
+				input.assignedUsername(),
 				input.scheduledStartAt(),
 				input.scheduledEndAt(),
 				actorUsername
@@ -284,6 +304,9 @@ public class MaintenanceOrderService {
 	}
 
 	private MaintenanceProvider requireActiveProvider(Long providerId) {
+		if (providerId == null) {
+			return null;
+		}
 		final MaintenanceProvider provider = maintenanceProviderService.findOrThrow(providerId);
 		if (!provider.isActive()) {
 			throw new ApplicationException(

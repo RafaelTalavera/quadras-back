@@ -5,6 +5,7 @@ import com.axioma.quadras.domain.dto.MaintenanceSummaryDetailDto;
 import com.axioma.quadras.domain.dto.MaintenanceSummaryDetailItemDto;
 import com.axioma.quadras.domain.dto.MaintenanceSummaryReportDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
+import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
@@ -42,6 +43,7 @@ public class MaintenanceReportService {
 		validateRange(dateFrom, dateTo);
 		final List<MaintenanceOrder> orders = filteredOrders(dateFrom, dateTo);
 		final int openCount = countByStatus(orders, MaintenanceOrderStatus.OPEN);
+		final int assignedCount = countByStatus(orders, MaintenanceOrderStatus.ASSIGNED);
 		final int scheduledCount = countByStatus(orders, MaintenanceOrderStatus.SCHEDULED);
 		final int inProgressCount = countByStatus(orders, MaintenanceOrderStatus.IN_PROGRESS);
 		final int completedCount = countByStatus(orders, MaintenanceOrderStatus.COMPLETED);
@@ -49,7 +51,12 @@ public class MaintenanceReportService {
 		final int internalCount = (int) orders.stream()
 				.filter(order -> order.getProviderTypeSnapshot() == MaintenanceProviderType.INTERNAL)
 				.count();
-		final int externalCount = orders.size() - internalCount;
+		final int externalCount = (int) orders.stream()
+				.filter(order -> order.getProviderTypeSnapshot() == MaintenanceProviderType.EXTERNAL)
+				.count();
+		final int unassignedCount = (int) orders.stream()
+				.filter(order -> order.getProviderTypeSnapshot() == null)
+				.count();
 		final int roomsCount = (int) orders.stream()
 				.filter(order -> order.getLocationTypeSnapshot() == MaintenanceLocationType.ROOM)
 				.count();
@@ -57,28 +64,40 @@ public class MaintenanceReportService {
 		final int urgentCount = (int) orders.stream()
 				.filter(order -> order.getPriority() == MaintenancePriority.URGENT)
 				.count();
+		final int guestPriorityCount = (int) orders.stream()
+				.filter(order -> order.getBusinessPriority() == MaintenanceBusinessPriority.GUEST_PRIORITY)
+				.count();
 		final BigDecimal averageResolutionHours = calculateAverageResolutionHours(orders);
 
 		return new MaintenanceSummaryReportDto(
 				openCount,
+				assignedCount,
 				scheduledCount,
 				inProgressCount,
 				completedCount,
 				cancelledCount,
 				internalCount,
 				externalCount,
+				unassignedCount,
 				roomsCount,
 				commonAreasCount,
 				urgentCount,
+				guestPriorityCount,
 				averageResolutionHours,
 				buildBreakdown(
 						orders,
-						order -> String.valueOf(order.getProvider().getId()),
-						MaintenanceOrder::getProviderNameSnapshot
+						order -> order.getProvider() == null
+								? "UNASSIGNED"
+								: String.valueOf(order.getProvider().getId()),
+						order -> order.getProviderNameSnapshot() == null
+								? "Sem responsavel"
+								: order.getProviderNameSnapshot()
 				),
 				buildBreakdown(
 						orders,
-						order -> order.getProviderTypeSnapshot().name(),
+						order -> order.getProviderTypeSnapshot() == null
+								? "UNASSIGNED"
+								: order.getProviderTypeSnapshot().name(),
 						order -> labelForProviderType(order.getProviderTypeSnapshot())
 				),
 				buildBreakdown(
@@ -202,8 +221,20 @@ public class MaintenanceReportService {
 
 	private boolean matchesGroup(MaintenanceOrder order, MaintenanceSummaryGroupBy groupBy, String code) {
 		return switch (groupBy) {
-			case PROVIDER -> String.valueOf(order.getProvider().getId()).equals(code);
-			case PROVIDER_TYPE -> order.getProviderTypeSnapshot().name().equals(code);
+			case PROVIDER -> {
+				if ("UNASSIGNED".equals(code)) {
+					yield order.getProvider() == null;
+				}
+				yield order.getProvider() != null
+						&& String.valueOf(order.getProvider().getId()).equals(code);
+			}
+			case PROVIDER_TYPE -> {
+				if ("UNASSIGNED".equals(code)) {
+					yield order.getProviderTypeSnapshot() == null;
+				}
+				yield order.getProviderTypeSnapshot() != null
+						&& order.getProviderTypeSnapshot().name().equals(code);
+			}
 			case LOCATION_TYPE -> order.getLocationTypeSnapshot().name().equals(code);
 			case STATUS -> order.getStatus().name().equals(code);
 		};
@@ -211,7 +242,9 @@ public class MaintenanceReportService {
 
 	private String labelForGroup(MaintenanceOrder order, MaintenanceSummaryGroupBy groupBy) {
 		return switch (groupBy) {
-			case PROVIDER -> order.getProviderNameSnapshot();
+			case PROVIDER -> order.getProviderNameSnapshot() == null
+					? "Sem responsavel"
+					: order.getProviderNameSnapshot();
 			case PROVIDER_TYPE -> labelForProviderType(order.getProviderTypeSnapshot());
 			case LOCATION_TYPE -> labelForLocationType(order.getLocationTypeSnapshot());
 			case STATUS -> labelForStatus(order.getStatus());
@@ -219,6 +252,9 @@ public class MaintenanceReportService {
 	}
 
 	private String labelForProviderType(MaintenanceProviderType providerType) {
+		if (providerType == null) {
+			return "Sem responsavel";
+		}
 		return switch (providerType) {
 			case INTERNAL -> "Interno";
 			case EXTERNAL -> "Externo";
@@ -235,6 +271,7 @@ public class MaintenanceReportService {
 	private String labelForStatus(MaintenanceOrderStatus status) {
 		return switch (status) {
 			case OPEN -> "Aberta";
+			case ASSIGNED -> "Atribuida";
 			case SCHEDULED -> "Agendada";
 			case IN_PROGRESS -> "Em andamento";
 			case COMPLETED -> "Concluida";
@@ -270,6 +307,7 @@ public class MaintenanceReportService {
 		private void record(MaintenanceOrder order) {
 			switch (order.getStatus()) {
 				case OPEN -> openCount++;
+				case ASSIGNED -> openCount++;
 				case SCHEDULED -> scheduledCount++;
 				case IN_PROGRESS -> inProgressCount++;
 				case COMPLETED -> completedCount++;

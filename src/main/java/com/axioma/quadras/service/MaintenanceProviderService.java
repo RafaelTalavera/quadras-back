@@ -33,6 +33,7 @@ public class MaintenanceProviderService {
 		final MaintenanceProvider provider = maintenanceProviderRepository.save(
 				MaintenanceProvider.create(
 						input.providerType(),
+						input.specialty(),
 						input.name(),
 						input.serviceLabel(),
 						input.scopeDescription(),
@@ -54,6 +55,7 @@ public class MaintenanceProviderService {
 		validateUniqueName(input.providerType(), input.name(), providerId);
 		provider.update(
 				input.providerType(),
+				input.specialty(),
 				input.name(),
 				input.serviceLabel(),
 				input.scopeDescription(),

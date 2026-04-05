@@ -31,6 +31,10 @@ public class MaintenanceProvider {
 	@Column(name = "provider_type", nullable = false, length = 20)
 	private MaintenanceProviderType providerType;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "specialty", nullable = false, length = 40)
+	private MaintenanceProviderSpecialty specialty;
+
 	@Column(name = "name", nullable = false, length = MAX_NAME_LENGTH)
 	private String name;
 
@@ -63,6 +67,7 @@ public class MaintenanceProvider {
 
 	public static MaintenanceProvider create(
 			MaintenanceProviderType providerType,
+			MaintenanceProviderSpecialty specialty,
 			String name,
 			String serviceLabel,
 			String scopeDescription,
@@ -72,6 +77,7 @@ public class MaintenanceProvider {
 	) {
 		final MaintenanceProvider provider = new MaintenanceProvider();
 		provider.providerType = requireType(providerType);
+		provider.specialty = requireSpecialty(specialty);
 		provider.name = normalize(name, "name", MAX_NAME_LENGTH);
 		provider.serviceLabel = normalize(serviceLabel, "serviceLabel", MAX_SERVICE_LABEL_LENGTH);
 		provider.scopeDescription = normalizeOptional(
@@ -88,6 +94,7 @@ public class MaintenanceProvider {
 
 	public void update(
 			MaintenanceProviderType providerType,
+			MaintenanceProviderSpecialty specialty,
 			String name,
 			String serviceLabel,
 			String scopeDescription,
@@ -96,6 +103,7 @@ public class MaintenanceProvider {
 			String actorUsername
 	) {
 		this.providerType = requireType(providerType);
+		this.specialty = requireSpecialty(specialty);
 		this.name = normalize(name, "name", MAX_NAME_LENGTH);
 		this.serviceLabel = normalize(serviceLabel, "serviceLabel", MAX_SERVICE_LABEL_LENGTH);
 		this.scopeDescription = normalizeOptional(
@@ -114,6 +122,10 @@ public class MaintenanceProvider {
 
 	public MaintenanceProviderType getProviderType() {
 		return providerType;
+	}
+
+	public MaintenanceProviderSpecialty getSpecialty() {
+		return specialty;
 	}
 
 	public String getName() {
@@ -167,6 +179,13 @@ public class MaintenanceProvider {
 	private static MaintenanceProviderType requireType(MaintenanceProviderType value) {
 		if (value == null) {
 			throw new IllegalArgumentException("providerType is required");
+		}
+		return value;
+	}
+
+	private static MaintenanceProviderSpecialty requireSpecialty(MaintenanceProviderSpecialty value) {
+		if (value == null) {
+			throw new IllegalArgumentException("specialty is required");
 		}
 		return value;
 	}

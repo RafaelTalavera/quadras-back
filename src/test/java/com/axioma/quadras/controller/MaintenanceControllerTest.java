@@ -7,12 +7,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceLocation;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProvider;
+import com.axioma.quadras.domain.model.MaintenanceProviderSpecialty;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
+import com.axioma.quadras.domain.model.MaintenanceRequestOrigin;
 import com.axioma.quadras.repository.MaintenanceLocationRepository;
 import com.axioma.quadras.repository.MaintenanceOrderAttachmentRepository;
 import com.axioma.quadras.repository.MaintenanceOrderRepository;
@@ -25,6 +28,7 @@ import java.time.OffsetDateTime;
 import java.util.Base64;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.hamcrest.Matchers.greaterThan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -82,6 +86,7 @@ class MaintenanceControllerTest {
 		);
 		final long providerId = createProvider(
 				"EXTERNAL",
+				"AIR_CONDITIONING",
 				"Clima Sul",
 				"Servicos de aires",
 				"Mantenimiento preventivo y correctivo de aires"
@@ -144,6 +149,7 @@ class MaintenanceControllerTest {
 		);
 		final long providerId = createProvider(
 				"INTERNAL",
+				"GENERAL_MAINTENANCE",
 				"Equipo interno",
 				"Manutencao geral",
 				"Atiende incidencias generales del hotel"
@@ -230,6 +236,7 @@ class MaintenanceControllerTest {
 		);
 		final long providerId = createProvider(
 				"EXTERNAL",
+				"GENERAL_MAINTENANCE",
 				"Electric Sul",
 				"Servicio electrico",
 				"Atiende fallas y reparaciones de energia"
@@ -297,6 +304,7 @@ class MaintenanceControllerTest {
 		final MaintenanceProvider internalProvider = maintenanceProviderRepository.save(
 				MaintenanceProvider.create(
 						MaintenanceProviderType.INTERNAL,
+						MaintenanceProviderSpecialty.GENERAL_MAINTENANCE,
 						"Equipe interna",
 						"Manutencao geral",
 						"Rutinas y correctivos livianos",
@@ -308,6 +316,7 @@ class MaintenanceControllerTest {
 		final MaintenanceProvider externalProvider = maintenanceProviderRepository.save(
 				MaintenanceProvider.create(
 						MaintenanceProviderType.EXTERNAL,
+						MaintenanceProviderSpecialty.ELEVATORS,
 						"Internet Sul",
 						"Servico de internet",
 						"Conectividad y cableado",
@@ -323,9 +332,17 @@ class MaintenanceControllerTest {
 				"Troca de filtro",
 				"Filtro del aire reemplazado",
 				MaintenancePriority.URGENT,
+				MaintenanceRequestOrigin.GUEST_REQUEST,
+				true,
+				"Huesped 301",
+				"301",
+				MaintenanceBusinessPriority.GUEST_PRIORITY,
+				null,
+				"equipo.interno",
 				LocalDateTime.of(2026, 4, 2, 10, 0),
 				LocalDateTime.of(2026, 4, 2, 11, 30),
-				"system"
+				"system",
+				"OPERATOR"
 		);
 		completedOrder.start(OffsetDateTime.parse("2026-04-02T10:00:00Z"), "system");
 		completedOrder.complete(OffsetDateTime.parse("2026-04-02T11:30:00Z"), "Trabajo finalizado", "system");
@@ -337,9 +354,17 @@ class MaintenanceControllerTest {
 				"Revision de routers",
 				"Inspeccion preventiva en terraza",
 				MaintenancePriority.MEDIUM,
+				MaintenanceRequestOrigin.INTERNAL_ROLE,
+				false,
+				null,
+				null,
+				MaintenanceBusinessPriority.INTERNAL_STANDARD,
+				null,
+				"proveedor.elevadores",
 				LocalDateTime.of(2026, 4, 3, 9, 0),
 				LocalDateTime.of(2026, 4, 3, 10, 0),
-				"system"
+				"system",
+				"OPERATOR"
 		);
 		maintenanceOrderRepository.save(scheduledOrder);
 
@@ -349,9 +374,17 @@ class MaintenanceControllerTest {
 				"Chequeo de access point",
 				"Se pospone por falta de repuesto",
 				MaintenancePriority.HIGH,
+				MaintenanceRequestOrigin.INTERNAL_ROLE,
+				false,
+				null,
+				null,
+				MaintenanceBusinessPriority.CRITICAL_OPERATION,
+				null,
+				"proveedor.elevadores",
 				LocalDateTime.of(2026, 4, 4, 14, 0),
 				LocalDateTime.of(2026, 4, 4, 15, 0),
-				"system"
+				"system",
+				"OPERATOR"
 		);
 		cancelledOrder.cancel("Proveedor reagendara la visita", "system");
 		maintenanceOrderRepository.save(cancelledOrder);
@@ -362,6 +395,7 @@ class MaintenanceControllerTest {
 						.param("dateTo", "2026-04-30"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.openCount").value(0))
+				.andExpect(jsonPath("$.assignedCount").value(0))
 				.andExpect(jsonPath("$.scheduledCount").value(1))
 				.andExpect(jsonPath("$.inProgressCount").value(0))
 				.andExpect(jsonPath("$.completedCount").value(1))
@@ -371,6 +405,7 @@ class MaintenanceControllerTest {
 				.andExpect(jsonPath("$.roomsCount").value(2))
 				.andExpect(jsonPath("$.commonAreasCount").value(1))
 				.andExpect(jsonPath("$.urgentCount").value(1))
+				.andExpect(jsonPath("$.guestPriorityCount").value(1))
 				.andExpect(jsonPath("$.averageResolutionHours").value(1.50))
 				.andExpect(jsonPath("$.providerBreakdown.length()").value(2))
 				.andExpect(jsonPath("$.providerTypeBreakdown[0].code").value("INTERNAL"))
@@ -392,6 +427,75 @@ class MaintenanceControllerTest {
 				.andExpect(jsonPath("$.items.length()").value(2))
 				.andExpect(jsonPath("$.items[0].title").value("Revision de routers"))
 				.andExpect(jsonPath("$.items[1].status").value("CANCELLED"));
+	}
+
+	@Test
+	void shouldLoadAndResetMaintenanceSimulationData() throws Exception {
+		final String firstResponseBody = mockMvc.perform(post("/api/v1/maintenance/simulation/load")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "daysBack": 3,
+								  "daysForward": 2,
+								  "ordersPerDay": 2,
+								  "backlogOrders": 4,
+								  "resetPreviousSimulation": true,
+								  "seed": 42
+								}
+								"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.locationsCreated").value(greaterThan(0)))
+				.andExpect(jsonPath("$.providersCreated").value(greaterThan(0)))
+				.andExpect(jsonPath("$.ordersCreated").value(greaterThan(0)))
+				.andExpect(jsonPath("$.scheduledCount").value(greaterThan(0)))
+				.andExpect(jsonPath("$.completedCount").value(greaterThan(0)))
+				.andExpect(jsonPath("$.openCount").value(greaterThan(0)))
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+		final JsonNode firstResponse = objectMapper.readTree(firstResponseBody);
+		final int firstOrdersCreated = firstResponse.get("ordersCreated").asInt();
+
+		org.junit.jupiter.api.Assertions.assertEquals(
+				firstOrdersCreated,
+				maintenanceOrderRepository.count()
+		);
+
+		final String secondResponseBody = mockMvc.perform(post("/api/v1/maintenance/simulation/load")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "daysBack": 3,
+								  "daysForward": 2,
+								  "ordersPerDay": 2,
+								  "backlogOrders": 4,
+								  "resetPreviousSimulation": true,
+								  "seed": 42
+								}
+								"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ordersDeleted").value(firstOrdersCreated))
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+		final JsonNode secondResponse = objectMapper.readTree(secondResponseBody);
+		final int secondOrdersCreated = secondResponse.get("ordersCreated").asInt();
+
+		org.junit.jupiter.api.Assertions.assertEquals(
+				secondOrdersCreated,
+				maintenanceOrderRepository.count()
+		);
+
+		mockMvc.perform(get("/api/v1/maintenance/orders")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(greaterThan(0)))
+				.andExpect(jsonPath("$[0].requestOrigin").exists())
+				.andExpect(jsonPath("$[0].businessPriority").exists());
 	}
 
 	private long createLocation(
@@ -423,6 +527,7 @@ class MaintenanceControllerTest {
 
 	private long createProvider(
 			String providerType,
+			String specialty,
 			String name,
 			String serviceLabel,
 			String scopeDescription
@@ -433,13 +538,20 @@ class MaintenanceControllerTest {
 						.content("""
 								{
 								  "providerType": "%s",
+								  "specialty": "%s",
 								  "name": "%s",
 								  "serviceLabel": "%s",
 								  "scopeDescription": "%s",
 								  "contact": "soporte@hotel.local",
 								  "active": true
 								}
-								""".formatted(providerType, name, serviceLabel, scopeDescription)))
+								""".formatted(
+										providerType,
+										specialty,
+										name,
+										serviceLabel,
+										scopeDescription
+								)))
 				.andExpect(status().isCreated())
 				.andReturn()
 				.getResponse()
@@ -466,6 +578,11 @@ class MaintenanceControllerTest {
 								  "title": "%s",
 								  "description": "%s",
 								  "priority": "%s",
+								  "requestOrigin": "INTERNAL_ROLE",
+								  "requestedForGuest": false,
+								  "businessPriority": "INTERNAL_STANDARD",
+								  "estimatedExecutionMinutes": 60,
+								  "assignedUsername": "operador.demo",
 								  "scheduledStartAt": "%s",
 								  "scheduledEndAt": "%s"
 								}

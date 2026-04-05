@@ -93,6 +93,69 @@ class FlywayReservationMigrationTest {
 	}
 
 	@Test
+	void shouldCreateMaintenanceProviderSpecialtyColumnViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'MAINTENANCE_PROVIDERS'
+				  AND COLUMN_NAME = 'SPECIALTY'
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(1);
+	}
+
+	@Test
+	void shouldCreateMaintenanceWorkflowColumnsViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'MAINTENANCE_ORDERS'
+				  AND COLUMN_NAME IN (
+				    'REQUEST_ORIGIN',
+				    'REQUESTED_FOR_GUEST',
+				    'GUEST_NAME',
+				    'GUEST_REFERENCE',
+				    'REQUESTED_BY_USERNAME',
+				    'REQUESTED_BY_ROLE',
+				    'BUSINESS_PRIORITY',
+				    'ESTIMATED_EXECUTION_MINUTES',
+				    'ASSIGNED_USERNAME',
+				    'ASSIGNED_AT'
+				  )
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(10);
+	}
+
+	@Test
+	void shouldAllowNullableMaintenanceProviderSnapshotsViaFlyway() {
+		final List<String> nullableFlags = jdbcTemplate.queryForList(
+				"""
+				SELECT IS_NULLABLE
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'MAINTENANCE_ORDERS'
+				  AND COLUMN_NAME IN (
+				    'PROVIDER_ID',
+				    'PROVIDER_TYPE_SNAPSHOT',
+				    'PROVIDER_NAME_SNAPSHOT',
+				    'SERVICE_LABEL_SNAPSHOT'
+				  )
+				ORDER BY COLUMN_NAME
+				""",
+				String.class
+		);
+
+		assertThat(nullableFlags).hasSize(4);
+		assertThat(nullableFlags).allMatch("YES"::equals);
+	}
+
+	@Test
 	void shouldCreateMassagePaymentColumnsViaFlyway() {
 		final Integer count = jdbcTemplate.queryForObject(
 				"""

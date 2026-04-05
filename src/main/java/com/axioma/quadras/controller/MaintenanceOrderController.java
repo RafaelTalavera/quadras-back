@@ -98,7 +98,11 @@ public class MaintenanceOrderController {
 			@Valid @RequestBody CreateMaintenanceOrderDto input,
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
-		final MaintenanceOrderDto created = maintenanceOrderService.create(input, principal.getUsername());
+		final MaintenanceOrderDto created = maintenanceOrderService.create(
+				input,
+				principal.getUsername(),
+				principal.getRole().name()
+		);
 		final URI location = ServletUriComponentsBuilder.fromCurrentRequest()
 				.path("/{id}")
 				.buildAndExpand(created.id())
