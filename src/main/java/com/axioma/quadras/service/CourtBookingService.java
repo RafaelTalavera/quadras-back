@@ -3,6 +3,7 @@ package com.axioma.quadras.service;
 import com.axioma.quadras.domain.dto.CancelCourtBookingDto;
 import com.axioma.quadras.domain.dto.CreateCourtBookingDto;
 import com.axioma.quadras.domain.dto.CourtBookingDto;
+import com.axioma.quadras.domain.dto.CourtBookingMaterialDto;
 import com.axioma.quadras.domain.dto.CourtBookingMaterialInputDto;
 import com.axioma.quadras.domain.dto.CourtSummaryBreakdownDto;
 import com.axioma.quadras.domain.dto.CourtSummaryReportDto;
@@ -18,18 +19,20 @@ import com.axioma.quadras.domain.model.CourtPaymentMethod;
 import com.axioma.quadras.domain.model.CourtPricingPeriod;
 import com.axioma.quadras.domain.model.CourtRate;
 import com.axioma.quadras.repository.CourtBookingRepository;
+import com.axioma.quadras.repository.CourtBookingMaterialRepository;
 import com.axioma.quadras.repository.CourtMaterialSettingRepository;
 import com.axioma.quadras.repository.CourtRateRepository;
+import com.axioma.quadras.repository.CourtSummaryAggregateView;
+import com.axioma.quadras.repository.CourtSummaryBreakdownView;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.Month;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,27 +45,32 @@ public class CourtBookingService {
 	private static final LocalTime CLOSING_TIME = LocalTime.of(23, 0);
 
 	private final CourtBookingRepository courtBookingRepository;
+	private final CourtBookingMaterialRepository courtBookingMaterialRepository;
 	private final CourtRateRepository courtRateRepository;
 	private final CourtMaterialSettingRepository courtMaterialSettingRepository;
 	private final CourtConfigurationService courtConfigurationService;
+	private final ScheduleLockService scheduleLockService;
 
 	public CourtBookingService(
 			CourtBookingRepository courtBookingRepository,
+			CourtBookingMaterialRepository courtBookingMaterialRepository,
 			CourtRateRepository courtRateRepository,
 			CourtMaterialSettingRepository courtMaterialSettingRepository,
-			CourtConfigurationService courtConfigurationService
+			CourtConfigurationService courtConfigurationService,
+			ScheduleLockService scheduleLockService
 	) {
 		this.courtBookingRepository = courtBookingRepository;
+		this.courtBookingMaterialRepository = courtBookingMaterialRepository;
 		this.courtRateRepository = courtRateRepository;
 		this.courtMaterialSettingRepository = courtMaterialSettingRepository;
 		this.courtConfigurationService = courtConfigurationService;
+		this.scheduleLockService = scheduleLockService;
 	}
 
 	@Transactional
 	public CourtBookingDto create(CreateCourtBookingDto input, String actorUsername) {
 		validateTimeWindow(input.bookingDate(), input.startTime(), input.endTime());
 		validatePartnerCoachName(input.customerType(), input.customerName());
-		validateOverlapping(input.bookingDate(), input.startTime(), input.endTime(), null);
 		final CourtPricingSnapshot pricing = resolvePricing(
 				input.bookingDate(),
 				input.startTime(),
@@ -70,6 +78,8 @@ public class CourtBookingService {
 				input.customerType(),
 				input.materials()
 		);
+		scheduleLockService.acquireCourtBookingDates(List.of(input.bookingDate()));
+		validateOverlapping(input.bookingDate(), input.startTime(), input.endTime(), null);
 		final CourtBooking saved = courtBookingRepository.save(
 				CourtBooking.schedule(
 						input.bookingDate(),
@@ -98,10 +108,10 @@ public class CourtBookingService {
 	@Transactional
 	public CourtBookingDto update(Long bookingId, UpdateCourtBookingDto input, String actorUsername) {
 		final CourtBooking booking = findBookingOrThrow(bookingId);
+		final LocalDate previousBookingDate = booking.getBookingDate();
 		validateCanEdit(booking);
 		validateTimeWindow(input.bookingDate(), input.startTime(), input.endTime());
 		validatePartnerCoachName(input.customerType(), input.customerName());
-		validateOverlapping(input.bookingDate(), input.startTime(), input.endTime(), bookingId);
 		final CourtPricingSnapshot pricing = resolvePricing(
 				input.bookingDate(),
 				input.startTime(),
@@ -109,6 +119,8 @@ public class CourtBookingService {
 				input.customerType(),
 				input.materials()
 		);
+		scheduleLockService.acquireCourtBookingDates(List.of(previousBookingDate, input.bookingDate()));
+		validateOverlapping(input.bookingDate(), input.startTime(), input.endTime(), bookingId);
 		booking.updateBooking(
 				input.bookingDate(),
 				input.startTime(),
@@ -133,12 +145,14 @@ public class CourtBookingService {
 	}
 
 	public List<CourtBookingDto> list(LocalDate bookingDate, CourtCustomerType customerType, Boolean paid) {
-		final Specification<CourtBooking> specification = Specification
-				.where(hasBookingDate(bookingDate))
-				.and(hasCustomerType(customerType))
-				.and(hasPaid(paid));
-		return courtBookingRepository.findAllOrderedByDateAndTime(specification).stream()
-				.map(CourtBookingDto::from)
+		final var bookings = courtBookingRepository.findListItems(bookingDate, customerType, paid);
+		final Map<Long, List<CourtBookingMaterialDto>> materialsByBookingId =
+				loadMaterialsByBookingId(bookings.stream().map(item -> item.getId()).toList());
+		return bookings.stream()
+				.map(booking -> CourtBookingDto.from(
+						booking,
+						materialsByBookingId.getOrDefault(booking.getId(), List.of())
+				))
 				.toList();
 	}
 
@@ -164,78 +178,12 @@ public class CourtBookingService {
 	}
 
 	public CourtSummaryReportDto summary(LocalDate dateFrom, LocalDate dateTo) {
-		final List<CourtBooking> bookings = courtBookingRepository.findAllOrderedByDateAndTime(
-				Specification.where(inDateRange(dateFrom, dateTo))
-		);
-		int scheduledCount = 0;
-		int cancelledCount = 0;
-		int paidCount = 0;
-		int pendingCount = 0;
-		BigDecimal totalHours = BigDecimal.ZERO;
-		BigDecimal guestHours = BigDecimal.ZERO;
-		BigDecimal vipHours = BigDecimal.ZERO;
-		BigDecimal externalHours = BigDecimal.ZERO;
-		BigDecimal partnerCoachHours = BigDecimal.ZERO;
-		BigDecimal paidAmount = BigDecimal.ZERO;
-		BigDecimal pendingAmount = BigDecimal.ZERO;
-		BigDecimal courtAmount = BigDecimal.ZERO;
-		BigDecimal materialsAmount = BigDecimal.ZERO;
-		final Map<CourtCustomerType, SummaryAccumulator> customerTypeBreakdown = initCustomerTypeBreakdown();
-		final Map<CourtPricingPeriod, SummaryAccumulator> pricingPeriodBreakdown = initPricingPeriodBreakdown();
-		final Map<CourtPaymentMethod, SummaryAccumulator> paymentMethodBreakdown = initPaymentMethodBreakdown();
-
-		for (final CourtBooking booking : bookings) {
-			if (booking.getStatus() == CourtBookingStatus.CANCELLED) {
-				cancelledCount++;
-				continue;
-			}
-			scheduledCount++;
-			final BigDecimal bookingHours = BigDecimal.valueOf(booking.getDurationMinutes())
-					.divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-			totalHours = totalHours.add(bookingHours);
-			courtAmount = courtAmount.add(booking.getCourtAmount());
-			materialsAmount = materialsAmount.add(booking.getMaterialsAmount());
-			switch (booking.getCustomerType()) {
-				case GUEST -> guestHours = guestHours.add(bookingHours);
-				case VIP -> vipHours = vipHours.add(bookingHours);
-				case EXTERNAL -> externalHours = externalHours.add(bookingHours);
-				case PARTNER_COACH -> partnerCoachHours = partnerCoachHours.add(bookingHours);
-			}
-			customerTypeBreakdown.get(booking.getCustomerType())
-					.record(
-							bookingHours,
-							booking.getCourtAmount(),
-							booking.getMaterialsAmount(),
-							booking.getTotalAmount(),
-							booking.isPaid()
-					);
-			pricingPeriodBreakdown.get(booking.getPricingPeriod())
-					.record(
-							bookingHours,
-							booking.getCourtAmount(),
-							booking.getMaterialsAmount(),
-							booking.getTotalAmount(),
-							booking.isPaid()
-					);
-			if (booking.isPaid()) {
-				paidCount++;
-				paidAmount = paidAmount.add(booking.getTotalAmount());
-				if (booking.getPaymentMethod() != null) {
-					paymentMethodBreakdown.get(booking.getPaymentMethod())
-							.record(
-									bookingHours,
-									booking.getCourtAmount(),
-									booking.getMaterialsAmount(),
-									booking.getTotalAmount(),
-									true
-							);
-				}
-			} else {
-				pendingCount++;
-				pendingAmount = pendingAmount.add(booking.getTotalAmount());
-			}
-		}
-
+		final CourtSummaryAggregateView aggregate = courtBookingRepository.findSummaryAggregate(dateFrom, dateTo);
+		final int scheduledCount = Math.toIntExact(aggregate.getScheduledCount());
+		final BigDecimal paidAmount = safeAmount(aggregate.getPaidAmount());
+		final BigDecimal pendingAmount = safeAmount(aggregate.getPendingAmount());
+		final BigDecimal courtAmount = safeAmount(aggregate.getCourtAmount());
+		final BigDecimal materialsAmount = safeAmount(aggregate.getMaterialsAmount());
 		final BigDecimal expectedAmount = paidAmount.add(pendingAmount);
 		final BigDecimal averageTicket = scheduledCount == 0
 				? BigDecimal.ZERO
@@ -243,54 +191,108 @@ public class CourtBookingService {
 
 		return new CourtSummaryReportDto(
 				scheduledCount,
-				cancelledCount,
-				paidCount,
-				pendingCount,
-				totalHours,
-				guestHours,
-				vipHours,
-				externalHours,
-				partnerCoachHours,
+				Math.toIntExact(aggregate.getCancelledCount()),
+				Math.toIntExact(aggregate.getPaidCount()),
+				Math.toIntExact(aggregate.getPendingCount()),
+				toHours(aggregate.getTotalMinutes()),
+				toHours(aggregate.getGuestMinutes()),
+				toHours(aggregate.getVipMinutes()),
+				toHours(aggregate.getExternalMinutes()),
+				toHours(aggregate.getPartnerCoachMinutes()),
 				paidAmount,
 				pendingAmount,
 				courtAmount,
 				materialsAmount,
 				expectedAmount,
 				averageTicket,
-				customerTypeBreakdown.entrySet().stream()
-						.map(entry -> entry.getValue().toDto(entry.getKey().name(), labelForCustomerType(entry.getKey())))
-						.toList(),
-				pricingPeriodBreakdown.entrySet().stream()
-						.map(entry -> entry.getValue().toDto(entry.getKey().name(), labelForPricingPeriod(entry.getKey())))
-						.toList(),
-				paymentMethodBreakdown.entrySet().stream()
-						.map(entry -> entry.getValue().toDto(entry.getKey().name(), labelForPaymentMethod(entry.getKey())))
-						.toList()
+				buildCustomerTypeBreakdown(dateFrom, dateTo),
+				buildPricingPeriodBreakdown(dateFrom, dateTo),
+				buildPaymentMethodBreakdown(dateFrom, dateTo)
 		);
 	}
 
-	private Map<CourtCustomerType, SummaryAccumulator> initCustomerTypeBreakdown() {
-		final Map<CourtCustomerType, SummaryAccumulator> breakdown = new LinkedHashMap<>();
+	private List<CourtSummaryBreakdownDto> buildCustomerTypeBreakdown(LocalDate dateFrom, LocalDate dateTo) {
+		final Map<String, CourtSummaryBreakdownView> breakdownByCode = indexByCode(
+				courtBookingRepository.findCustomerTypeSummaryBreakdown(dateFrom, dateTo)
+		);
+		final List<CourtSummaryBreakdownDto> breakdown = new ArrayList<>();
 		for (final CourtCustomerType value : CourtCustomerType.values()) {
-			breakdown.put(value, new SummaryAccumulator());
+			breakdown.add(toBreakdownDto(
+					value.name(),
+					labelForCustomerType(value),
+					breakdownByCode.get(value.name())
+			));
 		}
 		return breakdown;
 	}
 
-	private Map<CourtPricingPeriod, SummaryAccumulator> initPricingPeriodBreakdown() {
-		final Map<CourtPricingPeriod, SummaryAccumulator> breakdown = new LinkedHashMap<>();
+	private List<CourtSummaryBreakdownDto> buildPricingPeriodBreakdown(LocalDate dateFrom, LocalDate dateTo) {
+		final Map<String, CourtSummaryBreakdownView> breakdownByCode = indexByCode(
+				courtBookingRepository.findPricingPeriodSummaryBreakdown(dateFrom, dateTo)
+		);
+		final List<CourtSummaryBreakdownDto> breakdown = new ArrayList<>();
 		for (final CourtPricingPeriod value : CourtPricingPeriod.values()) {
-			breakdown.put(value, new SummaryAccumulator());
+			breakdown.add(toBreakdownDto(
+					value.name(),
+					labelForPricingPeriod(value),
+					breakdownByCode.get(value.name())
+			));
 		}
 		return breakdown;
 	}
 
-	private Map<CourtPaymentMethod, SummaryAccumulator> initPaymentMethodBreakdown() {
-		final Map<CourtPaymentMethod, SummaryAccumulator> breakdown = new LinkedHashMap<>();
+	private List<CourtSummaryBreakdownDto> buildPaymentMethodBreakdown(LocalDate dateFrom, LocalDate dateTo) {
+		final Map<String, CourtSummaryBreakdownView> breakdownByCode = indexByCode(
+				courtBookingRepository.findPaymentMethodSummaryBreakdown(dateFrom, dateTo)
+		);
+		final List<CourtSummaryBreakdownDto> breakdown = new ArrayList<>();
 		for (final CourtPaymentMethod value : CourtPaymentMethod.values()) {
-			breakdown.put(value, new SummaryAccumulator());
+			breakdown.add(toBreakdownDto(
+					value.name(),
+					labelForPaymentMethod(value),
+					breakdownByCode.get(value.name())
+			));
 		}
 		return breakdown;
+	}
+
+	private Map<String, CourtSummaryBreakdownView> indexByCode(List<CourtSummaryBreakdownView> views) {
+		final Map<String, CourtSummaryBreakdownView> indexed = new LinkedHashMap<>();
+		for (final CourtSummaryBreakdownView view : views) {
+			indexed.put(view.getCode(), view);
+		}
+		return indexed;
+	}
+
+	private CourtSummaryBreakdownDto toBreakdownDto(
+			String code,
+			String label,
+			CourtSummaryBreakdownView view
+	) {
+		if (view == null) {
+			return new CourtSummaryBreakdownDto(
+					code,
+					label,
+					0,
+					0,
+					0,
+					BigDecimal.ZERO,
+					BigDecimal.ZERO,
+					BigDecimal.ZERO,
+					BigDecimal.ZERO
+			);
+		}
+		return new CourtSummaryBreakdownDto(
+				code,
+				label,
+				Math.toIntExact(view.getScheduledCount()),
+				Math.toIntExact(view.getPaidCount()),
+				Math.toIntExact(view.getPendingCount()),
+				toHours(view.getTotalMinutes()),
+				safeAmount(view.getCourtAmount()),
+				safeAmount(view.getMaterialsAmount()),
+				safeAmount(view.getTotalAmount())
+		);
 	}
 
 	private String labelForCustomerType(CourtCustomerType customerType) {
@@ -317,6 +319,18 @@ public class CourtBookingService {
 			case COURTESY -> "Cortesia";
 			case TRANSFER -> "Transferencia";
 		};
+	}
+
+	private BigDecimal toHours(long minutes) {
+		if (minutes <= 0) {
+			return BigDecimal.ZERO;
+		}
+		return BigDecimal.valueOf(minutes)
+				.divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+	}
+
+	private BigDecimal safeAmount(BigDecimal value) {
+		return value == null ? BigDecimal.ZERO : value;
 	}
 
 	private CourtPricingSnapshot resolvePricing(
@@ -462,37 +476,17 @@ public class CourtBookingService {
 		}
 	}
 
-	private Specification<CourtBooking> hasBookingDate(LocalDate bookingDate) {
-		return (root, query, builder) -> bookingDate == null
-				? null
-				: builder.equal(root.get("bookingDate"), bookingDate);
-	}
-
-	private Specification<CourtBooking> hasCustomerType(CourtCustomerType customerType) {
-		return (root, query, builder) -> customerType == null
-				? null
-				: builder.equal(root.get("customerType"), customerType);
-	}
-
-	private Specification<CourtBooking> hasPaid(Boolean paid) {
-		return (root, query, builder) -> paid == null
-				? null
-				: builder.equal(root.get("paid"), paid);
-	}
-
-	private Specification<CourtBooking> inDateRange(LocalDate dateFrom, LocalDate dateTo) {
-		return (root, query, builder) -> {
-			if (dateFrom == null && dateTo == null) {
-				return null;
-			}
-			if (dateFrom != null && dateTo != null) {
-				return builder.between(root.get("bookingDate"), dateFrom, dateTo);
-			}
-			if (dateFrom != null) {
-				return builder.greaterThanOrEqualTo(root.get("bookingDate"), dateFrom);
-			}
-			return builder.lessThanOrEqualTo(root.get("bookingDate"), dateTo);
-		};
+	private Map<Long, List<CourtBookingMaterialDto>> loadMaterialsByBookingId(Collection<Long> bookingIds) {
+		if (bookingIds == null || bookingIds.isEmpty()) {
+			return Map.of();
+		}
+		final Map<Long, List<CourtBookingMaterialDto>> materialsByBookingId = new LinkedHashMap<>();
+		courtBookingMaterialRepository.findListItemsByBookingIdIn(bookingIds)
+				.forEach(item -> materialsByBookingId.computeIfAbsent(
+						item.getBookingId(),
+						ignored -> new ArrayList<>()
+				).add(CourtBookingMaterialDto.from(item)));
+		return materialsByBookingId;
 	}
 
 	private CourtPricingPeriod resolvePricingPeriod(
@@ -534,46 +528,4 @@ public class CourtBookingService {
 			List<CourtBookingMaterial> materials
 	) {}
 
-	private static final class SummaryAccumulator {
-		private int scheduledCount;
-		private int paidCount;
-		private int pendingCount;
-		private BigDecimal totalHours = BigDecimal.ZERO;
-		private BigDecimal courtAmount = BigDecimal.ZERO;
-		private BigDecimal materialsAmount = BigDecimal.ZERO;
-		private BigDecimal totalAmount = BigDecimal.ZERO;
-
-		private void record(
-				BigDecimal bookingHours,
-				BigDecimal bookingCourtAmount,
-				BigDecimal bookingMaterialsAmount,
-				BigDecimal bookingTotalAmount,
-				boolean paid
-		) {
-			scheduledCount++;
-			totalHours = totalHours.add(bookingHours);
-			courtAmount = courtAmount.add(bookingCourtAmount);
-			materialsAmount = materialsAmount.add(bookingMaterialsAmount);
-			totalAmount = totalAmount.add(bookingTotalAmount);
-			if (paid) {
-				paidCount++;
-			} else {
-				pendingCount++;
-			}
-		}
-
-		private CourtSummaryBreakdownDto toDto(String code, String label) {
-			return new CourtSummaryBreakdownDto(
-					code,
-					label,
-					scheduledCount,
-					paidCount,
-					pendingCount,
-					totalHours,
-					courtAmount,
-					materialsAmount,
-					totalAmount
-			);
-		}
-	}
 }

@@ -81,6 +81,22 @@ public class TourProviderOffering {
 		return offering;
 	}
 
+	public void update(
+			TourServiceType serviceType,
+			String name,
+			BigDecimal amount,
+			String description,
+			boolean active,
+			String actorUsername
+	) {
+		this.serviceType = requireServiceType(serviceType);
+		this.name = normalize(name, "name", MAX_NAME_LENGTH);
+		this.amount = requireNonNegativeAmount(amount, "amount");
+		this.description = normalizeOptional(description, "description", MAX_DESCRIPTION_LENGTH);
+		this.active = active;
+		this.updatedBy = normalizeActor(actorUsername);
+	}
+
 	public Long getId() {
 		return id;
 	}

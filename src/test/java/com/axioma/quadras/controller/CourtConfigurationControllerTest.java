@@ -45,6 +45,29 @@ class CourtConfigurationControllerTest {
 	}
 
 	@Test
+	void shouldListCourtRates() throws Exception {
+		mockMvc.perform(get("/api/v1/courts/rates")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(8))
+				.andExpect(jsonPath("$[0].customerType").value("EXTERNAL"))
+				.andExpect(jsonPath("$[0].pricingPeriod").value("DAY"))
+				.andExpect(jsonPath("$[0].amount").value(60.00));
+	}
+
+	@Test
+	void shouldListCourtMaterials() throws Exception {
+		mockMvc.perform(get("/api/v1/courts/materials")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].code").value("BALL"))
+				.andExpect(jsonPath("$[0].label").value("Pelota"))
+				.andExpect(jsonPath("$[1].code").value("RACKET"))
+				.andExpect(jsonPath("$[1].label").value("Raqueta"));
+	}
+
+	@Test
 	void shouldCreatePartnerCoach() throws Exception {
 		final String payload = """
 				{

@@ -6,9 +6,13 @@ import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenanceLocationDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.MaintenanceLocation;
+import com.axioma.quadras.repository.MaintenanceOrderAttachmentRepository;
 import com.axioma.quadras.repository.MaintenanceLocationRepository;
 import com.axioma.quadras.repository.MaintenanceOrderRepository;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,17 +23,20 @@ public class MaintenanceLocationService {
 
 	private final MaintenanceLocationRepository maintenanceLocationRepository;
 	private final MaintenanceOrderRepository maintenanceOrderRepository;
+	private final MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository;
 
 	public MaintenanceLocationService(
 			MaintenanceLocationRepository maintenanceLocationRepository,
-			MaintenanceOrderRepository maintenanceOrderRepository
+			MaintenanceOrderRepository maintenanceOrderRepository,
+			MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository
 	) {
 		this.maintenanceLocationRepository = maintenanceLocationRepository;
 		this.maintenanceOrderRepository = maintenanceOrderRepository;
+		this.maintenanceOrderAttachmentRepository = maintenanceOrderAttachmentRepository;
 	}
 
 	public List<MaintenanceLocationDto> list() {
-		return maintenanceLocationRepository.findAllByOrderByLocationTypeAscCodeAsc().stream()
+		return maintenanceLocationRepository.findAllProjectedByOrderByLocationTypeAscCodeAsc().stream()
 				.map(MaintenanceLocationDto::from)
 				.toList();
 	}
@@ -40,6 +47,7 @@ public class MaintenanceLocationService {
 		final MaintenanceLocation location = maintenanceLocationRepository.save(
 				MaintenanceLocation.create(
 						input.locationType(),
+						input.locationCategory(),
 						input.code(),
 						input.label(),
 						input.floor(),
@@ -61,6 +69,7 @@ public class MaintenanceLocationService {
 		validateUniqueCode(input.locationType(), input.code(), locationId);
 		location.update(
 				input.locationType(),
+				input.locationCategory(),
 				input.code(),
 				input.label(),
 				input.floor(),
@@ -73,9 +82,33 @@ public class MaintenanceLocationService {
 
 	public List<MaintenanceOrderDto> history(Long locationId) {
 		findOrThrow(locationId);
-		return maintenanceOrderRepository.findByLocationIdOrderByReportedAtDescIdDesc(locationId).stream()
-				.map(MaintenanceOrderDto::from)
+		final var items = maintenanceOrderRepository.findHistoryItemsByLocationIdOrderByReportedAtDescIdDesc(
+				locationId
+		);
+		final Map<Long, List<com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto>> attachmentsByOrderId =
+				loadAttachmentMetadataByOrderId(items.stream().map(item -> item.getId()).toList());
+		return items.stream()
+				.map(item -> MaintenanceOrderDto.from(
+						item,
+						attachmentsByOrderId.getOrDefault(item.getId(), List.of())
+				))
 				.toList();
+	}
+
+	private Map<Long, List<com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto>> loadAttachmentMetadataByOrderId(
+			Collection<Long> orderIds
+	) {
+		if (orderIds == null || orderIds.isEmpty()) {
+			return Map.of();
+		}
+		final Map<Long, List<com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto>> attachmentsByOrderId =
+				new LinkedHashMap<>();
+		maintenanceOrderAttachmentRepository.findMetadataByOrderIdInOrderByCreatedAtDesc(orderIds)
+				.forEach(metadata -> attachmentsByOrderId.computeIfAbsent(
+						metadata.getOrderId(),
+						ignored -> new java.util.ArrayList<>()
+				).add(com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto.from(metadata)));
+		return attachmentsByOrderId;
 	}
 
 	public MaintenanceLocation findOrThrow(Long locationId) {

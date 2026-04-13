@@ -3,6 +3,7 @@ package com.axioma.quadras.domain.dto;
 import com.axioma.quadras.domain.model.CourtCustomerType;
 import com.axioma.quadras.domain.model.CourtPricingPeriod;
 import com.axioma.quadras.domain.model.CourtRate;
+import com.axioma.quadras.repository.CourtRateListItemView;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -22,6 +23,18 @@ public record CourtRateDto(
 				rate.getPricingPeriod(),
 				rate.getAmount(),
 				rate.isActive(),
+				rate.getUpdatedAt(),
+				rate.getUpdatedBy()
+		);
+	}
+
+	public static CourtRateDto from(CourtRateListItemView rate) {
+		return new CourtRateDto(
+				rate.getId(),
+				rate.getCustomerType(),
+				rate.getPricingPeriod(),
+				rate.getAmount(),
+				Boolean.TRUE.equals(rate.getActive()),
 				rate.getUpdatedAt(),
 				rate.getUpdatedBy()
 		);

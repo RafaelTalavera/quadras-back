@@ -6,9 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CourtPartnerCoachRepository extends JpaRepository<CourtPartnerCoach, Long> {
 
-	List<CourtPartnerCoach> findAllByActiveTrueOrderByNameAsc();
+	List<CourtPartnerCoachListItemView> findAllByActiveTrueOrderByNameAsc();
 
-	List<CourtPartnerCoach> findAllByOrderByNameAsc();
+	List<CourtPartnerCoachListItemView> findAllByOrderByNameAsc();
 
 	boolean existsByNameIgnoreCaseAndActiveTrue(String name);
 

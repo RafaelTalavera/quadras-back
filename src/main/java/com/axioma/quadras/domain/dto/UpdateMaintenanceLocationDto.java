@@ -1,5 +1,6 @@
 package com.axioma.quadras.domain.dto;
 
+import com.axioma.quadras.domain.model.MaintenanceLocationCategory;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.Size;
 public record UpdateMaintenanceLocationDto(
 		@NotNull(message = "locationType is required")
 		MaintenanceLocationType locationType,
+		MaintenanceLocationCategory locationCategory,
 		@NotBlank(message = "code is required")
 		@Size(max = 60, message = "code must be <= 60 chars")
 		String code,

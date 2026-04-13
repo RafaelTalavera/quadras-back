@@ -6,7 +6,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.axioma.quadras.domain.model.CourtBooking;
+import com.axioma.quadras.domain.model.CourtBookingMaterial;
 import com.axioma.quadras.domain.model.CourtCustomerType;
+import com.axioma.quadras.domain.model.CourtMaterialCode;
 import com.axioma.quadras.domain.model.CourtPaymentMethod;
 import com.axioma.quadras.domain.model.CourtPricingPeriod;
 import com.axioma.quadras.repository.CourtBookingRepository;
@@ -123,6 +125,71 @@ class CourtBookingControllerTest {
 				.andExpect(jsonPath("$.paymentMethodBreakdown[0].code").value("PIX"))
 				.andExpect(jsonPath("$.paymentMethodBreakdown[0].scheduledCount").value(1))
 				.andExpect(jsonPath("$.paymentMethodBreakdown[1].scheduledCount").value(0));
+	}
+
+	@Test
+	void shouldListCourtBookingsWithFiltersAndMaterials() throws Exception {
+		courtBookingRepository.saveAll(List.of(
+				CourtBooking.schedule(
+						LocalDate.of(2026, 3, 14),
+						LocalTime.of(8, 0),
+						LocalTime.of(9, 0),
+						"Helena",
+						"Apto 201",
+						CourtCustomerType.GUEST,
+						CourtPricingPeriod.DAY,
+						LocalTime.of(6, 0),
+						LocalTime.of(18, 0),
+						new BigDecimal("0.00"),
+						new BigDecimal("35.00"),
+						new BigDecimal("35.00"),
+						true,
+						CourtPaymentMethod.PIX,
+						LocalDate.of(2026, 3, 14),
+						"Pago registrado",
+						List.of(
+								CourtBookingMaterial.of(
+										CourtMaterialCode.RACKET,
+										"Raquete",
+										2,
+										new BigDecimal("10.00"),
+										new BigDecimal("20.00")
+								),
+								CourtBookingMaterial.of(
+										CourtMaterialCode.BALL,
+										"Tubo de bolas",
+										1,
+										new BigDecimal("15.00"),
+										new BigDecimal("15.00")
+								)
+						),
+						"operador.demo"
+				),
+				scheduledBooking(
+						LocalDate.of(2026, 3, 14),
+						LocalTime.of(10, 0),
+						LocalTime.of(11, 0),
+						"Bruno",
+						CourtCustomerType.EXTERNAL,
+						CourtPricingPeriod.DAY,
+						new BigDecimal("80.00"),
+						new BigDecimal("0.00"),
+						new BigDecimal("80.00"),
+						false,
+						null
+				)
+		));
+
+		mockMvc.perform(get("/api/v1/courts/bookings")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("bookingDate", "2026-03-14")
+						.param("paid", "true"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].customerName").value("Helena"))
+				.andExpect(jsonPath("$[0].materials.length()").value(2))
+				.andExpect(jsonPath("$[0].materials[0].materialCode").value("RACKET"))
+				.andExpect(jsonPath("$[0].materials[1].materialCode").value("BALL"));
 	}
 
 	@Test

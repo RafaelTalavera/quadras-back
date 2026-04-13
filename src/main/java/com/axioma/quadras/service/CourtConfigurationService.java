@@ -11,10 +11,12 @@ import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.CourtMaterialSetting;
 import com.axioma.quadras.domain.model.CourtPartnerCoach;
 import com.axioma.quadras.domain.model.CourtRate;
+import com.axioma.quadras.repository.CourtMaterialSettingListItemView;
+import com.axioma.quadras.repository.CourtPartnerCoachListItemView;
+import com.axioma.quadras.repository.CourtRateListItemView;
 import com.axioma.quadras.repository.CourtMaterialSettingRepository;
 import com.axioma.quadras.repository.CourtPartnerCoachRepository;
 import com.axioma.quadras.repository.CourtRateRepository;
-import java.util.Comparator;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -39,11 +41,7 @@ public class CourtConfigurationService {
 	}
 
 	public List<CourtRateDto> listRates() {
-		return courtRateRepository.findAll().stream()
-				.sorted(
-						Comparator.comparing(CourtRate::getCustomerType)
-								.thenComparing(CourtRate::getPricingPeriod)
-				)
+		return courtRateRepository.findAllByOrderByCustomerTypeAscPricingPeriodAsc().stream()
 				.map(CourtRateDto::from)
 				.toList();
 	}
@@ -56,14 +54,13 @@ public class CourtConfigurationService {
 	}
 
 	public List<CourtMaterialSettingDto> listMaterials() {
-		return courtMaterialSettingRepository.findAll().stream()
-				.sorted(Comparator.comparing(CourtMaterialSetting::getCode))
+		return courtMaterialSettingRepository.findAllByOrderByCodeAsc().stream()
 				.map(CourtMaterialSettingDto::from)
 				.toList();
 	}
 
 	public List<CourtPartnerCoachDto> listPartnerCoaches(boolean activeOnly) {
-		final List<CourtPartnerCoach> coaches = activeOnly
+		final List<CourtPartnerCoachListItemView> coaches = activeOnly
 				? courtPartnerCoachRepository.findAllByActiveTrueOrderByNameAsc()
 				: courtPartnerCoachRepository.findAllByOrderByNameAsc();
 		return coaches.stream().map(CourtPartnerCoachDto::from).toList();

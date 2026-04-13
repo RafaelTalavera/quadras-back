@@ -108,6 +108,35 @@ class FlywayReservationMigrationTest {
 	}
 
 	@Test
+	void shouldCreateMaintenanceLocationCategoryColumnViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'MAINTENANCE_LOCATIONS'
+				  AND COLUMN_NAME = 'LOCATION_CATEGORY'
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(1);
+	}
+
+	@Test
+	void shouldCreateScheduleLocksTableViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.TABLES
+				WHERE TABLE_NAME = 'SCHEDULE_LOCKS'
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(1);
+	}
+
+	@Test
 	void shouldCreateMaintenanceWorkflowColumnsViaFlyway() {
 		final Integer count = jdbcTemplate.queryForObject(
 				"""

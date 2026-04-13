@@ -3,6 +3,7 @@ package com.axioma.quadras.domain.dto;
 import com.axioma.quadras.domain.model.MaintenanceProvider;
 import com.axioma.quadras.domain.model.MaintenanceProviderSpecialty;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
+import com.axioma.quadras.repository.MaintenanceProviderListItemView;
 import java.time.OffsetDateTime;
 
 public record MaintenanceProviderDto(
@@ -29,6 +30,23 @@ public record MaintenanceProviderDto(
 				provider.getScopeDescription(),
 				provider.getContact(),
 				provider.isActive(),
+				provider.getCreatedAt(),
+				provider.getUpdatedAt(),
+				provider.getCreatedBy(),
+				provider.getUpdatedBy()
+		);
+	}
+
+	public static MaintenanceProviderDto from(MaintenanceProviderListItemView provider) {
+		return new MaintenanceProviderDto(
+				provider.getId(),
+				provider.getProviderType(),
+				provider.getSpecialty(),
+				provider.getName(),
+				provider.getServiceLabel(),
+				provider.getScopeDescription(),
+				provider.getContact(),
+				Boolean.TRUE.equals(provider.getActive()),
 				provider.getCreatedAt(),
 				provider.getUpdatedAt(),
 				provider.getCreatedBy(),

@@ -15,15 +15,19 @@ import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenanceOrderAttachment;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenanceProvider;
+import com.axioma.quadras.repository.MaintenanceOrderAttachmentMetadataView;
 import com.axioma.quadras.repository.MaintenanceOrderAttachmentRepository;
 import com.axioma.quadras.repository.MaintenanceOrderRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,16 +69,25 @@ public class MaintenanceOrderService {
 			com.axioma.quadras.domain.model.MaintenancePriority priority
 	) {
 		validateDateRange(dateFrom, dateTo);
-		return maintenanceOrderRepository.findAllOrdered().stream()
-				.filter(order -> matchesDateRange(order, dateFrom, dateTo))
-				.filter(order -> locationId == null || order.getLocation().getId().equals(locationId))
-				.filter(order -> providerId == null
-						|| (order.getProvider() != null && order.getProvider().getId().equals(providerId)))
-				.filter(order -> providerType == null || order.getProviderTypeSnapshot() == providerType)
-				.filter(order -> status == null || order.getStatus() == status)
-				.filter(order -> priority == null || order.getPriority() == priority)
+		final var items = maintenanceOrderRepository.findFilteredItems(
+				locationId,
+				providerId,
+				providerType,
+				status,
+				priority,
+				scheduledFrom(dateFrom),
+				scheduledToExclusive(dateTo),
+				reportedFrom(dateFrom),
+				reportedToExclusive(dateTo)
+		);
+		final Map<Long, List<MaintenanceOrderAttachmentDto>> attachmentsByOrderId =
+				loadAttachmentMetadataByOrderId(items.stream().map(item -> item.getId()).toList());
+		return items.stream()
 				.sorted(orderComparator())
-				.map(MaintenanceOrderDto::from)
+				.map(item -> MaintenanceOrderDto.from(
+						item,
+						attachmentsByOrderId.getOrDefault(item.getId(), List.of())
+				))
 				.toList();
 	}
 
@@ -104,7 +117,7 @@ public class MaintenanceOrderService {
 						actorRole
 				)
 		);
-		return MaintenanceOrderDto.from(order);
+		return toDto(order);
 	}
 
 	@Transactional
@@ -127,7 +140,7 @@ public class MaintenanceOrderService {
 				input.scheduledEndAt(),
 				actorUsername
 		);
-		return MaintenanceOrderDto.from(order);
+		return toDto(order);
 	}
 
 	public List<MaintenanceConflictDto> findConflicts(
@@ -164,7 +177,7 @@ public class MaintenanceOrderService {
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
 		order.start(input == null ? null : input.startedAt(), actorUsername);
-		return MaintenanceOrderDto.from(order);
+		return toDto(order);
 	}
 
 	@Transactional
@@ -180,7 +193,7 @@ public class MaintenanceOrderService {
 				input.paymentNotes(),
 				actorUsername
 		);
-		return MaintenanceOrderDto.from(order);
+		return toDto(order);
 	}
 
 	@Transactional
@@ -191,7 +204,7 @@ public class MaintenanceOrderService {
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
 		order.complete(input.completedAt(), input.resolutionNotes(), actorUsername);
-		return MaintenanceOrderDto.from(order);
+		return toDto(order);
 	}
 
 	@Transactional
@@ -202,13 +215,13 @@ public class MaintenanceOrderService {
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
 		order.cancel(input.cancellationNotes(), actorUsername);
-		return MaintenanceOrderDto.from(order);
+		return toDto(order);
 	}
 
 	public List<MaintenanceOrderAttachmentDto> listAttachments(Long orderId) {
 		findOrThrow(orderId);
-		return maintenanceOrderAttachmentRepository.findByOrderIdOrderByCreatedAtDesc(orderId).stream()
-				.map(MaintenanceOrderAttachmentDto::from)
+		return maintenanceOrderAttachmentRepository.findMetadataByOrderIdOrderByCreatedAtDesc(orderId).stream()
+				.map(this::toAttachmentDto)
 				.toList();
 	}
 
@@ -229,7 +242,7 @@ public class MaintenanceOrderService {
 		);
 		order.addAttachment(attachment);
 		final MaintenanceOrderAttachment savedAttachment =
-				maintenanceOrderAttachmentRepository.saveAndFlush(attachment);
+				maintenanceOrderAttachmentRepository.save(attachment);
 		return MaintenanceOrderAttachmentDto.from(savedAttachment);
 	}
 
@@ -258,24 +271,15 @@ public class MaintenanceOrderService {
 				));
 	}
 
-	private Comparator<MaintenanceOrder> orderComparator() {
+	private Comparator<com.axioma.quadras.repository.MaintenanceOrderHistoryItemView> orderComparator() {
 		return Comparator
 				.comparing(this::referenceDateTime)
-				.thenComparing(MaintenanceOrder::getId);
+				.thenComparing(com.axioma.quadras.repository.MaintenanceOrderHistoryItemView::getId);
 	}
 
-	private boolean matchesDateRange(MaintenanceOrder order, LocalDate dateFrom, LocalDate dateTo) {
-		final LocalDate referenceDate = referenceDateTime(order).toLocalDate();
-		if (dateFrom != null && referenceDate.isBefore(dateFrom)) {
-			return false;
-		}
-		if (dateTo != null && referenceDate.isAfter(dateTo)) {
-			return false;
-		}
-		return true;
-	}
-
-	private LocalDateTime referenceDateTime(MaintenanceOrder order) {
+	private LocalDateTime referenceDateTime(
+			com.axioma.quadras.repository.MaintenanceOrderHistoryItemView order
+	) {
 		if (order.getScheduledStartAt() != null) {
 			return order.getScheduledStartAt();
 		}
@@ -289,6 +293,22 @@ public class MaintenanceOrderService {
 					"dateFrom must be before or equal to dateTo"
 			);
 		}
+	}
+
+	private LocalDateTime scheduledFrom(LocalDate dateFrom) {
+		return dateFrom == null ? null : dateFrom.atStartOfDay();
+	}
+
+	private LocalDateTime scheduledToExclusive(LocalDate dateTo) {
+		return dateTo == null ? null : dateTo.plusDays(1).atStartOfDay();
+	}
+
+	private OffsetDateTime reportedFrom(LocalDate dateFrom) {
+		return dateFrom == null ? null : dateFrom.atStartOfDay().atOffset(java.time.ZoneOffset.UTC);
+	}
+
+	private OffsetDateTime reportedToExclusive(LocalDate dateTo) {
+		return dateTo == null ? null : dateTo.plusDays(1).atStartOfDay().atOffset(java.time.ZoneOffset.UTC);
 	}
 
 	private com.axioma.quadras.domain.model.MaintenanceLocation requireActiveLocation(Long locationId) {
@@ -336,5 +356,33 @@ public class MaintenanceOrderService {
 		} catch (IllegalArgumentException error) {
 			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Attachment content is not valid base64.");
 		}
+	}
+
+	private MaintenanceOrderDto toDto(MaintenanceOrder order) {
+		return MaintenanceOrderDto.from(
+				order,
+				loadAttachmentMetadataByOrderId(List.of(order.getId())).getOrDefault(order.getId(), List.of())
+		);
+	}
+
+	private Map<Long, List<MaintenanceOrderAttachmentDto>> loadAttachmentMetadataByOrderId(
+			Collection<Long> orderIds
+	) {
+		if (orderIds == null || orderIds.isEmpty()) {
+			return Map.of();
+		}
+		final Map<Long, List<MaintenanceOrderAttachmentDto>> attachmentsByOrderId = new LinkedHashMap<>();
+		for (final MaintenanceOrderAttachmentMetadataView metadata :
+				maintenanceOrderAttachmentRepository.findMetadataByOrderIdInOrderByCreatedAtDesc(orderIds)) {
+			attachmentsByOrderId.computeIfAbsent(metadata.getOrderId(), ignored -> new java.util.ArrayList<>())
+					.add(toAttachmentDto(metadata));
+		}
+		return attachmentsByOrderId;
+	}
+
+	private MaintenanceOrderAttachmentDto toAttachmentDto(
+			MaintenanceOrderAttachmentMetadataView metadata
+	) {
+		return MaintenanceOrderAttachmentDto.from(metadata);
 	}
 }

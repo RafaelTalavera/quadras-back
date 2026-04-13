@@ -2,6 +2,7 @@ package com.axioma.quadras.domain.dto;
 
 import com.axioma.quadras.domain.model.CourtMaterialCode;
 import com.axioma.quadras.domain.model.CourtMaterialSetting;
+import com.axioma.quadras.repository.CourtMaterialSettingListItemView;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -29,6 +30,22 @@ public record CourtMaterialSettingDto(
 				material.isChargeExternal(),
 				material.isChargePartnerCoach(),
 				material.isActive(),
+				material.getUpdatedAt(),
+				material.getUpdatedBy()
+		);
+	}
+
+	public static CourtMaterialSettingDto from(CourtMaterialSettingListItemView material) {
+		return new CourtMaterialSettingDto(
+				material.getId(),
+				material.getCode(),
+				material.getLabel(),
+				material.getUnitPrice(),
+				Boolean.TRUE.equals(material.getChargeGuest()),
+				Boolean.TRUE.equals(material.getChargeVip()),
+				Boolean.TRUE.equals(material.getChargeExternal()),
+				Boolean.TRUE.equals(material.getChargePartnerCoach()),
+				Boolean.TRUE.equals(material.getActive()),
 				material.getUpdatedAt(),
 				material.getUpdatedBy()
 		);

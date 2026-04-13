@@ -9,9 +9,14 @@ import com.axioma.quadras.domain.dto.UpdateMassageTherapistDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.MassageProvider;
 import com.axioma.quadras.domain.model.MassageTherapist;
+import com.axioma.quadras.repository.MassageProviderListItemView;
 import com.axioma.quadras.repository.MassageProviderRepository;
+import com.axioma.quadras.repository.MassageTherapistListItemView;
 import com.axioma.quadras.repository.MassageTherapistRepository;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,10 +59,13 @@ public class MassageProviderService {
 	}
 
 	public List<MassageProviderDto> list(boolean activeOnly) {
-		final List<MassageProvider> providers = activeOnly
-				? massageProviderRepository.findAllByActiveTrueOrderByNameAsc()
-				: massageProviderRepository.findAllOrderedByName();
-		return providers.stream().map(MassageProviderDto::from).toList();
+		final List<MassageProviderListItemView> providers = massageProviderRepository.findListItems(activeOnly);
+		final Map<Long, List<MassageTherapistDto>> therapistsByProvider = loadTherapistsByProvider(
+				providers.stream().map(MassageProviderListItemView::getId).toList()
+		);
+		return providers.stream()
+				.map(provider -> MassageProviderDto.from(provider, therapistsByProvider.get(provider.getId())))
+				.toList();
 	}
 
 	@Transactional
@@ -131,5 +139,22 @@ public class MassageProviderService {
 					"Massage therapist name already exists for provider."
 			);
 		}
+	}
+
+	private Map<Long, List<MassageTherapistDto>> loadTherapistsByProvider(List<Long> providerIds) {
+		if (providerIds.isEmpty()) {
+			return Map.of();
+		}
+		final Map<Long, List<MassageTherapistDto>> therapistsByProvider = new LinkedHashMap<>();
+		for (final MassageTherapistListItemView therapist :
+				massageTherapistRepository.findListItemsByProviderIdInOrderByProviderIdAscNameAsc(
+				providerIds
+		)) {
+			therapistsByProvider.computeIfAbsent(
+					therapist.getProviderId(),
+					ignored -> new ArrayList<>()
+			).add(MassageTherapistDto.from(therapist));
+		}
+		return therapistsByProvider;
 	}
 }

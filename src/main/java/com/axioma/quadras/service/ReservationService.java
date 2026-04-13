@@ -7,6 +7,7 @@ import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.Reservation;
 import com.axioma.quadras.domain.model.ReservationRules;
 import com.axioma.quadras.domain.model.ReservationStatus;
+import com.axioma.quadras.repository.ReservationListItemView;
 import com.axioma.quadras.repository.ReservationRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,9 +21,14 @@ import java.util.List;
 public class ReservationService {
 
 	private final ReservationRepository reservationRepository;
+	private final ScheduleLockService scheduleLockService;
 
-	public ReservationService(ReservationRepository reservationRepository) {
+	public ReservationService(
+			ReservationRepository reservationRepository,
+			ScheduleLockService scheduleLockService
+	) {
 		this.reservationRepository = reservationRepository;
+		this.scheduleLockService = scheduleLockService;
 	}
 
 	@Transactional
@@ -35,6 +41,7 @@ public class ReservationService {
 				input.notes()
 		);
 		validateBusinessRules(reservation);
+		scheduleLockService.acquireReservationDates(List.of(reservation.getReservationDate()));
 		validateOverlapping(reservation, null);
 		final Reservation saved = reservationRepository.save(reservation);
 		return ReservationDto.from(saved);
@@ -43,6 +50,7 @@ public class ReservationService {
 	@Transactional
 	public ReservationDto update(Long reservationId, UpdateReservationDto input) {
 		final Reservation reservation = findReservationOrThrow(reservationId);
+		final LocalDate previousReservationDate = reservation.getReservationDate();
 		validateCanEdit(reservation);
 		reservation.reschedule(
 				input.guestName(),
@@ -52,6 +60,10 @@ public class ReservationService {
 				input.notes()
 		);
 		validateBusinessRules(reservation);
+		scheduleLockService.acquireReservationDates(List.of(
+				previousReservationDate,
+				reservation.getReservationDate()
+		));
 		validateOverlapping(reservation, reservationId);
 		return ReservationDto.from(reservation);
 	}
@@ -73,9 +85,9 @@ public class ReservationService {
 	}
 
 	public List<ReservationDto> list(LocalDate reservationDate) {
-		final List<Reservation> reservations;
+		final List<ReservationListItemView> reservations;
 		if (reservationDate == null) {
-			reservations = reservationRepository.findAllOrderedByDateAndStartTime();
+			reservations = reservationRepository.findAllByOrderByReservationDateAscStartTimeAsc();
 		} else {
 			reservations = reservationRepository.findAllByReservationDateOrderByStartTimeAsc(reservationDate);
 		}

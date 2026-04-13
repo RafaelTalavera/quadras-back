@@ -31,6 +31,10 @@ public class MaintenanceLocation {
 	@Column(name = "location_type", nullable = false, length = 20)
 	private MaintenanceLocationType locationType;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "location_category", nullable = false, length = 20)
+	private MaintenanceLocationCategory locationCategory;
+
 	@Column(name = "code", nullable = false, length = MAX_CODE_LENGTH)
 	private String code;
 
@@ -63,6 +67,7 @@ public class MaintenanceLocation {
 
 	public static MaintenanceLocation create(
 			MaintenanceLocationType locationType,
+			MaintenanceLocationCategory locationCategory,
 			String code,
 			String label,
 			String floor,
@@ -74,6 +79,12 @@ public class MaintenanceLocation {
 		location.locationType = requireType(locationType);
 		location.code = normalize(code, "code", MAX_CODE_LENGTH);
 		location.label = normalize(label, "label", MAX_LABEL_LENGTH);
+		location.locationCategory = normalizeCategory(
+				locationType,
+				locationCategory,
+				location.code,
+				location.label
+		);
 		location.floor = normalizeOptional(floor, "floor", MAX_FLOOR_LENGTH);
 		location.description = normalizeOptional(description, "description", MAX_DESCRIPTION_LENGTH);
 		location.active = active;
@@ -84,6 +95,7 @@ public class MaintenanceLocation {
 
 	public void update(
 			MaintenanceLocationType locationType,
+			MaintenanceLocationCategory locationCategory,
 			String code,
 			String label,
 			String floor,
@@ -94,6 +106,12 @@ public class MaintenanceLocation {
 		this.locationType = requireType(locationType);
 		this.code = normalize(code, "code", MAX_CODE_LENGTH);
 		this.label = normalize(label, "label", MAX_LABEL_LENGTH);
+		this.locationCategory = normalizeCategory(
+				locationType,
+				locationCategory,
+				this.code,
+				this.label
+		);
 		this.floor = normalizeOptional(floor, "floor", MAX_FLOOR_LENGTH);
 		this.description = normalizeOptional(description, "description", MAX_DESCRIPTION_LENGTH);
 		this.active = active;
@@ -106,6 +124,10 @@ public class MaintenanceLocation {
 
 	public MaintenanceLocationType getLocationType() {
 		return locationType;
+	}
+
+	public MaintenanceLocationCategory getLocationCategory() {
+		return locationCategory;
 	}
 
 	public String getCode() {
@@ -161,6 +183,39 @@ public class MaintenanceLocation {
 			throw new IllegalArgumentException("locationType is required");
 		}
 		return value;
+	}
+
+	private static MaintenanceLocationCategory normalizeCategory(
+			MaintenanceLocationType locationType,
+			MaintenanceLocationCategory locationCategory,
+			String code,
+			String label
+	) {
+		if (locationType == MaintenanceLocationType.COMMON_AREA) {
+			if (locationCategory != null && locationCategory != MaintenanceLocationCategory.COMMON_AREA) {
+				throw new IllegalArgumentException(
+						"locationCategory must be COMMON_AREA for common areas"
+				);
+			}
+			return MaintenanceLocationCategory.COMMON_AREA;
+		}
+		if (locationCategory == null) {
+			return inferRoomCategory(code, label);
+		}
+		if (locationCategory == MaintenanceLocationCategory.COMMON_AREA) {
+			throw new IllegalArgumentException(
+					"locationCategory COMMON_AREA is not valid for room locations"
+			);
+		}
+		return locationCategory;
+	}
+
+	private static MaintenanceLocationCategory inferRoomCategory(String code, String label) {
+		final String fingerprint = (code + " " + label).toLowerCase();
+		if (fingerprint.contains("chalet")) {
+			return MaintenanceLocationCategory.CHALET;
+		}
+		return MaintenanceLocationCategory.APARTMENT;
 	}
 
 	private static String normalize(String value, String fieldName, int maxLength) {

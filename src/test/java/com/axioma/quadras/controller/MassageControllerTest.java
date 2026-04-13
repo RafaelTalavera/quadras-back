@@ -109,6 +109,31 @@ class MassageControllerTest {
 	}
 
 	@Test
+	void shouldListMassageProvidersOrderedWithTherapists() throws Exception {
+		final MassageProvider providerB = massageProviderRepository.save(
+				MassageProvider.create("Zen House", "Relaxante", "Agenda interna")
+		);
+		final MassageProvider providerA = massageProviderRepository.save(
+				MassageProvider.create("Alma Spa", "Drenagem", "Recepcao")
+		);
+		createTherapist(providerB, "Bianca");
+		createTherapist(providerA, "Carla");
+		createTherapist(providerA, "Ana");
+
+		mockMvc.perform(get("/api/v1/massages/providers")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].id").value(providerA.getId()))
+				.andExpect(jsonPath("$[0].name").value("Alma Spa"))
+				.andExpect(jsonPath("$[0].therapists.length()").value(2))
+				.andExpect(jsonPath("$[0].therapists[0].name").value("Ana"))
+				.andExpect(jsonPath("$[0].therapists[1].name").value("Carla"))
+				.andExpect(jsonPath("$[1].id").value(providerB.getId()))
+				.andExpect(jsonPath("$[1].therapists[0].name").value("Bianca"));
+	}
+
+	@Test
 	void shouldUpdateMassageProvider() throws Exception {
 		final MassageProvider provider = massageProviderRepository.save(
 				MassageProvider.create("Isabelita", "Pedras quentes", "Interno")
@@ -256,6 +281,75 @@ class MassageControllerTest {
 				.andExpect(jsonPath("$[0].providerName").value("Danuska"))
 				.andExpect(jsonPath("$[0].therapistName").value("Danuska"))
 				.andExpect(jsonPath("$[0].paymentMethod").value("CASH"));
+	}
+
+	@Test
+	void shouldFilterMassageBookingsByReferenceProviderAndOrdering() throws Exception {
+		final MassageProvider provider = massageProviderRepository.save(
+				MassageProvider.create("Danuska", "Drenagem", "Agenda interna")
+		);
+		final MassageProvider otherProvider = massageProviderRepository.save(
+				MassageProvider.create("Spa Serena", "Relaxante", "Agenda interna")
+		);
+		final MassageTherapist therapist = createTherapist(provider, "Ana");
+		final MassageTherapist otherTherapist = createTherapist(otherProvider, "Bruna");
+		massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 20),
+				LocalTime.of(11, 0),
+				"Bianca Costa",
+				"Apto 202",
+				"Relaxante",
+				new BigDecimal("180.00"),
+				provider,
+				therapist,
+				true,
+				MassagePaymentMethod.PIX,
+				LocalDate.of(2026, 3, 20),
+				"Pago por chave",
+				"operador.demo"
+		));
+		massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 20),
+				LocalTime.of(10, 0),
+				"Carla Mendes",
+				"Apto 101",
+				"Drenagem",
+				new BigDecimal("150.00"),
+				provider,
+				therapist,
+				true,
+				MassagePaymentMethod.CARD,
+				LocalDate.of(2026, 3, 20),
+				"Pago",
+				"operador.demo"
+		));
+		massageBookingRepository.save(MassageBooking.schedule(
+				LocalDate.of(2026, 3, 20),
+				LocalTime.of(9, 0),
+				"Luana Prado",
+				"Apto 101",
+				"Premium",
+				new BigDecimal("220.00"),
+				otherProvider,
+				otherTherapist,
+				true,
+				MassagePaymentMethod.CASH,
+				LocalDate.of(2026, 3, 20),
+				"Pago",
+				"operador.demo"
+		));
+
+		mockMvc.perform(get("/api/v1/massages/bookings")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("guestReference", "apto 101")
+						.param("providerId", String.valueOf(provider.getId()))
+						.param("paid", "true"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].clientName").value("Carla Mendes"))
+				.andExpect(jsonPath("$[0].providerId").value(provider.getId()))
+				.andExpect(jsonPath("$[0].therapistName").value("Ana"))
+				.andExpect(jsonPath("$[0].paymentMethod").value("CARD"));
 	}
 
 	@Test

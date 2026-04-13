@@ -5,14 +5,15 @@ import com.axioma.quadras.domain.dto.MaintenanceSummaryDetailDto;
 import com.axioma.quadras.domain.dto.MaintenanceSummaryDetailItemDto;
 import com.axioma.quadras.domain.dto.MaintenanceSummaryReportDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
-import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
-import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
 import com.axioma.quadras.domain.model.MaintenanceSummaryGroupBy;
+import com.axioma.quadras.repository.MaintenanceSummaryAggregateView;
+import com.axioma.quadras.repository.MaintenanceSummaryBreakdownView;
 import com.axioma.quadras.repository.MaintenanceOrderRepository;
+import com.axioma.quadras.repository.MaintenanceSummaryDetailItemView;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
@@ -22,7 +23,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,75 +41,41 @@ public class MaintenanceReportService {
 
 	public MaintenanceSummaryReportDto summary(LocalDate dateFrom, LocalDate dateTo) {
 		validateRange(dateFrom, dateTo);
-		final List<MaintenanceOrder> orders = filteredOrders(dateFrom, dateTo);
-		final int openCount = countByStatus(orders, MaintenanceOrderStatus.OPEN);
-		final int assignedCount = countByStatus(orders, MaintenanceOrderStatus.ASSIGNED);
-		final int scheduledCount = countByStatus(orders, MaintenanceOrderStatus.SCHEDULED);
-		final int inProgressCount = countByStatus(orders, MaintenanceOrderStatus.IN_PROGRESS);
-		final int completedCount = countByStatus(orders, MaintenanceOrderStatus.COMPLETED);
-		final int cancelledCount = countByStatus(orders, MaintenanceOrderStatus.CANCELLED);
-		final int internalCount = (int) orders.stream()
-				.filter(order -> order.getProviderTypeSnapshot() == MaintenanceProviderType.INTERNAL)
-				.count();
-		final int externalCount = (int) orders.stream()
-				.filter(order -> order.getProviderTypeSnapshot() == MaintenanceProviderType.EXTERNAL)
-				.count();
-		final int unassignedCount = (int) orders.stream()
-				.filter(order -> order.getProviderTypeSnapshot() == null)
-				.count();
-		final int roomsCount = (int) orders.stream()
-				.filter(order -> order.getLocationTypeSnapshot() == MaintenanceLocationType.ROOM)
-				.count();
-		final int commonAreasCount = orders.size() - roomsCount;
-		final int urgentCount = (int) orders.stream()
-				.filter(order -> order.getPriority() == MaintenancePriority.URGENT)
-				.count();
-		final int guestPriorityCount = (int) orders.stream()
-				.filter(order -> order.getBusinessPriority() == MaintenanceBusinessPriority.GUEST_PRIORITY)
-				.count();
-		final BigDecimal averageResolutionHours = calculateAverageResolutionHours(orders);
+		final LocalDateTime scheduledFrom = scheduledFrom(dateFrom);
+		final LocalDateTime scheduledToExclusive = scheduledToExclusive(dateTo);
+		final java.time.OffsetDateTime reportedFrom = reportedFrom(dateFrom);
+		final java.time.OffsetDateTime reportedToExclusive = reportedToExclusive(dateTo);
+		final MaintenanceSummaryAggregateView aggregate = maintenanceOrderRepository.findSummaryAggregate(
+				scheduledFrom,
+				scheduledToExclusive,
+				reportedFrom,
+				reportedToExclusive
+		);
 
 		return new MaintenanceSummaryReportDto(
-				openCount,
-				assignedCount,
-				scheduledCount,
-				inProgressCount,
-				completedCount,
-				cancelledCount,
-				internalCount,
-				externalCount,
-				unassignedCount,
-				roomsCount,
-				commonAreasCount,
-				urgentCount,
-				guestPriorityCount,
-				averageResolutionHours,
-				buildBreakdown(
-						orders,
-						order -> order.getProvider() == null
-								? "UNASSIGNED"
-								: String.valueOf(order.getProvider().getId()),
-						order -> order.getProviderNameSnapshot() == null
-								? "Sem responsavel"
-								: order.getProviderNameSnapshot()
-				),
-				buildBreakdown(
-						orders,
-						order -> order.getProviderTypeSnapshot() == null
-								? "UNASSIGNED"
-								: order.getProviderTypeSnapshot().name(),
-						order -> labelForProviderType(order.getProviderTypeSnapshot())
-				),
-				buildBreakdown(
-						orders,
-						order -> order.getLocationTypeSnapshot().name(),
-						order -> labelForLocationType(order.getLocationTypeSnapshot())
-				),
-				buildBreakdown(
-						orders,
-						order -> order.getStatus().name(),
-						order -> labelForStatus(order.getStatus())
-				)
+				Math.toIntExact(aggregate.getOpenCount()),
+				Math.toIntExact(aggregate.getAssignedCount()),
+				Math.toIntExact(aggregate.getScheduledCount()),
+				Math.toIntExact(aggregate.getInProgressCount()),
+				Math.toIntExact(aggregate.getCompletedCount()),
+				Math.toIntExact(aggregate.getCancelledCount()),
+				Math.toIntExact(aggregate.getInternalCount()),
+				Math.toIntExact(aggregate.getExternalCount()),
+				Math.toIntExact(aggregate.getUnassignedCount()),
+				Math.toIntExact(aggregate.getRoomsCount()),
+				Math.toIntExact(aggregate.getCommonAreasCount()),
+				Math.toIntExact(aggregate.getUrgentCount()),
+				Math.toIntExact(aggregate.getGuestPriorityCount()),
+				toHours(aggregate.getAverageResolutionMinutes()),
+				maintenanceOrderRepository.findProviderSummaryBreakdown(
+						scheduledFrom,
+						scheduledToExclusive,
+						reportedFrom,
+						reportedToExclusive
+				).stream().map(this::toBreakdownDto).toList(),
+				buildProviderTypeBreakdown(scheduledFrom, scheduledToExclusive, reportedFrom, reportedToExclusive),
+				buildLocationTypeBreakdown(scheduledFrom, scheduledToExclusive, reportedFrom, reportedToExclusive),
+				buildStatusBreakdown(scheduledFrom, scheduledToExclusive, reportedFrom, reportedToExclusive)
 		);
 	}
 
@@ -126,121 +92,159 @@ public class MaintenanceReportService {
 		if (code == null || code.isBlank()) {
 			throw new ApplicationException(HttpStatus.BAD_REQUEST, "code is required");
 		}
-		final List<MaintenanceOrder> orders = filteredOrders(dateFrom, dateTo).stream()
-				.filter(order -> matchesGroup(order, groupBy, code))
+		final DetailFilter filter = resolveDetailFilter(groupBy, code);
+		final List<MaintenanceSummaryDetailItemView> orders = filteredDetailItems(dateFrom, dateTo, filter).stream()
 				.sorted(Comparator.comparing(this::referenceDateTime))
 				.toList();
 		if (orders.isEmpty()) {
 			throw new ApplicationException(HttpStatus.NOT_FOUND, "Maintenance summary group not found.");
 		}
-		final MaintenanceOrder firstOrder = orders.get(0);
+		final MaintenanceSummaryDetailItemView firstOrder = orders.get(0);
 		return new MaintenanceSummaryDetailDto(
 				groupBy,
 				code,
 				labelForGroup(firstOrder, groupBy),
 				toBreakdown(code, labelForGroup(firstOrder, groupBy), orders),
-				orders.stream().map(MaintenanceSummaryDetailItemDto::from).toList()
+				orders.stream().map(this::toDetailItemDto).toList()
 		);
 	}
 
-	private List<MaintenanceOrder> filteredOrders(LocalDate dateFrom, LocalDate dateTo) {
-		return maintenanceOrderRepository.findAllOrdered().stream()
-				.filter(order -> matchesRange(order, dateFrom, dateTo))
-				.toList();
+	private List<MaintenanceSummaryDetailItemView> filteredDetailItems(
+			LocalDate dateFrom,
+			LocalDate dateTo,
+			DetailFilter filter
+	) {
+		return maintenanceOrderRepository.findSummaryDetailItems(
+				filter.providerId(),
+				filter.providerUnassigned(),
+				filter.providerType(),
+				filter.providerTypeUnassigned(),
+				filter.locationType(),
+				filter.status(),
+				scheduledFrom(dateFrom),
+				scheduledToExclusive(dateTo),
+				reportedFrom(dateFrom),
+				reportedToExclusive(dateTo)
+		);
 	}
 
-	private boolean matchesRange(MaintenanceOrder order, LocalDate dateFrom, LocalDate dateTo) {
-		final LocalDate referenceDate = referenceDateTime(order).toLocalDate();
-		if (dateFrom != null && referenceDate.isBefore(dateFrom)) {
-			return false;
-		}
-		if (dateTo != null && referenceDate.isAfter(dateTo)) {
-			return false;
-		}
-		return true;
-	}
-
-	private LocalDateTime referenceDateTime(MaintenanceOrder order) {
+	private LocalDateTime referenceDateTime(MaintenanceSummaryDetailItemView order) {
 		return order.getScheduledStartAt() != null
 				? order.getScheduledStartAt()
 				: order.getReportedAt().toLocalDateTime();
 	}
 
-	private int countByStatus(List<MaintenanceOrder> orders, MaintenanceOrderStatus status) {
-		return (int) orders.stream().filter(order -> order.getStatus() == status).count();
-	}
-
-	private BigDecimal calculateAverageResolutionHours(List<MaintenanceOrder> orders) {
-		final List<BigDecimal> resolvedDurations = orders.stream()
-				.filter(order -> order.getStatus() == MaintenanceOrderStatus.COMPLETED)
-				.filter(order -> order.getCompletedAt() != null)
-				.map(order -> {
-					final java.time.OffsetDateTime startReference =
-							order.getStartedAt() != null ? order.getStartedAt() : order.getReportedAt();
-					final long minutes = Duration.between(startReference, order.getCompletedAt()).toMinutes();
-					if (minutes <= 0) {
-						return BigDecimal.ZERO;
-					}
-					return BigDecimal.valueOf(minutes)
-							.divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
-				})
-				.toList();
-		if (resolvedDurations.isEmpty()) {
-			return BigDecimal.ZERO;
-		}
-		final BigDecimal total = resolvedDurations.stream()
-				.reduce(BigDecimal.ZERO, BigDecimal::add);
-		return total.divide(BigDecimal.valueOf(resolvedDurations.size()), 2, RoundingMode.HALF_UP);
-	}
-
-	private List<MaintenanceSummaryBreakdownDto> buildBreakdown(
-			List<MaintenanceOrder> orders,
-			Function<MaintenanceOrder, String> codeExtractor,
-			Function<MaintenanceOrder, String> labelExtractor
-	) {
-		final Map<String, BreakdownAccumulator> grouped = new LinkedHashMap<>();
-		for (final MaintenanceOrder order : orders) {
-			final String code = codeExtractor.apply(order);
-			grouped.computeIfAbsent(code, ignored -> new BreakdownAccumulator(labelExtractor.apply(order)))
-					.record(order);
-		}
-		return grouped.entrySet().stream()
-				.map(entry -> entry.getValue().toDto(entry.getKey()))
-				.toList();
-	}
-
 	private MaintenanceSummaryBreakdownDto toBreakdown(
 			String code,
 			String label,
-			List<MaintenanceOrder> orders
+			List<MaintenanceSummaryDetailItemView> orders
 	) {
 		final BreakdownAccumulator accumulator = new BreakdownAccumulator(label);
 		orders.forEach(accumulator::record);
 		return accumulator.toDto(code);
 	}
 
-	private boolean matchesGroup(MaintenanceOrder order, MaintenanceSummaryGroupBy groupBy, String code) {
-		return switch (groupBy) {
-			case PROVIDER -> {
-				if ("UNASSIGNED".equals(code)) {
-					yield order.getProvider() == null;
-				}
-				yield order.getProvider() != null
-						&& String.valueOf(order.getProvider().getId()).equals(code);
+	private List<MaintenanceSummaryBreakdownDto> buildProviderTypeBreakdown(
+			LocalDateTime scheduledFrom,
+			LocalDateTime scheduledToExclusive,
+			java.time.OffsetDateTime reportedFrom,
+			java.time.OffsetDateTime reportedToExclusive
+	) {
+		final Map<String, MaintenanceSummaryBreakdownView> breakdownByCode = indexByCode(
+				maintenanceOrderRepository.findProviderTypeSummaryBreakdown(
+						scheduledFrom,
+						scheduledToExclusive,
+						reportedFrom,
+						reportedToExclusive
+				)
+		);
+		final List<MaintenanceSummaryBreakdownDto> breakdown = new java.util.ArrayList<>();
+		for (final MaintenanceProviderType value : MaintenanceProviderType.values()) {
+			final MaintenanceSummaryBreakdownView view = breakdownByCode.get(value.name());
+			if (view != null) {
+				breakdown.add(toBreakdownDto(view));
 			}
-			case PROVIDER_TYPE -> {
-				if ("UNASSIGNED".equals(code)) {
-					yield order.getProviderTypeSnapshot() == null;
-				}
-				yield order.getProviderTypeSnapshot() != null
-						&& order.getProviderTypeSnapshot().name().equals(code);
-			}
-			case LOCATION_TYPE -> order.getLocationTypeSnapshot().name().equals(code);
-			case STATUS -> order.getStatus().name().equals(code);
-		};
+		}
+		final MaintenanceSummaryBreakdownView unassigned = breakdownByCode.get("UNASSIGNED");
+		if (unassigned != null) {
+			breakdown.add(toBreakdownDto(unassigned));
+		}
+		return breakdown;
 	}
 
-	private String labelForGroup(MaintenanceOrder order, MaintenanceSummaryGroupBy groupBy) {
+	private List<MaintenanceSummaryBreakdownDto> buildLocationTypeBreakdown(
+			LocalDateTime scheduledFrom,
+			LocalDateTime scheduledToExclusive,
+			java.time.OffsetDateTime reportedFrom,
+			java.time.OffsetDateTime reportedToExclusive
+	) {
+		final Map<String, MaintenanceSummaryBreakdownView> breakdownByCode = indexByCode(
+				maintenanceOrderRepository.findLocationTypeSummaryBreakdown(
+						scheduledFrom,
+						scheduledToExclusive,
+						reportedFrom,
+						reportedToExclusive
+				)
+		);
+		final List<MaintenanceSummaryBreakdownDto> breakdown = new java.util.ArrayList<>();
+		for (final MaintenanceLocationType value : MaintenanceLocationType.values()) {
+			final MaintenanceSummaryBreakdownView view = breakdownByCode.get(value.name());
+			if (view != null) {
+				breakdown.add(toBreakdownDto(view));
+			}
+		}
+		return breakdown;
+	}
+
+	private List<MaintenanceSummaryBreakdownDto> buildStatusBreakdown(
+			LocalDateTime scheduledFrom,
+			LocalDateTime scheduledToExclusive,
+			java.time.OffsetDateTime reportedFrom,
+			java.time.OffsetDateTime reportedToExclusive
+	) {
+		final Map<String, MaintenanceSummaryBreakdownView> breakdownByCode = indexByCode(
+				maintenanceOrderRepository.findStatusSummaryBreakdown(
+						scheduledFrom,
+						scheduledToExclusive,
+						reportedFrom,
+						reportedToExclusive
+				)
+		);
+		final List<MaintenanceSummaryBreakdownDto> breakdown = new java.util.ArrayList<>();
+		for (final MaintenanceOrderStatus value : MaintenanceOrderStatus.values()) {
+			final MaintenanceSummaryBreakdownView view = breakdownByCode.get(value.name());
+			if (view != null) {
+				breakdown.add(toBreakdownDto(view));
+			}
+		}
+		return breakdown;
+	}
+
+	private Map<String, MaintenanceSummaryBreakdownView> indexByCode(List<MaintenanceSummaryBreakdownView> views) {
+		final Map<String, MaintenanceSummaryBreakdownView> indexed = new LinkedHashMap<>();
+		for (final MaintenanceSummaryBreakdownView view : views) {
+			indexed.put(view.getCode(), view);
+		}
+		return indexed;
+	}
+
+	private MaintenanceSummaryBreakdownDto toBreakdownDto(MaintenanceSummaryBreakdownView view) {
+		return new MaintenanceSummaryBreakdownDto(
+				view.getCode(),
+				view.getLabel(),
+				Math.toIntExact(view.getOpenCount()),
+				Math.toIntExact(view.getScheduledCount()),
+				Math.toIntExact(view.getInProgressCount()),
+				Math.toIntExact(view.getCompletedCount()),
+				Math.toIntExact(view.getCancelledCount()),
+				Math.toIntExact(view.getUrgentCount())
+		);
+	}
+
+	private String labelForGroup(
+			MaintenanceSummaryDetailItemView order,
+			MaintenanceSummaryGroupBy groupBy
+	) {
 		return switch (groupBy) {
 			case PROVIDER -> order.getProviderNameSnapshot() == null
 					? "Sem responsavel"
@@ -249,6 +253,136 @@ public class MaintenanceReportService {
 			case LOCATION_TYPE -> labelForLocationType(order.getLocationTypeSnapshot());
 			case STATUS -> labelForStatus(order.getStatus());
 		};
+	}
+
+	private DetailFilter resolveDetailFilter(MaintenanceSummaryGroupBy groupBy, String code) {
+		return switch (groupBy) {
+			case PROVIDER -> resolveProviderDetailFilter(code);
+			case PROVIDER_TYPE -> resolveProviderTypeDetailFilter(code);
+			case LOCATION_TYPE -> resolveLocationTypeDetailFilter(code);
+			case STATUS -> resolveStatusDetailFilter(code);
+		};
+	}
+
+	private DetailFilter resolveProviderDetailFilter(String code) {
+		if ("UNASSIGNED".equals(code)) {
+			return new DetailFilter(null, true, null, false, null, null);
+		}
+		try {
+			return new DetailFilter(Long.valueOf(code), false, null, false, null, null);
+		} catch (NumberFormatException exception) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "provider code must be a number");
+		}
+	}
+
+	private DetailFilter resolveProviderTypeDetailFilter(String code) {
+		if ("UNASSIGNED".equals(code)) {
+			return new DetailFilter(null, false, null, true, null, null);
+		}
+		try {
+			return new DetailFilter(
+					null,
+					false,
+					MaintenanceProviderType.valueOf(code.trim().toUpperCase()),
+					false,
+					null,
+					null
+			);
+		} catch (IllegalArgumentException exception) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Unknown providerType code: " + code);
+		}
+	}
+
+	private DetailFilter resolveLocationTypeDetailFilter(String code) {
+		try {
+			return new DetailFilter(
+					null,
+					false,
+					null,
+					false,
+					MaintenanceLocationType.valueOf(code.trim().toUpperCase()),
+					null
+			);
+		} catch (IllegalArgumentException exception) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Unknown locationType code: " + code);
+		}
+	}
+
+	private DetailFilter resolveStatusDetailFilter(String code) {
+		try {
+			return new DetailFilter(
+					null,
+					false,
+					null,
+					false,
+					null,
+					MaintenanceOrderStatus.valueOf(code.trim().toUpperCase())
+			);
+		} catch (IllegalArgumentException exception) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Unknown status code: " + code);
+		}
+	}
+
+	private MaintenanceSummaryDetailItemDto toDetailItemDto(MaintenanceSummaryDetailItemView order) {
+		return new MaintenanceSummaryDetailItemDto(
+				order.getOrderId(),
+				order.getLocationTypeSnapshot(),
+				order.getLocationLabelSnapshot(),
+				order.getProviderTypeSnapshot(),
+				order.getProviderNameSnapshot(),
+				order.getServiceLabelSnapshot(),
+				order.getTitle(),
+				order.getPriority(),
+				order.getBusinessPriority(),
+				order.getRequestOrigin(),
+				Boolean.TRUE.equals(order.getRequestedForGuest()),
+				order.getAssignedUsername(),
+				order.getEstimatedExecutionMinutes(),
+				order.getStatus(),
+				order.getReportedAt(),
+				expectedCompletionAt(order),
+				order.getScheduledStartAt(),
+				order.getScheduledEndAt(),
+				order.getStartedAt(),
+				order.getCompletedAt()
+		);
+	}
+
+	private LocalDateTime expectedCompletionAt(MaintenanceSummaryDetailItemView order) {
+		if (order.getScheduledEndAt() != null) {
+			return order.getScheduledEndAt();
+		}
+		if (order.getEstimatedExecutionMinutes() == null) {
+			return null;
+		}
+		if (order.getStartedAt() != null) {
+			return order.getStartedAt().toLocalDateTime().plusMinutes(order.getEstimatedExecutionMinutes());
+		}
+		return order.getReportedAt().toLocalDateTime().plusMinutes(order.getEstimatedExecutionMinutes());
+	}
+
+	private LocalDateTime scheduledFrom(LocalDate dateFrom) {
+		return dateFrom == null ? null : dateFrom.atStartOfDay();
+	}
+
+	private LocalDateTime scheduledToExclusive(LocalDate dateTo) {
+		return dateTo == null ? null : dateTo.plusDays(1).atStartOfDay();
+	}
+
+	private java.time.OffsetDateTime reportedFrom(LocalDate dateFrom) {
+		return dateFrom == null ? null : dateFrom.atStartOfDay().atOffset(java.time.ZoneOffset.UTC);
+	}
+
+	private java.time.OffsetDateTime reportedToExclusive(LocalDate dateTo) {
+		return dateTo == null ? null : dateTo.plusDays(1).atStartOfDay().atOffset(java.time.ZoneOffset.UTC);
+	}
+
+	private BigDecimal toHours(Double minutes) {
+		if (minutes == null || minutes <= 0) {
+			return BigDecimal.ZERO;
+		}
+		return BigDecimal.valueOf(minutes)
+				.divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
 	}
 
 	private String labelForProviderType(MaintenanceProviderType providerType) {
@@ -304,8 +438,12 @@ public class MaintenanceReportService {
 			this.label = label;
 		}
 
-		private void record(MaintenanceOrder order) {
-			switch (order.getStatus()) {
+		private void record(MaintenanceSummaryDetailItemView order) {
+			record(order.getStatus(), order.getPriority());
+		}
+
+		private void record(MaintenanceOrderStatus status, MaintenancePriority priority) {
+			switch (status) {
 				case OPEN -> openCount++;
 				case ASSIGNED -> openCount++;
 				case SCHEDULED -> scheduledCount++;
@@ -313,7 +451,7 @@ public class MaintenanceReportService {
 				case COMPLETED -> completedCount++;
 				case CANCELLED -> cancelledCount++;
 			}
-			if (order.getPriority() == MaintenancePriority.URGENT) {
+			if (priority == MaintenancePriority.URGENT) {
 				urgentCount++;
 			}
 		}
@@ -331,4 +469,13 @@ public class MaintenanceReportService {
 			);
 		}
 	}
+
+	private record DetailFilter(
+			Long providerId,
+			boolean providerUnassigned,
+			MaintenanceProviderType providerType,
+			boolean providerTypeUnassigned,
+			MaintenanceLocationType locationType,
+			MaintenanceOrderStatus status
+	) {}
 }

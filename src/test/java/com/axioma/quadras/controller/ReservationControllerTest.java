@@ -101,6 +101,39 @@ class ReservationControllerTest {
 	}
 
 	@Test
+	void shouldListReservationsOrderedByDateAndTimeWhenNoFilterIsProvided() throws Exception {
+		reservationRepository.save(Reservation.schedule(
+				"Guest 2",
+				LocalDate.of(2026, 3, 14),
+				LocalTime.of(9, 0),
+				LocalTime.of(10, 0),
+				null
+		));
+		reservationRepository.save(Reservation.schedule(
+				"Guest 3",
+				LocalDate.of(2026, 3, 15),
+				LocalTime.of(7, 0),
+				LocalTime.of(8, 0),
+				null
+		));
+		reservationRepository.save(Reservation.schedule(
+				"Guest 1",
+				LocalDate.of(2026, 3, 14),
+				LocalTime.of(8, 0),
+				LocalTime.of(9, 0),
+				null
+		));
+
+		mockMvc.perform(get("/api/v1/reservations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(3))
+				.andExpect(jsonPath("$[0].guestName").value("Guest 1"))
+				.andExpect(jsonPath("$[1].guestName").value("Guest 2"))
+				.andExpect(jsonPath("$[2].guestName").value("Guest 3"));
+	}
+
+	@Test
 	void shouldFindReservationById() throws Exception {
 		final Reservation saved = reservationRepository.save(Reservation.schedule(
 				"Mario Sosa",

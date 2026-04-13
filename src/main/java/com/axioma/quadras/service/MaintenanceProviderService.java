@@ -22,7 +22,7 @@ public class MaintenanceProviderService {
 	}
 
 	public List<MaintenanceProviderDto> list() {
-		return maintenanceProviderRepository.findAllByOrderByProviderTypeAscNameAsc().stream()
+		return maintenanceProviderRepository.findAllProjectedByOrderByProviderTypeAscNameAsc().stream()
 				.map(MaintenanceProviderDto::from)
 				.toList();
 	}

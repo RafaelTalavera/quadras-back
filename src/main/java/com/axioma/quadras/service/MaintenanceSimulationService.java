@@ -245,6 +245,7 @@ public class MaintenanceSimulationService {
 			final MaintenanceLocation created = maintenanceLocationRepository.save(
 					MaintenanceLocation.create(
 							seed.locationType(),
+							null,
 							seed.code(),
 							seed.label(),
 							seed.floor(),
@@ -293,36 +294,10 @@ public class MaintenanceSimulationService {
 	}
 
 	private CleanupResult clearSyntheticData() {
-		final Predicate<String> syntheticBy = this::isSyntheticActor;
-		final List<MaintenanceOrder> ordersToDelete = maintenanceOrderRepository.findAll()
-				.stream()
-				.filter(order -> syntheticBy.test(order.getCreatedBy()))
-				.toList();
-		final List<MaintenanceProvider> providersToDelete =
-				maintenanceProviderRepository.findAllByOrderByProviderTypeAscNameAsc()
-						.stream()
-						.filter(provider -> syntheticBy.test(provider.getCreatedBy()))
-						.toList();
-		final List<MaintenanceLocation> locationsToDelete =
-				maintenanceLocationRepository.findAllByOrderByLocationTypeAscCodeAsc()
-						.stream()
-						.filter(location -> syntheticBy.test(location.getCreatedBy()))
-						.toList();
-
-		if (!ordersToDelete.isEmpty()) {
-			maintenanceOrderRepository.deleteAllInBatch(ordersToDelete);
-		}
-		if (!providersToDelete.isEmpty()) {
-			maintenanceProviderRepository.deleteAllInBatch(providersToDelete);
-		}
-		if (!locationsToDelete.isEmpty()) {
-			maintenanceLocationRepository.deleteAllInBatch(locationsToDelete);
-		}
-
 		return new CleanupResult(
-				ordersToDelete.size(),
-				locationsToDelete.size(),
-				providersToDelete.size()
+				maintenanceOrderRepository.deleteInBulkByCreatedByPrefix(SIMULATION_PREFIX),
+				maintenanceLocationRepository.deleteInBulkByCreatedByPrefix(SIMULATION_PREFIX),
+				maintenanceProviderRepository.deleteInBulkByCreatedByPrefix(SIMULATION_PREFIX)
 		);
 	}
 
@@ -565,10 +540,6 @@ public class MaintenanceSimulationService {
 			case AIR_CONDITIONING -> "sim.aires.ext";
 			case ELEVATORS -> "sim.elevadores.ext";
 		};
-	}
-
-	private boolean isSyntheticActor(String createdBy) {
-		return createdBy != null && createdBy.toLowerCase().startsWith(SIMULATION_PREFIX);
 	}
 
 	private String locationKey(MaintenanceLocationType locationType, String code) {

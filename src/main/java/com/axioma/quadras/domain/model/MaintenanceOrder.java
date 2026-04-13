@@ -460,6 +460,19 @@ public class MaintenanceOrder {
 		return completedAt;
 	}
 
+	public LocalDateTime getExpectedCompletionAt() {
+		if (scheduledEndAt != null) {
+			return scheduledEndAt;
+		}
+		if (estimatedExecutionMinutes == null) {
+			return null;
+		}
+		if (startedAt != null) {
+			return startedAt.toLocalDateTime().plusMinutes(estimatedExecutionMinutes);
+		}
+		return reportedAt.toLocalDateTime().plusMinutes(estimatedExecutionMinutes);
+	}
+
 	public boolean isPaid() {
 		return paid;
 	}

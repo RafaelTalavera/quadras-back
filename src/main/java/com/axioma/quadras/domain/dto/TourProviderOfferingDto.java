@@ -2,6 +2,7 @@ package com.axioma.quadras.domain.dto;
 
 import com.axioma.quadras.domain.model.TourProviderOffering;
 import com.axioma.quadras.domain.model.TourServiceType;
+import com.axioma.quadras.repository.TourProviderOfferingListItemView;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
@@ -25,6 +26,20 @@ public record TourProviderOfferingDto(
 				offering.getAmount(),
 				offering.getDescription(),
 				offering.isActive(),
+				offering.getUpdatedAt(),
+				offering.getUpdatedBy()
+		);
+	}
+
+	public static TourProviderOfferingDto from(TourProviderOfferingListItemView offering) {
+		return new TourProviderOfferingDto(
+				offering.getId(),
+				offering.getProviderId(),
+				offering.getServiceType(),
+				offering.getName(),
+				offering.getAmount(),
+				offering.getDescription(),
+				Boolean.TRUE.equals(offering.getActive()),
 				offering.getUpdatedAt(),
 				offering.getUpdatedBy()
 		);

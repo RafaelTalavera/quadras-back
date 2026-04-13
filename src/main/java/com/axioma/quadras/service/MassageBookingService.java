@@ -10,10 +10,10 @@ import com.axioma.quadras.domain.model.MassageBooking;
 import com.axioma.quadras.domain.model.MassageBookingStatus;
 import com.axioma.quadras.domain.model.MassageProvider;
 import com.axioma.quadras.domain.model.MassageTherapist;
+import com.axioma.quadras.repository.MassageBookingListItemView;
 import com.axioma.quadras.repository.MassageBookingRepository;
 import java.time.LocalDate;
 import java.util.List;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,13 +24,16 @@ public class MassageBookingService {
 
 	private final MassageBookingRepository massageBookingRepository;
 	private final MassageProviderService massageProviderService;
+	private final ScheduleLockService scheduleLockService;
 
 	public MassageBookingService(
 			MassageBookingRepository massageBookingRepository,
-			MassageProviderService massageProviderService
+			MassageProviderService massageProviderService,
+			ScheduleLockService scheduleLockService
 	) {
 		this.massageBookingRepository = massageBookingRepository;
 		this.massageProviderService = massageProviderService;
+		this.scheduleLockService = scheduleLockService;
 	}
 
 	@Transactional
@@ -52,6 +55,12 @@ public class MassageBookingService {
 					"Inactive massage therapists cannot receive bookings."
 			);
 		}
+		scheduleLockService.acquireMassageTherapistDates(List.of(
+				new ScheduleLockService.MassageTherapistScheduleKey(
+						therapist.getId(),
+						input.bookingDate()
+				)
+		));
 		final boolean duplicated = massageBookingRepository.existsByTherapistIdAndBookingDateAndStartTimeAndStatus(
 				therapist.getId(),
 				input.bookingDate(),
@@ -92,6 +101,8 @@ public class MassageBookingService {
 			String actorUsername
 	) {
 		final MassageBooking booking = findBookingOrThrow(bookingId);
+		final Long previousTherapistId = booking.getTherapist().getId();
+		final LocalDate previousBookingDate = booking.getBookingDate();
 		validateCanEdit(booking);
 		final MassageProvider provider = massageProviderService.findProviderOrThrow(input.providerId());
 		final MassageTherapist therapist = massageProviderService.findTherapistOrThrow(
@@ -110,6 +121,10 @@ public class MassageBookingService {
 					"Inactive massage therapists cannot receive bookings."
 			);
 		}
+		scheduleLockService.acquireMassageTherapistDates(List.of(
+				new ScheduleLockService.MassageTherapistScheduleKey(previousTherapistId, previousBookingDate),
+				new ScheduleLockService.MassageTherapistScheduleKey(therapist.getId(), input.bookingDate())
+		));
 		final boolean duplicated =
 				massageBookingRepository.existsByTherapistIdAndBookingDateAndStartTimeAndStatusAndIdNot(
 						therapist.getId(),
@@ -150,15 +165,12 @@ public class MassageBookingService {
 			Long providerId,
 			Boolean paid
 	) {
-		final Specification<MassageBooking> specification = withFilters(
+		final List<MassageBookingListItemView> bookings = massageBookingRepository.findListItems(
 				bookingDate,
-				clientName,
-				guestReference,
+				normalizeFilter(clientName),
+				normalizeFilter(guestReference),
 				providerId,
 				paid
-		);
-		final List<MassageBooking> bookings = massageBookingRepository.findAllOrderedByDateAndTime(
-				specification
 		);
 		return bookings.stream().map(MassageBookingDto::from).toList();
 	}
@@ -197,51 +209,6 @@ public class MassageBookingService {
 		return MassageBookingDto.from(booking);
 	}
 
-	private Specification<MassageBooking> withFilters(
-			LocalDate bookingDate,
-			String clientName,
-			String guestReference,
-			Long providerId,
-			Boolean paid
-	) {
-		return Specification
-				.where(hasBookingDate(bookingDate))
-				.and(containsIgnoreCase("clientName", clientName))
-				.and(containsIgnoreCase("guestReference", guestReference))
-				.and(hasProviderId(providerId))
-				.and(hasPaid(paid));
-	}
-
-	private Specification<MassageBooking> hasBookingDate(LocalDate bookingDate) {
-		return (root, query, builder) -> bookingDate == null
-				? null
-				: builder.equal(root.get("bookingDate"), bookingDate);
-	}
-
-	private Specification<MassageBooking> containsIgnoreCase(String field, String value) {
-		return (root, query, builder) -> {
-			if (value == null || value.isBlank()) {
-				return null;
-			}
-			return builder.like(
-					builder.lower(root.get(field)),
-					"%" + value.trim().toLowerCase() + "%"
-			);
-		};
-	}
-
-	private Specification<MassageBooking> hasProviderId(Long providerId) {
-		return (root, query, builder) -> providerId == null
-				? null
-				: builder.equal(root.get("provider").get("id"), providerId);
-	}
-
-	private Specification<MassageBooking> hasPaid(Boolean paid) {
-		return (root, query, builder) -> paid == null
-				? null
-				: builder.equal(root.get("paid"), paid);
-	}
-
 	private MassageBooking findBookingOrThrow(Long bookingId) {
 		return massageBookingRepository.findById(bookingId)
 				.orElseThrow(() -> new ApplicationException(
@@ -257,5 +224,12 @@ public class MassageBookingService {
 					"Cancelled massage bookings cannot be edited."
 			);
 		}
+	}
+
+	private String normalizeFilter(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		return value.trim().toLowerCase();
 	}
 }

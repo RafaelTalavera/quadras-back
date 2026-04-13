@@ -9,7 +9,9 @@ import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.TourProvider;
 import com.axioma.quadras.domain.model.TourProviderOffering;
 import com.axioma.quadras.repository.TourProviderRepository;
+import com.axioma.quadras.repository.TourProviderListItemView;
 import com.axioma.quadras.repository.TourProviderOfferingRepository;
+import com.axioma.quadras.repository.TourProviderOfferingListItemView;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -37,12 +39,12 @@ public class TourProviderService {
 	}
 
 	public List<TourProviderDto> list(boolean activeOnly) {
-		final List<TourProvider> providers = activeOnly
-				? tourProviderRepository.findAllByActiveTrueOrderByNameAsc()
-				: tourProviderRepository.findAllByOrderByNameAsc();
-		final Map<Long, List<TourProviderOfferingDto>> offeringsByProvider = loadOfferingsByProvider(providers);
+		final List<TourProviderListItemView> providers = tourProviderRepository.findListItems(activeOnly);
+		final Map<Long, List<TourProviderOfferingDto>> offeringsByProvider = loadOfferingsByProvider(
+				providers.stream().map(TourProviderListItemView::getId).toList()
+		);
 		return providers.stream()
-				.map(provider -> toDto(provider, offeringsByProvider.get(provider.getId())))
+				.map(provider -> TourProviderDto.from(provider, offeringsByProvider.get(provider.getId())))
 				.toList();
 	}
 
@@ -58,7 +60,7 @@ public class TourProviderService {
 						actorUsername
 				)
 		);
-		final List<TourProviderOfferingDto> offerings = replaceOfferings(saved, input.offerings(), actorUsername);
+		final List<TourProviderOfferingDto> offerings = syncOfferings(saved, input.offerings(), actorUsername);
 		return toDto(saved, offerings);
 	}
 
@@ -74,7 +76,7 @@ public class TourProviderService {
 				input.active(),
 				actorUsername
 		);
-		final List<TourProviderOfferingDto> offerings = replaceOfferings(provider, input.offerings(), actorUsername);
+		final List<TourProviderOfferingDto> offerings = syncOfferings(provider, input.offerings(), actorUsername);
 		return toDto(provider, offerings);
 	}
 
@@ -110,44 +112,73 @@ public class TourProviderService {
 		}
 	}
 
-	private List<TourProviderOfferingDto> replaceOfferings(
+	private List<TourProviderOfferingDto> syncOfferings(
 			TourProvider provider,
 			List<TourProviderOfferingInputDto> offerings,
 			String actorUsername
 	) {
-		tourProviderOfferingRepository.deleteAllByProviderId(provider.getId());
 		final List<TourProviderOfferingInputDto> safeOfferings = offerings == null ? List.of() : offerings;
+		final Map<String, TourProviderOffering> existingByName = new LinkedHashMap<>();
+		for (final TourProviderOffering offering :
+				tourProviderOfferingRepository.findAllByProviderIdOrderByNameAsc(provider.getId())) {
+			existingByName.put(normalizeOfferingName(offering.getName()), offering);
+		}
 		if (safeOfferings.isEmpty()) {
+			if (!existingByName.isEmpty()) {
+				tourProviderOfferingRepository.deleteAllInBatch(existingByName.values());
+			}
 			return List.of();
 		}
-		final List<TourProviderOffering> saved = tourProviderOfferingRepository.saveAll(
-				safeOfferings.stream()
-						.map(item -> TourProviderOffering.create(
-								provider,
-								item.serviceType(),
-								item.name(),
-								item.amount(),
-								item.description(),
-								Boolean.TRUE.equals(item.active()),
-								actorUsername
-						))
-						.toList()
-		);
-		return saved.stream()
+		final List<TourProviderOffering> synchronizedOfferings = new ArrayList<>();
+		final List<TourProviderOffering> offeringsToCreate = new ArrayList<>();
+		for (final TourProviderOfferingInputDto item : safeOfferings) {
+			final TourProviderOffering existing = existingByName.remove(normalizeOfferingName(item.name()));
+			if (existing == null) {
+				offeringsToCreate.add(TourProviderOffering.create(
+						provider,
+						item.serviceType(),
+						item.name(),
+						item.amount(),
+						item.description(),
+						Boolean.TRUE.equals(item.active()),
+						actorUsername
+				));
+				continue;
+			}
+			existing.update(
+					item.serviceType(),
+					item.name(),
+					item.amount(),
+					item.description(),
+					Boolean.TRUE.equals(item.active()),
+					actorUsername
+			);
+			synchronizedOfferings.add(existing);
+		}
+		if (!existingByName.isEmpty()) {
+			tourProviderOfferingRepository.deleteAllInBatch(existingByName.values());
+		}
+		if (!offeringsToCreate.isEmpty()) {
+			synchronizedOfferings.addAll(tourProviderOfferingRepository.saveAll(offeringsToCreate));
+		}
+		return synchronizedOfferings.stream()
 				.sorted(Comparator.comparing(item -> item.getName().toLowerCase()))
 				.map(TourProviderOfferingDto::from)
 				.toList();
 	}
 
-	private Map<Long, List<TourProviderOfferingDto>> loadOfferingsByProvider(List<TourProvider> providers) {
-		if (providers.isEmpty()) {
+	private String normalizeOfferingName(String value) {
+		return value == null ? "" : value.trim().toLowerCase();
+	}
+
+	private Map<Long, List<TourProviderOfferingDto>> loadOfferingsByProvider(List<Long> providerIds) {
+		if (providerIds.isEmpty()) {
 			return Map.of();
 		}
-		final Set<Long> providerIds = providers.stream().map(TourProvider::getId).collect(Collectors.toSet());
 		final Map<Long, List<TourProviderOfferingDto>> offeringsByProvider = new LinkedHashMap<>();
-		for (final TourProviderOffering offering : tourProviderOfferingRepository
-				.findAllByProviderIdInOrderByProviderIdAscNameAsc(providerIds)) {
-			offeringsByProvider.computeIfAbsent(offering.getProvider().getId(), ignored -> new ArrayList<>())
+		for (final TourProviderOfferingListItemView offering : tourProviderOfferingRepository
+				.findListItemsByProviderIdInOrderByProviderIdAscNameAsc(providerIds)) {
+			offeringsByProvider.computeIfAbsent(offering.getProviderId(), ignored -> new ArrayList<>())
 					.add(TourProviderOfferingDto.from(offering));
 		}
 		return offeringsByProvider;

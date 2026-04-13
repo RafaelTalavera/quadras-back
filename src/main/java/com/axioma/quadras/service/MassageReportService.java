@@ -4,20 +4,19 @@ import com.axioma.quadras.domain.dto.MassageProviderDetailReportDto;
 import com.axioma.quadras.domain.dto.MassageProviderReportItemDto;
 import com.axioma.quadras.domain.dto.MassageProviderSummaryDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
-import com.axioma.quadras.domain.model.MassageBooking;
 import com.axioma.quadras.domain.model.MassageBookingStatus;
+import com.axioma.quadras.domain.model.MassagePaymentMethod;
 import com.axioma.quadras.domain.model.MassageProvider;
 import com.axioma.quadras.repository.MassageBookingRepository;
+import com.axioma.quadras.repository.MassageProviderReportItemView;
+import com.axioma.quadras.repository.MassageProviderSummaryView;
+import com.axioma.quadras.repository.MassageTherapistCountView;
+import com.axioma.quadras.repository.MassageTherapistRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,36 +29,22 @@ public class MassageReportService {
 
 	private final MassageBookingRepository massageBookingRepository;
 	private final MassageProviderService massageProviderService;
+	private final MassageTherapistRepository massageTherapistRepository;
 
 	public MassageReportService(
 			MassageBookingRepository massageBookingRepository,
-			MassageProviderService massageProviderService
+			MassageProviderService massageProviderService,
+			MassageTherapistRepository massageTherapistRepository
 	) {
 		this.massageBookingRepository = massageBookingRepository;
 		this.massageProviderService = massageProviderService;
+		this.massageTherapistRepository = massageTherapistRepository;
 	}
 
 	public List<MassageProviderSummaryDto> listProviderSummary(LocalDate dateFrom, LocalDate dateTo) {
 		validateRange(dateFrom, dateTo);
-		final List<MassageBooking> bookings = massageBookingRepository.findAllOrderedByDateAndTime(
-				withDateRange(dateFrom, dateTo)
-		);
-		final Map<Long, _ProviderAccumulator> grouped = new LinkedHashMap<>();
-		for (final MassageBooking booking : bookings) {
-			final Long providerId = booking.getProvider().getId();
-			final _ProviderAccumulator accumulator = grouped.computeIfAbsent(
-					providerId,
-					ignored -> new _ProviderAccumulator(booking.getProvider())
-			);
-			accumulator.add(booking);
-		}
-
-		return grouped.values().stream()
-				.map(_ProviderAccumulator::toSummaryDto)
-				.sorted(Comparator.comparing(
-						MassageProviderSummaryDto::providerName,
-						String.CASE_INSENSITIVE_ORDER
-				))
+		return massageBookingRepository.findProviderSummary(dateFrom, dateTo, null).stream()
+				.map(this::toSummaryDto)
 				.toList();
 	}
 
@@ -70,24 +55,28 @@ public class MassageReportService {
 	) {
 		validateRange(dateFrom, dateTo);
 		final MassageProvider provider = massageProviderService.findProviderOrThrow(providerId);
-		final List<MassageBooking> bookings = massageBookingRepository.findAllOrderedByDateAndTime(
-				withDateRange(dateFrom, dateTo).and(hasProviderId(providerId))
-		);
+		final MassageProviderSummaryDto summary = massageBookingRepository.findProviderSummary(
+						dateFrom,
+						dateTo,
+						providerId
+				).stream()
+				.findFirst()
+				.map(this::toSummaryDto)
+				.orElseGet(() -> emptySummary(provider));
 
-		final _ProviderAccumulator accumulator = new _ProviderAccumulator(provider);
-		for (final MassageBooking booking : bookings) {
-			accumulator.add(booking);
-		}
-
-		final List<MassageProviderReportItemDto> items = bookings.stream()
-				.map(MassageProviderReportItemDto::from)
+		final List<MassageProviderReportItemDto> items = massageBookingRepository.findProviderReportItems(
+						providerId,
+						dateFrom,
+						dateTo
+				).stream()
+				.map(this::toReportItemDto)
 				.toList();
 
 		return new MassageProviderDetailReportDto(
 				provider.getId(),
 				provider.getName(),
 				provider.isActive(),
-				accumulator.toSummaryDto(),
+				summary,
 				items
 		);
 	}
@@ -110,88 +99,71 @@ public class MassageReportService {
 		}
 	}
 
-	private Specification<MassageBooking> withDateRange(LocalDate dateFrom, LocalDate dateTo) {
-		return Specification.where(hasBookingDateFrom(dateFrom)).and(hasBookingDateTo(dateTo));
-	}
-
-	private Specification<MassageBooking> hasBookingDateFrom(LocalDate dateFrom) {
-		return (root, query, builder) -> builder.greaterThanOrEqualTo(
-				root.get("bookingDate"),
-				dateFrom
+	private MassageProviderSummaryDto toSummaryDto(MassageProviderSummaryView view) {
+		final OffsetDateTime lastBookingAt = view.getLastBookingDate() == null || view.getLastBookingTime() == null
+				? null
+				: view.getLastBookingDate().atTime(view.getLastBookingTime()).atOffset(ZoneOffset.UTC);
+		return new MassageProviderSummaryDto(
+				view.getProviderId(),
+				view.getProviderName(),
+				view.getProviderActive(),
+				Math.toIntExact(view.getTherapistsCount()),
+				Math.toIntExact(view.getScheduledCount()),
+				Math.toIntExact(view.getCancelledCount()),
+				Math.toIntExact(view.getScheduledCount()),
+				Math.toIntExact(view.getPaidCount()),
+				Math.toIntExact(view.getPendingCount()),
+				safeAmount(view.getGrossAmount()),
+				safeAmount(view.getPaidAmount()),
+				safeAmount(view.getPendingAmount()),
+				lastBookingAt
 		);
 	}
 
-	private Specification<MassageBooking> hasBookingDateTo(LocalDate dateTo) {
-		return (root, query, builder) -> builder.lessThanOrEqualTo(
-				root.get("bookingDate"),
-				dateTo
+	private MassageProviderReportItemDto toReportItemDto(MassageProviderReportItemView view) {
+		return new MassageProviderReportItemDto(
+				view.getBookingId(),
+				view.getBookingDate(),
+				view.getStartTime(),
+				view.getClientName(),
+				view.getGuestReference(),
+				view.getTreatment(),
+				view.getTherapistId(),
+				view.getTherapistName(),
+				view.getAmount(),
+				Boolean.TRUE.equals(view.getPaid()),
+				view.getPaymentMethod() == null ? null : MassagePaymentMethod.valueOf(view.getPaymentMethod()),
+				view.getPaymentDate(),
+				view.getPaymentNotes(),
+				MassageBookingStatus.valueOf(view.getStatus()),
+				view.getCancellationNotes()
 		);
 	}
 
-	private Specification<MassageBooking> hasProviderId(Long providerId) {
-		return (root, query, builder) -> builder.equal(root.get("provider").get("id"), providerId);
+	private MassageProviderSummaryDto emptySummary(MassageProvider provider) {
+		final int therapistsCount = massageTherapistRepository.countByProviderIdIn(List.of(provider.getId())).stream()
+				.findFirst()
+				.map(MassageTherapistCountView::getTherapistsCount)
+				.map(Math::toIntExact)
+				.orElse(0);
+		return new MassageProviderSummaryDto(
+				provider.getId(),
+				provider.getName(),
+				provider.isActive(),
+				therapistsCount,
+				0,
+				0,
+				0,
+				0,
+				0,
+				BigDecimal.ZERO,
+				BigDecimal.ZERO,
+				BigDecimal.ZERO,
+				null
+		);
 	}
 
-	private static final class _ProviderAccumulator {
-
-		private final MassageProvider provider;
-		private int scheduledCount;
-		private int cancelledCount;
-		private int paidCount;
-		private int pendingCount;
-		private BigDecimal grossAmount = BigDecimal.ZERO;
-		private BigDecimal paidAmount = BigDecimal.ZERO;
-		private BigDecimal pendingAmount = BigDecimal.ZERO;
-		private final List<OffsetDateTime> bookingInstants = new ArrayList<>();
-
-		private _ProviderAccumulator(MassageProvider provider) {
-			this.provider = provider;
-		}
-
-		private void add(MassageBooking booking) {
-			bookingInstants.add(
-					booking.getBookingDate()
-							.atTime(booking.getStartTime())
-							.atOffset(ZoneOffset.UTC)
-			);
-			if (booking.getStatus() == MassageBookingStatus.CANCELLED) {
-				cancelledCount++;
-				return;
-			}
-
-			scheduledCount++;
-			grossAmount = grossAmount.add(booking.getAmount());
-			if (booking.isPaid()) {
-				paidCount++;
-				paidAmount = paidAmount.add(booking.getAmount());
-				return;
-			}
-			pendingCount++;
-			pendingAmount = pendingAmount.add(booking.getAmount());
-		}
-
-		private MassageProviderSummaryDto toSummaryDto() {
-			OffsetDateTime lastBookingAt = null;
-			for (final OffsetDateTime bookingInstant : bookingInstants) {
-				if (lastBookingAt == null || bookingInstant.isAfter(lastBookingAt)) {
-					lastBookingAt = bookingInstant;
-				}
-			}
-			return new MassageProviderSummaryDto(
-					provider.getId(),
-					provider.getName(),
-					provider.isActive(),
-					provider.getTherapists().size(),
-					scheduledCount,
-					cancelledCount,
-					scheduledCount,
-					paidCount,
-					pendingCount,
-					grossAmount,
-					paidAmount,
-					pendingAmount,
-					lastBookingAt
-			);
-		}
+	private BigDecimal safeAmount(BigDecimal value) {
+		return value == null ? BigDecimal.ZERO : value;
 	}
 }

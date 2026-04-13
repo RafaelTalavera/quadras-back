@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceLocation;
+import com.axioma.quadras.domain.model.MaintenanceLocationCategory;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenancePriority;
@@ -122,20 +123,44 @@ class MaintenanceControllerTest {
 				"2026-04-10T12:00:00"
 		);
 
+		mockMvc.perform(post("/api/v1/maintenance/orders/{orderId}/attachments", firstOrderId)
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "attachmentType": "PHOTO",
+								  "fileName": "aire-204.jpg",
+								  "contentType": "image/jpeg",
+								  "base64Content": "%s"
+								}
+								""".formatted(base64("foto-aire"))))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.fileName").value("aire-204.jpg"));
+
 		mockMvc.perform(get("/api/v1/maintenance/orders")
 						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.param("dateFrom", "2026-04-10")
 						.param("dateTo", "2026-04-10")
 						.param("locationId", String.valueOf(locationId)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(2));
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].expectedCompletionAt").value("2026-04-10T11:30:00"))
+				.andExpect(jsonPath("$[0].attachments.length()").value(1))
+				.andExpect(jsonPath("$[0].attachments[0].fileName").value("aire-204.jpg"));
+
+		mockMvc.perform(get("/api/v1/maintenance/locations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].locationCategory").value("APARTMENT"));
 
 		mockMvc.perform(get("/api/v1/maintenance/locations/{locationId}/history", locationId)
 						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(2))
 				.andExpect(jsonPath("$[0].title").value("Chequeo de internet en paralelo"))
-				.andExpect(jsonPath("$[1].title").value("Revision del aire"));
+				.andExpect(jsonPath("$[1].title").value("Revision del aire"))
+				.andExpect(jsonPath("$[1].attachments.length()").value(1))
+				.andExpect(jsonPath("$[1].attachments[0].fileName").value("aire-204.jpg"));
 	}
 
 	@Test
@@ -226,6 +251,75 @@ class MaintenanceControllerTest {
 	}
 
 	@Test
+	void shouldListMaintenanceProvidersAndLocationsOrdered() throws Exception {
+		createProvider(
+				"INTERNAL",
+				"GENERAL_MAINTENANCE",
+				"Bravo interno",
+				"Soporte interno",
+				"Mantenimiento operativo"
+		);
+		createProvider(
+				"EXTERNAL",
+				"ELEVATORS",
+				"Alfa externo",
+				"Elevadores",
+				"Soporte de ascensores"
+		);
+		createProvider(
+				"EXTERNAL",
+				"AIR_CONDITIONING",
+				"Zulu externo",
+				"Climatizacion",
+				"Reparaciones HVAC"
+		);
+
+		createLocation(
+				"COMMON_AREA",
+				"POOL",
+				"Piscina",
+				"PB",
+				"Zona humeda"
+		);
+		createLocation(
+				"ROOM",
+				"101",
+				"Habitacion 101",
+				"1",
+				"Cuarto frente a jardin"
+		);
+		createLocation(
+				"ROOM",
+				"305",
+				"Habitacion 305",
+				"3",
+				"Cuarto superior"
+		);
+
+		mockMvc.perform(get("/api/v1/maintenance/providers")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(3))
+				.andExpect(jsonPath("$[0].providerType").value("EXTERNAL"))
+				.andExpect(jsonPath("$[0].name").value("Alfa externo"))
+				.andExpect(jsonPath("$[1].providerType").value("EXTERNAL"))
+				.andExpect(jsonPath("$[1].name").value("Zulu externo"))
+				.andExpect(jsonPath("$[2].providerType").value("INTERNAL"))
+				.andExpect(jsonPath("$[2].name").value("Bravo interno"));
+
+		mockMvc.perform(get("/api/v1/maintenance/locations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(3))
+				.andExpect(jsonPath("$[0].locationType").value("COMMON_AREA"))
+				.andExpect(jsonPath("$[0].code").value("POOL"))
+				.andExpect(jsonPath("$[1].locationType").value("ROOM"))
+				.andExpect(jsonPath("$[1].code").value("101"))
+				.andExpect(jsonPath("$[2].locationType").value("ROOM"))
+				.andExpect(jsonPath("$[2].code").value("305"));
+	}
+
+	@Test
 	void shouldMarkMaintenanceOrderPayment() throws Exception {
 		final long locationId = createLocation(
 				"ROOM",
@@ -282,6 +376,7 @@ class MaintenanceControllerTest {
 		final MaintenanceLocation room = maintenanceLocationRepository.save(
 				MaintenanceLocation.create(
 						MaintenanceLocationType.ROOM,
+						MaintenanceLocationCategory.APARTMENT,
 						"301",
 						"Habitacion 301",
 						"3",
@@ -293,6 +388,7 @@ class MaintenanceControllerTest {
 		final MaintenanceLocation commonArea = maintenanceLocationRepository.save(
 				MaintenanceLocation.create(
 						MaintenanceLocationType.COMMON_AREA,
+						MaintenanceLocationCategory.COMMON_AREA,
 						"ROOF",
 						"Terraza",
 						"4",
@@ -425,6 +521,7 @@ class MaintenanceControllerTest {
 				.andExpect(jsonPath("$.summary.scheduledCount").value(1))
 				.andExpect(jsonPath("$.summary.cancelledCount").value(1))
 				.andExpect(jsonPath("$.items.length()").value(2))
+				.andExpect(jsonPath("$.items[0].expectedCompletionAt").value("2026-04-03T10:00:00"))
 				.andExpect(jsonPath("$.items[0].title").value("Revision de routers"))
 				.andExpect(jsonPath("$.items[1].status").value("CANCELLED"));
 	}
