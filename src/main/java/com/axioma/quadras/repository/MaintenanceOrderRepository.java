@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -110,6 +112,67 @@ public interface MaintenanceOrderRepository extends JpaRepository<MaintenanceOrd
 			@Param("scheduledToExclusive") LocalDateTime scheduledToExclusive,
 			@Param("reportedFrom") OffsetDateTime reportedFrom,
 			@Param("reportedToExclusive") OffsetDateTime reportedToExclusive
+	);
+
+	@Query("""
+			select
+				o.id as id,
+				o.location.id as locationId,
+				o.locationTypeSnapshot as locationTypeSnapshot,
+				o.locationCodeSnapshot as locationCodeSnapshot,
+				o.locationLabelSnapshot as locationLabelSnapshot,
+				p.id as providerId,
+				o.providerTypeSnapshot as providerTypeSnapshot,
+				o.providerNameSnapshot as providerNameSnapshot,
+				o.serviceLabelSnapshot as serviceLabelSnapshot,
+				o.title as title,
+				o.priority as priority,
+				o.estimatedExecutionMinutes as estimatedExecutionMinutes,
+				o.status as status,
+				o.reportedAt as reportedAt,
+				o.scheduledStartAt as scheduledStartAt,
+				o.scheduledEndAt as scheduledEndAt,
+				o.startedAt as startedAt,
+				o.completedAt as completedAt,
+				o.paid as paid
+			from MaintenanceOrder o
+			left join o.provider p
+			where (:locationId is null or o.location.id = :locationId)
+			  and (:providerId is null or p.id = :providerId)
+			  and (:providerType is null or o.providerTypeSnapshot = :providerType)
+			  and (:status is null or o.status = :status)
+			  and (:priority is null or o.priority = :priority)
+			  and (
+			        (:scheduledFrom is null and :scheduledToExclusive is null
+			             and :reportedFrom is null and :reportedToExclusive is null)
+			        or (
+			            o.scheduledStartAt is not null
+			            and (:scheduledFrom is null or o.scheduledStartAt >= :scheduledFrom)
+			            and (:scheduledToExclusive is null or o.scheduledStartAt < :scheduledToExclusive)
+			        )
+			        or (
+			            o.scheduledStartAt is null
+			            and (:reportedFrom is null or o.reportedAt >= :reportedFrom)
+			            and (:reportedToExclusive is null or o.reportedAt < :reportedToExclusive)
+			        )
+			  )
+			order by
+				case when o.scheduledStartAt is null then 1 else 0 end asc,
+				o.scheduledStartAt asc,
+				o.reportedAt asc,
+				o.id asc
+			""")
+	Slice<MaintenanceOrderListItemView> findCompactItems(
+			@Param("locationId") Long locationId,
+			@Param("providerId") Long providerId,
+			@Param("providerType") MaintenanceProviderType providerType,
+			@Param("status") MaintenanceOrderStatus status,
+			@Param("priority") MaintenancePriority priority,
+			@Param("scheduledFrom") LocalDateTime scheduledFrom,
+			@Param("scheduledToExclusive") LocalDateTime scheduledToExclusive,
+			@Param("reportedFrom") OffsetDateTime reportedFrom,
+			@Param("reportedToExclusive") OffsetDateTime reportedToExclusive,
+			Pageable pageable
 	);
 
 	@Query("""

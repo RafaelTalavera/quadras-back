@@ -279,6 +279,105 @@ class TourControllerTest {
 	}
 
 	@Test
+	void shouldReturnCompactTourBookingsPage() throws Exception {
+		final TourProvider provider = tourProviderRepository.save(
+				TourProvider.create("Agencia A", "a@demo.local", new BigDecimal("10.00"), "system")
+		);
+		final TourProviderOffering offering = tourProviderOfferingRepository.save(
+				TourProviderOffering.create(
+						provider,
+						TourServiceType.TOUR,
+						"Ilha do Campeche",
+						new BigDecimal("350.00"),
+						"Passeio com desembarque",
+						true,
+						"system"
+				)
+		);
+		tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TOUR,
+						LocalDateTime.of(2026, 4, 2, 9, 0),
+						LocalDateTime.of(2026, 4, 2, 11, 0),
+						"Helena",
+						"Apto 101",
+						provider,
+						offering,
+						new BigDecimal("350.00"),
+						new BigDecimal("10.00"),
+						"Passeio principal",
+						true,
+						TourPaymentMethod.PIX,
+						LocalDate.of(2026, 4, 2),
+						"Pix",
+						"operador.demo"
+				)
+		);
+		tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TRAVEL,
+						LocalDateTime.of(2026, 4, 2, 12, 0),
+						LocalDateTime.of(2026, 4, 2, 14, 0),
+						"Bruno",
+						"Apto 102",
+						provider,
+						null,
+						new BigDecimal("420.00"),
+						new BigDecimal("12.50"),
+						"Outro servico",
+						false,
+						null,
+						null,
+						null,
+						"operador.demo"
+				)
+		);
+		tourBookingRepository.save(
+				TourBooking.schedule(
+						TourServiceType.TOUR,
+						LocalDateTime.of(2026, 4, 2, 15, 0),
+						LocalDateTime.of(2026, 4, 2, 17, 0),
+						"Maria",
+						"Apto 103",
+						provider,
+						null,
+						new BigDecimal("500.00"),
+						new BigDecimal("10.00"),
+						"Fim do dia",
+						false,
+						null,
+						null,
+						null,
+						"operador.demo"
+				)
+		);
+
+		mockMvc.perform(get("/api/v1/tours/bookings/compact")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-04-02")
+						.param("dateTo", "2026-04-02")
+						.param("page", "0")
+						.param("size", "2"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.page").value(0))
+				.andExpect(jsonPath("$.size").value(2))
+				.andExpect(jsonPath("$.hasNext").value(true))
+				.andExpect(jsonPath("$.items.length()").value(2))
+				.andExpect(jsonPath("$.items[0].clientName").value("Helena"))
+				.andExpect(jsonPath("$.items[0].providerOfferingName").value("Ilha do Campeche"))
+				.andExpect(jsonPath("$.items[0].paymentMethod").doesNotExist());
+	}
+
+	@Test
+	void shouldRejectInvalidCompactTourPageSize() throws Exception {
+		mockMvc.perform(get("/api/v1/tours/bookings/compact")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("size", "0"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("size must be greater than zero"));
+	}
+
+	@Test
 	void shouldReturnProviderSummary() throws Exception {
 		final TourProvider providerA = tourProviderRepository.save(
 				TourProvider.create("Agencia A", "a@demo.local", new BigDecimal("10.00"), "system")

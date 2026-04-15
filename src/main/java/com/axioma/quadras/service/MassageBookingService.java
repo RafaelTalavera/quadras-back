@@ -160,13 +160,19 @@ public class MassageBookingService {
 
 	public List<MassageBookingDto> list(
 			LocalDate bookingDate,
+			LocalDate dateFrom,
+			LocalDate dateTo,
 			String clientName,
 			String guestReference,
 			Long providerId,
 			Boolean paid
 	) {
+		validateRange(dateFrom, dateTo);
+		final LocalDate effectiveDateFrom = bookingDate != null ? bookingDate : dateFrom;
+		final LocalDate effectiveDateTo = bookingDate != null ? bookingDate : dateTo;
 		final List<MassageBookingListItemView> bookings = massageBookingRepository.findListItems(
-				bookingDate,
+				effectiveDateFrom,
+				effectiveDateTo,
 				normalizeFilter(clientName),
 				normalizeFilter(guestReference),
 				providerId,
@@ -231,5 +237,14 @@ public class MassageBookingService {
 			return null;
 		}
 		return value.trim().toLowerCase();
+	}
+
+	private void validateRange(LocalDate dateFrom, LocalDate dateTo) {
+		if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"dateFrom must be before or equal to dateTo"
+			);
+		}
 	}
 }

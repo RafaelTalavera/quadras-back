@@ -1,5 +1,57 @@
 # CHANGELOG DE DESARROLLO - COSTANORTE
 
+## 2026-04-15 | Optimizacion operativa | Reduccion de carga inicial en Massagens, Tours y Mantencion
+- Componente afectado: Backend + frontend estatico (`Massagens`, `Tours`, `Mantencion`)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/controller/{MassageBookingController,MaintenanceOrderController,TourBookingController}.java`
+  - `src/main/java/com/axioma/quadras/service/{MassageBookingService,MaintenanceOrderService,TourBookingService}.java`
+  - `src/main/java/com/axioma/quadras/repository/{MassageBookingRepository,MaintenanceOrderRepository,TourBookingRepository,MaintenanceOrderListItemView,TourBookingCompactItemView}.java`
+  - `src/main/java/com/axioma/quadras/domain/dto/{MaintenanceOrderListDto,MaintenanceOrderListPageDto,TourBookingCompactDto,TourBookingCompactPageDto}.java`
+  - `src/main/resources/static/app.js`
+  - `src/test/java/com/axioma/quadras/controller/{MassageControllerTest,MaintenanceControllerTest,TourControllerTest}.java`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: la carga inicial de los modulos operativos estaba trayendo listados completos o DTOs demasiado pesados, generando latencia y payload innecesario para pintar calendario y grillas.
+- Impacto funcional:
+  - `Massagens` agrega filtro por rango (`dateFrom` / `dateTo`) en `GET /api/v1/massages/bookings`
+  - la pantalla estatica de `Massagens` deja de pedir el historico completo y ahora trae solo el mes visible
+  - `Mantencion` agrega `GET /api/v1/maintenance/orders/compact` con paginacion y listado liviano para consumo de grilla
+  - `Tours` agrega `GET /api/v1/tours/bookings/compact` con paginacion y listado liviano para consumo de grilla
+  - `Tours` mantiene la correccion previa de compatibilidad MySQL en `cast(tp.id as char)` para reportes por proveedor
+- Validacion ejecutada:
+  - `./mvnw -Dtest=MassageControllerTest test`
+  - `./mvnw -Dtest=MaintenanceControllerTest test`
+  - `./mvnw -Dtest=TourControllerTest test`
+  - medicion HTTP manual contra backend local en puerto alternativo `8081`:
+    - `GET /api/v1/massages/bookings?dateFrom=2026-04-01&dateTo=2026-04-30` -> `~176.7 ms`, `180` items, `~110 KB`
+    - `GET /api/v1/tours/bookings` -> `~95.7 ms`, `60` items, `~44.9 KB`
+    - `GET /api/v1/tours/bookings/compact?page=0&size=25` -> `~35.8 ms`, `25` items, `~8.0 KB`
+    - `GET /api/v1/maintenance/orders` -> `~269.0 ms`, `108` items, `~141 KB`
+    - `GET /api/v1/maintenance/orders/compact?page=0&size=25` -> `~50.6 ms`, `25` items, `~14.8 KB`
+- Rollback manual:
+  - eliminar los endpoints `/compact` de `Tours` y `Mantencion`
+  - revertir `Massagens` a consulta sin rango en backend y en `app.js`
+  - efecto esperado del rollback: reaparece la carga de listados completos y aumenta nuevamente el tiempo de apertura de los modulos operativos
+
+## 2026-04-13 | Hotfix local | Tours summary compatible con MySQL real
+- Componente afectado: Backend (`Tours` / reportes)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/repository/TourBookingRepository.java`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: corregir un `500` real en MySQL local para `GET /api/v1/tours/reports/summary` y `GET /api/v1/tours/reports/summary/details?groupBy=PROVIDER`, causado por `cast(tp.id as varchar)` en una query nativa que solo pasaba en H2.
+- Impacto funcional:
+  - `findProviderSummaryBreakdown` pasa a usar `cast(tp.id as char)`
+  - el resumen consolidado de `Tours` vuelve a responder en MySQL local
+  - el detalle por `PROVIDER` vuelve a responder en MySQL local
+  - no cambia el contrato JSON ni los codigos de negocio del modulo
+- Validacion ejecutada:
+  - `./mvnw -q "-Dtest=TourControllerTest" test`
+  - validacion HTTP manual contra backend levantado en puerto alternativo:
+    - `GET /api/v1/tours/reports/summary?dateFrom=2026-04-01&dateTo=2026-04-30` -> `200`
+    - `GET /api/v1/tours/reports/summary/details?groupBy=PROVIDER&code=1&dateFrom=2026-04-01&dateTo=2026-04-30` -> `200`
+- Rollback manual:
+  - revertir `cast(tp.id as char)` a `cast(tp.id as varchar)` en `TourBookingRepository.java`
+  - efecto esperado del rollback: el bug reaparece en MySQL local y `Tours` vuelve a responder `500` en summary/provider detail
+
 ## 2026-04-01 | Recuperacion operativa | Script de carga masiva para Quadras entre enero y julio 2026
 - Componente afectado: Backend (`Quadras` / operacion local)
 - Archivos tocados:

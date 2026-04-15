@@ -54,6 +54,12 @@ public class MassageBookingController {
 			@RequestParam(required = false)
 			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 			LocalDate bookingDate,
+			@RequestParam(required = false)
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate dateFrom,
+			@RequestParam(required = false)
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate dateTo,
 			@RequestParam(required = false) String clientName,
 			@RequestParam(required = false) String guestReference,
 			@RequestParam(required = false) Long providerId,
@@ -62,6 +68,8 @@ public class MassageBookingController {
 		return ResponseEntity.ok(
 				massageBookingService.list(
 						bookingDate,
+						dateFrom,
+						dateTo,
 						clientName,
 						guestReference,
 						providerId,

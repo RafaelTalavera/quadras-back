@@ -1,5 +1,6 @@
 const state = {
 	selectedDate: toDateInputValue(new Date()),
+	calendarReferenceDate: new Date(),
 	bookingsForSelectedDate: [],
 	bookingsMonth: [],
 	providers: []
@@ -27,7 +28,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 	initializeFormDefaults();
 	togglePaymentFields();
 	renderSelectedDateLabel();
-	renderCalendar(new Date(), []);
+	state.calendarReferenceDate = monthReferenceFromIso(state.selectedDate);
+	renderCalendar(state.calendarReferenceDate, []);
 
 	paidCheckboxElement.addEventListener("change", togglePaymentFields);
 	bookingFormElement.addEventListener("submit", submitBooking);
@@ -87,12 +89,17 @@ async function loadProviders() {
 
 async function loadMonthBookings() {
 	try {
-		const bookings = await apiGet("/api/v1/massages/bookings");
+		const referenceDate = state.calendarReferenceDate || monthReferenceFromIso(state.selectedDate);
+		const dateFrom = toDateInputValue(new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1));
+		const dateTo = toDateInputValue(new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0));
+		const bookings = await apiGet(
+			`/api/v1/massages/bookings?dateFrom=${dateFrom}&dateTo=${dateTo}`
+		);
 		state.bookingsMonth = Array.isArray(bookings) ? bookings : [];
-		renderCalendar(new Date(), state.bookingsMonth);
+		renderCalendar(state.calendarReferenceDate, state.bookingsMonth);
 	} catch (error) {
 		state.bookingsMonth = [];
-		renderCalendar(new Date(), []);
+		renderCalendar(state.calendarReferenceDate, []);
 		updateStatusBanner(error.message);
 	}
 }
@@ -103,14 +110,14 @@ async function loadBookingsForSelectedDate(date) {
 		state.selectedDate = date;
 		state.bookingsForSelectedDate = Array.isArray(bookings) ? bookings : [];
 		renderSelectedDateLabel();
-		renderCalendar(new Date(), state.bookingsMonth);
+		renderCalendar(state.calendarReferenceDate, state.bookingsMonth);
 		renderBookings();
 		updateStatusBanner(`Agenda carregada para ${formatShortDate(date)}.`);
 	} catch (error) {
 		state.selectedDate = date;
 		state.bookingsForSelectedDate = [];
 		renderSelectedDateLabel();
-		renderCalendar(new Date(), state.bookingsMonth);
+		renderCalendar(state.calendarReferenceDate, state.bookingsMonth);
 		renderBookings();
 		updateStatusBanner(error.message);
 	}
@@ -268,6 +275,8 @@ async function submitBooking(event) {
 	try {
 		await apiPost("/api/v1/massages/bookings", payload);
 		formFeedbackElement.textContent = "Atendimento guardado com sucesso.";
+		state.selectedDate = payload.bookingDate;
+		state.calendarReferenceDate = monthReferenceFromIso(payload.bookingDate);
 		bookingFormElement.reset();
 		initializeFormDefaults();
 		togglePaymentFields();
@@ -379,6 +388,11 @@ function toDateInputValue(date) {
 		String(date.getMonth() + 1).padStart(2, "0"),
 		String(date.getDate()).padStart(2, "0")
 	].join("-");
+}
+
+function monthReferenceFromIso(value) {
+	const [year = "0", month = "1"] = String(value).split("-");
+	return new Date(Number(year), Number(month) - 1, 1);
 }
 
 function formatTime(value) {

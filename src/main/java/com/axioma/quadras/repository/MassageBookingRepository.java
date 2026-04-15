@@ -160,7 +160,8 @@ public interface MassageBookingRepository extends JpaRepository<MassageBooking, 
 			from MassageBooking b
 			join b.provider p
 			join b.therapist t
-			where (:bookingDate is null or b.bookingDate = :bookingDate)
+			where (:dateFrom is null or b.bookingDate >= :dateFrom)
+			  and (:dateTo is null or b.bookingDate <= :dateTo)
 			  and (:clientName is null or lower(b.clientName) like concat('%', :clientName, '%'))
 			  and (:guestReference is null or lower(b.guestReference) like concat('%', :guestReference, '%'))
 			  and (:providerId is null or p.id = :providerId)
@@ -168,7 +169,8 @@ public interface MassageBookingRepository extends JpaRepository<MassageBooking, 
 			order by b.bookingDate asc, b.startTime asc, b.id asc
 			""")
 	List<MassageBookingListItemView> findListItems(
-			@Param("bookingDate") LocalDate bookingDate,
+			@Param("dateFrom") LocalDate dateFrom,
+			@Param("dateTo") LocalDate dateTo,
 			@Param("clientName") String clientName,
 			@Param("guestReference") String guestReference,
 			@Param("providerId") Long providerId,

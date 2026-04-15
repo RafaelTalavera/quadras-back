@@ -2,6 +2,7 @@ package com.axioma.quadras.controller;
 
 import com.axioma.quadras.domain.dto.CancelTourBookingDto;
 import com.axioma.quadras.domain.dto.CreateTourBookingDto;
+import com.axioma.quadras.domain.dto.TourBookingCompactPageDto;
 import com.axioma.quadras.domain.dto.TourBookingDto;
 import com.axioma.quadras.domain.dto.UpdateTourBookingDto;
 import com.axioma.quadras.domain.dto.UpdateTourPaymentDto;
@@ -63,6 +64,25 @@ public class TourBookingController {
 	) {
 		return ResponseEntity.ok(
 				tourBookingService.list(dateFrom, dateTo, providerId, paid, serviceType)
+		);
+	}
+
+	@GetMapping("/compact")
+	public ResponseEntity<TourBookingCompactPageDto> listCompact(
+			@RequestParam(required = false)
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate dateFrom,
+			@RequestParam(required = false)
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate dateTo,
+			@RequestParam(required = false) Long providerId,
+			@RequestParam(required = false) Boolean paid,
+			@RequestParam(required = false) TourServiceType serviceType,
+			@RequestParam(required = false) Integer page,
+			@RequestParam(required = false) Integer size
+	) {
+		return ResponseEntity.ok(
+				tourBookingService.listCompact(dateFrom, dateTo, providerId, paid, serviceType, page, size)
 		);
 	}
 

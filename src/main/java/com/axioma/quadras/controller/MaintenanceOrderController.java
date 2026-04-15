@@ -7,6 +7,7 @@ import com.axioma.quadras.domain.dto.CreateMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.MaintenanceConflictDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
+import com.axioma.quadras.domain.dto.MaintenanceOrderListPageDto;
 import com.axioma.quadras.domain.dto.StartMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenancePaymentDto;
@@ -68,6 +69,37 @@ public class MaintenanceOrderController {
 						providerType,
 						status,
 						priority
+				)
+		);
+	}
+
+	@GetMapping("/compact")
+	public ResponseEntity<MaintenanceOrderListPageDto> listCompact(
+			@RequestParam(required = false)
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate dateFrom,
+			@RequestParam(required = false)
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate dateTo,
+			@RequestParam(required = false) Long locationId,
+			@RequestParam(required = false) Long providerId,
+			@RequestParam(required = false) MaintenanceProviderType providerType,
+			@RequestParam(required = false) MaintenanceOrderStatus status,
+			@RequestParam(required = false) MaintenancePriority priority,
+			@RequestParam(required = false) Integer page,
+			@RequestParam(required = false) Integer size
+	) {
+		return ResponseEntity.ok(
+				maintenanceOrderService.listCompact(
+						dateFrom,
+						dateTo,
+						locationId,
+						providerId,
+						providerType,
+						status,
+						priority,
+						page,
+						size
 				)
 		);
 	}

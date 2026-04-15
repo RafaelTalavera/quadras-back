@@ -372,6 +372,76 @@ class MaintenanceControllerTest {
 	}
 
 	@Test
+	void shouldReturnCompactMaintenanceOrdersPage() throws Exception {
+		final long locationId = createLocation(
+				"ROOM",
+				"512",
+				"Habitacion 512",
+				"5",
+				"Cuarto alto"
+		);
+		final long providerId = createProvider(
+				"EXTERNAL",
+				"GENERAL_MAINTENANCE",
+				"Servico rapido",
+				"Manutencao expressa",
+				"Atiende correctivos"
+		);
+		createOrder(
+				locationId,
+				providerId,
+				"Orden 1",
+				"Detalle 1",
+				"LOW",
+				"2026-04-18T08:00:00",
+				"2026-04-18T09:00:00"
+		);
+		createOrder(
+				locationId,
+				providerId,
+				"Orden 2",
+				"Detalle 2",
+				"MEDIUM",
+				"2026-04-18T09:00:00",
+				"2026-04-18T10:00:00"
+		);
+		createOrder(
+				locationId,
+				providerId,
+				"Orden 3",
+				"Detalle 3",
+				"HIGH",
+				"2026-04-18T10:00:00",
+				"2026-04-18T11:00:00"
+		);
+
+		mockMvc.perform(get("/api/v1/maintenance/orders/compact")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-04-18")
+						.param("dateTo", "2026-04-18")
+						.param("page", "0")
+						.param("size", "2"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.page").value(0))
+				.andExpect(jsonPath("$.size").value(2))
+				.andExpect(jsonPath("$.hasNext").value(true))
+				.andExpect(jsonPath("$.items.length()").value(2))
+				.andExpect(jsonPath("$.items[0].title").value("Orden 1"))
+				.andExpect(jsonPath("$.items[0].expectedCompletionAt").value("2026-04-18T09:00:00"))
+				.andExpect(jsonPath("$.items[0].paid").value(false))
+				.andExpect(jsonPath("$.items[0].attachments").doesNotExist());
+	}
+
+	@Test
+	void shouldRejectInvalidCompactMaintenancePageSize() throws Exception {
+		mockMvc.perform(get("/api/v1/maintenance/orders/compact")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("size", "0"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("size must be greater than zero"));
+	}
+
+	@Test
 	void shouldReturnMaintenanceSummaryAndDetails() throws Exception {
 		final MaintenanceLocation room = maintenanceLocationRepository.save(
 				MaintenanceLocation.create(

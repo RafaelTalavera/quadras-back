@@ -5,6 +5,8 @@ import com.axioma.quadras.domain.model.TourBookingStatus;
 import com.axioma.quadras.domain.model.TourServiceType;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -37,7 +39,7 @@ public interface TourBookingRepository extends JpaRepository<TourBooking, Long> 
 	@Query(
 			value = """
 					select
-					    cast(tp.id as varchar) as code,
+					    cast(tp.id as char) as code,
 					    tp.name as label,
 					    tp.active as active,
 					    count(*) as scheduledCount,
@@ -232,5 +234,39 @@ public interface TourBookingRepository extends JpaRepository<TourBooking, Long> 
 			@Param("providerId") Long providerId,
 			@Param("paid") Boolean paid,
 			@Param("serviceType") TourServiceType serviceType
+	);
+
+	@Query("""
+			select
+			    b.id as id,
+			    b.serviceType as serviceType,
+			    b.startAt as startAt,
+			    b.endAt as endAt,
+			    b.clientName as clientName,
+			    b.guestReference as guestReference,
+			    p.id as providerId,
+			    p.name as providerName,
+			    o.id as providerOfferingId,
+			    b.providerOfferingName as providerOfferingName,
+			    b.amount as amount,
+			    b.paid as paid,
+			    b.status as status
+			from TourBooking b
+			join b.provider p
+			left join b.providerOffering o
+			where (:startAtFrom is null or b.startAt >= :startAtFrom)
+			  and (:startAtTo is null or b.startAt <= :startAtTo)
+			  and (:providerId is null or p.id = :providerId)
+			  and (:paid is null or b.paid = :paid)
+			  and (:serviceType is null or b.serviceType = :serviceType)
+			order by b.startAt asc, b.id asc
+			""")
+	Slice<TourBookingCompactItemView> findCompactItems(
+			@Param("startAtFrom") LocalDateTime startAtFrom,
+			@Param("startAtTo") LocalDateTime startAtTo,
+			@Param("providerId") Long providerId,
+			@Param("paid") Boolean paid,
+			@Param("serviceType") TourServiceType serviceType,
+			Pageable pageable
 	);
 }

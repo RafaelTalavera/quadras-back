@@ -1,6 +1,8 @@
 package com.axioma.quadras.service;
 
 import com.axioma.quadras.domain.dto.CancelTourBookingDto;
+import com.axioma.quadras.domain.dto.TourBookingCompactDto;
+import com.axioma.quadras.domain.dto.TourBookingCompactPageDto;
 import com.axioma.quadras.domain.dto.CreateTourBookingDto;
 import com.axioma.quadras.domain.dto.TourBookingDto;
 import com.axioma.quadras.domain.dto.TourSummaryDetailDto;
@@ -33,6 +35,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +45,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class TourBookingService {
 
 	private static final int MAX_RANGE_DAYS = 93;
+	private static final int DEFAULT_COMPACT_PAGE_SIZE = 25;
+	private static final int MAX_COMPACT_PAGE_SIZE = 100;
 
 	private final TourBookingRepository tourBookingRepository;
 	private final TourProviderService tourProviderService;
@@ -123,6 +128,33 @@ public class TourBookingService {
 				serviceType
 		);
 		return bookings.stream().map(TourBookingDto::from).toList();
+	}
+
+	public TourBookingCompactPageDto listCompact(
+			LocalDate dateFrom,
+			LocalDate dateTo,
+			Long providerId,
+			Boolean paid,
+			TourServiceType serviceType,
+			Integer page,
+			Integer size
+	) {
+		final int safePage = normalizePage(page);
+		final int safeSize = normalizePageSize(size);
+		final var bookings = tourBookingRepository.findCompactItems(
+				dateFrom == null ? null : dateFrom.atStartOfDay(),
+				dateTo == null ? null : dateTo.atTime(LocalTime.MAX),
+				providerId,
+				paid,
+				serviceType,
+				PageRequest.of(safePage, safeSize)
+		);
+		return new TourBookingCompactPageDto(
+				safePage,
+				safeSize,
+				bookings.hasNext(),
+				bookings.getContent().stream().map(TourBookingCompactDto::from).toList()
+		);
 	}
 
 	@Transactional
@@ -335,6 +367,32 @@ public class TourBookingService {
 					"date range must be less than or equal to " + MAX_RANGE_DAYS + " days"
 			);
 		}
+	}
+
+	private int normalizePage(Integer page) {
+		if (page == null) {
+			return 0;
+		}
+		if (page < 0) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to zero");
+		}
+		return page;
+	}
+
+	private int normalizePageSize(Integer size) {
+		if (size == null) {
+			return DEFAULT_COMPACT_PAGE_SIZE;
+		}
+		if (size < 1) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "size must be greater than zero");
+		}
+		if (size > MAX_COMPACT_PAGE_SIZE) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"size must be less than or equal to " + MAX_COMPACT_PAGE_SIZE
+			);
+		}
+		return size;
 	}
 
 	private TourProviderOffering resolveOffering(TourProvider provider, Long providerOfferingId) {

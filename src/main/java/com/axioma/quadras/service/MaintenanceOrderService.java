@@ -7,6 +7,8 @@ import com.axioma.quadras.domain.dto.CreateMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.MaintenanceConflictDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
+import com.axioma.quadras.domain.dto.MaintenanceOrderListDto;
+import com.axioma.quadras.domain.dto.MaintenanceOrderListPageDto;
 import com.axioma.quadras.domain.dto.StartMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenancePaymentDto;
@@ -28,6 +30,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +40,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class MaintenanceOrderService {
 
 	private static final int MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+	private static final int DEFAULT_COMPACT_PAGE_SIZE = 25;
+	private static final int MAX_COMPACT_PAGE_SIZE = 100;
 	private static final EnumSet<MaintenanceOrderStatus> ACTIVE_CONFLICT_STATUSES = EnumSet.of(
 			MaintenanceOrderStatus.SCHEDULED,
 			MaintenanceOrderStatus.IN_PROGRESS
@@ -89,6 +94,40 @@ public class MaintenanceOrderService {
 						attachmentsByOrderId.getOrDefault(item.getId(), List.of())
 				))
 				.toList();
+	}
+
+	public MaintenanceOrderListPageDto listCompact(
+			LocalDate dateFrom,
+			LocalDate dateTo,
+			Long locationId,
+			Long providerId,
+			com.axioma.quadras.domain.model.MaintenanceProviderType providerType,
+			MaintenanceOrderStatus status,
+			com.axioma.quadras.domain.model.MaintenancePriority priority,
+			Integer page,
+			Integer size
+	) {
+		validateDateRange(dateFrom, dateTo);
+		final int safePage = normalizePage(page);
+		final int safeSize = normalizePageSize(size);
+		final var items = maintenanceOrderRepository.findCompactItems(
+				locationId,
+				providerId,
+				providerType,
+				status,
+				priority,
+				scheduledFrom(dateFrom),
+				scheduledToExclusive(dateTo),
+				reportedFrom(dateFrom),
+				reportedToExclusive(dateTo),
+				PageRequest.of(safePage, safeSize)
+		);
+		return new MaintenanceOrderListPageDto(
+				safePage,
+				safeSize,
+				items.hasNext(),
+				items.getContent().stream().map(MaintenanceOrderListDto::from).toList()
+		);
 	}
 
 	@Transactional
@@ -293,6 +332,32 @@ public class MaintenanceOrderService {
 					"dateFrom must be before or equal to dateTo"
 			);
 		}
+	}
+
+	private int normalizePage(Integer page) {
+		if (page == null) {
+			return 0;
+		}
+		if (page < 0) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to zero");
+		}
+		return page;
+	}
+
+	private int normalizePageSize(Integer size) {
+		if (size == null) {
+			return DEFAULT_COMPACT_PAGE_SIZE;
+		}
+		if (size < 1) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "size must be greater than zero");
+		}
+		if (size > MAX_COMPACT_PAGE_SIZE) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"size must be less than or equal to " + MAX_COMPACT_PAGE_SIZE
+			);
+		}
+		return size;
 	}
 
 	private LocalDateTime scheduledFrom(LocalDate dateFrom) {
