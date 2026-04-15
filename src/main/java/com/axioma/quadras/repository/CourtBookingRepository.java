@@ -155,12 +155,16 @@ public interface CourtBookingRepository extends JpaRepository<CourtBooking, Long
 				b.cancelledBy as cancelledBy
 			from CourtBooking b
 			where (:bookingDate is null or b.bookingDate = :bookingDate)
+			  and (:dateFrom is null or b.bookingDate >= :dateFrom)
+			  and (:dateTo is null or b.bookingDate <= :dateTo)
 			  and (:customerType is null or b.customerType = :customerType)
 			  and (:paid is null or b.paid = :paid)
 			order by b.bookingDate asc, b.startTime asc, b.id asc
 			""")
 	List<CourtBookingListItemView> findListItems(
 			@Param("bookingDate") LocalDate bookingDate,
+			@Param("dateFrom") LocalDate dateFrom,
+			@Param("dateTo") LocalDate dateTo,
 			@Param("customerType") CourtCustomerType customerType,
 			@Param("paid") Boolean paid
 	);

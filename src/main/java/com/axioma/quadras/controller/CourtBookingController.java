@@ -55,10 +55,16 @@ public class CourtBookingController {
 			@RequestParam(required = false)
 			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 			LocalDate bookingDate,
+			@RequestParam(required = false)
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate dateFrom,
+			@RequestParam(required = false)
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate dateTo,
 			@RequestParam(required = false) CourtCustomerType customerType,
 			@RequestParam(required = false) Boolean paid
 	) {
-		return ResponseEntity.ok(courtBookingService.list(bookingDate, customerType, paid));
+		return ResponseEntity.ok(courtBookingService.list(bookingDate, dateFrom, dateTo, customerType, paid));
 	}
 
 	@PutMapping("/{bookingId}")

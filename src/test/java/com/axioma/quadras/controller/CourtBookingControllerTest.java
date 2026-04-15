@@ -193,6 +193,47 @@ class CourtBookingControllerTest {
 	}
 
 	@Test
+	void shouldListCourtBookingsByDateRange() throws Exception {
+		courtBookingRepository.saveAll(List.of(
+				scheduledBooking(
+						LocalDate.of(2026, 3, 14),
+						LocalTime.of(8, 0),
+						LocalTime.of(9, 0),
+						"Helena",
+						CourtCustomerType.GUEST,
+						CourtPricingPeriod.DAY,
+						new BigDecimal("0.00"),
+						new BigDecimal("35.00"),
+						new BigDecimal("35.00"),
+						true,
+						CourtPaymentMethod.PIX
+				),
+				scheduledBooking(
+						LocalDate.of(2026, 4, 2),
+						LocalTime.of(10, 0),
+						LocalTime.of(11, 0),
+						"Bruno",
+						CourtCustomerType.EXTERNAL,
+						CourtPricingPeriod.DAY,
+						new BigDecimal("80.00"),
+						new BigDecimal("0.00"),
+						new BigDecimal("80.00"),
+						false,
+						null
+				)
+		));
+
+		mockMvc.perform(get("/api/v1/courts/bookings")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-04-01")
+						.param("dateTo", "2026-04-30"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].customerName").value("Bruno"))
+				.andExpect(jsonPath("$[0].bookingDate").value("2026-04-02"));
+	}
+
+	@Test
 	void shouldRejectPartnerCoachBookingWithUnknownName() throws Exception {
 		final String payload = """
 				{

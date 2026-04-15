@@ -144,8 +144,23 @@ public class CourtBookingService {
 		return CourtBookingDto.from(booking);
 	}
 
-	public List<CourtBookingDto> list(LocalDate bookingDate, CourtCustomerType customerType, Boolean paid) {
-		final var bookings = courtBookingRepository.findListItems(bookingDate, customerType, paid);
+	public List<CourtBookingDto> list(
+			LocalDate bookingDate,
+			LocalDate dateFrom,
+			LocalDate dateTo,
+			CourtCustomerType customerType,
+			Boolean paid
+	) {
+		validateListRange(dateFrom, dateTo);
+		final LocalDate effectiveDateFrom = bookingDate != null ? bookingDate : dateFrom;
+		final LocalDate effectiveDateTo = bookingDate != null ? bookingDate : dateTo;
+		final var bookings = courtBookingRepository.findListItems(
+				bookingDate,
+				effectiveDateFrom,
+				effectiveDateTo,
+				customerType,
+				paid
+		);
 		final Map<Long, List<CourtBookingMaterialDto>> materialsByBookingId =
 				loadMaterialsByBookingId(bookings.stream().map(item -> item.getId()).toList());
 		return bookings.stream()
@@ -154,6 +169,15 @@ public class CourtBookingService {
 						materialsByBookingId.getOrDefault(booking.getId(), List.of())
 				))
 				.toList();
+	}
+
+	private void validateListRange(LocalDate dateFrom, LocalDate dateTo) {
+		if (dateFrom != null && dateTo != null && dateFrom.isAfter(dateTo)) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"dateFrom must be before or equal to dateTo"
+			);
+		}
 	}
 
 	@Transactional
