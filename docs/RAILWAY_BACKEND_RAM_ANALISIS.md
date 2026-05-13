@@ -8,6 +8,7 @@ Reducir el costo fijo de RAM del backend desplegable en Railway sin apagar modul
 - Se creo el perfil `railway` en `application-railway.properties` para desactivar:
   - `costanorte.security.demo-user.enabled`
   - `costanorte.features.maintenance-simulation.enabled`
+- Se movio la configuracion base de datasource/JPA/Flyway a `application.properties` para que `railway` no dependa del perfil `local`.
 - Se parametrizaron los scripts `start_backend_console.ps1` y `start_backend_detached.ps1` para aceptar `COSTANORTE_JAVA_OPTS`.
 - Se fijaron defaults de JVM para medicion y operacion controlada:
   - `-Xms256m`
@@ -69,7 +70,8 @@ Ganancia frente al baseline:
 - Validacion de sintaxis PowerShell para `start_backend_console.ps1`
 - Validacion de sintaxis PowerShell para `start_backend_detached.ps1`
 - Arranques locales con medicion post-GC usando `jcmd`
+- Arranque exitoso con `--spring.profiles.active=railway` sin depender del perfil `local`
 
 ## Pendientes
 - Medir el backend bajo carga corta de requests para confirmar si `512 MB` sigue siendo suficiente en Railway con trafico real.
-- Definir un perfil productivo independiente de `local` para no depender de propiedades locales al desplegar en Railway.
+- Consolidar variables de entorno productivas de Railway (`DB`, `JWT`, puerto) para despliegue real y no solo para medicion local.
