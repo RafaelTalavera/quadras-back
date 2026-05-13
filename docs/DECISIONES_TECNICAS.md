@@ -160,3 +160,10 @@
 - Contexto: La migracion `V6__extend_massage_bookings_with_status_and_audit.sql` fallo en MySQL local porque intentaba eliminar `uk_massage_bookings_provider_slot` antes de crear un indice alternativo compatible con la FK por `provider_id`, dejando la version 6 en estado fallido dentro de Flyway.
 - Decision: En migraciones que reemplacen un indice unico usado indirectamente por una FK, crear primero un indice alternativo con el mismo prefijo requerido por MySQL y recien despues eliminar el indice original. Para `massage_bookings`, `idx_massage_bookings_provider_slot` debe existir antes de soltar `uk_massage_bookings_provider_slot`.
 - Impacto: Se evita que Flyway deje la base en estado parcial por orden incorrecto de DDL, mejora la reproducibilidad del arranque local y reduce intervenciones manuales sobre `flyway_schema_history`.
+
+## DT-024 - Despliegue en Railway con perfil backend liviano y sin componentes de demo
+- Fecha: 2026-05-13
+- Estado: Activa
+- Contexto: El costo a optimizar para despliegue productivo recae sobre el backend Java ejecutado en Railway; la base de datos se desplegara fuera de Railway y no forma parte directa del presupuesto de RAM del servicio Java.
+- Decision: Mantener el backend como monolito funcional completo, pero introducir un perfil `railway` que desactive componentes no productivos (`demo user`, simulacion de mantencion) y fijar una JVM baseline de operacion con `-Xms256m -Xmx512m`. Adicionalmente, retirar infraestructura no usada en runtime (`Actuator`) y dependencias redundantes del classpath cuando no aporten funcionalidad visible al usuario.
+- Impacto: Se reduce el costo fijo de RAM y el tiempo de arranque sin apagar modulos de negocio; el despliegue queda mejor alineado a un presupuesto de memoria de Railway y mantiene intactos los endpoints funcionales requeridos por operacion.
