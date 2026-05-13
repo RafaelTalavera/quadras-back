@@ -5,6 +5,7 @@ import com.axioma.quadras.domain.dto.MaintenanceSimulationResultDto;
 import com.axioma.quadras.service.AuthenticatedUserPrincipal;
 import com.axioma.quadras.service.MaintenanceSimulationService;
 import jakarta.validation.Valid;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +14,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@ConditionalOnProperty(
+		prefix = "costanorte.features.maintenance-simulation",
+		name = "enabled",
+		havingValue = "true",
+		matchIfMissing = true
+)
 @RequestMapping("/api/v1/maintenance/simulation")
 public class MaintenanceSimulationController {
 

@@ -29,9 +29,16 @@ import java.util.Map;
 import java.util.Random;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(
+		prefix = "costanorte.features.maintenance-simulation",
+		name = "enabled",
+		havingValue = "true",
+		matchIfMissing = true
+)
 public class MaintenanceSimulationService {
 
 	private static final String SIMULATION_PREFIX = "sim.";
