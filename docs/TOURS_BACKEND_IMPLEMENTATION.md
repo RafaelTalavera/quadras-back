@@ -95,19 +95,10 @@
   - resumen del grupo
   - lista de bookings activos que explican la fila del resumen
 
-## Frontend estatico incluido
-- Pantalla dedicada:
-  - `src/main/resources/static/tours-summary.html`
-- Script:
-  - `src/main/resources/static/tours-summary.js`
-- Tema reutilizado:
-  - `src/main/resources/static/brand/theme.css`
-- Alcance:
-  - filtro por periodo
-  - KPIs principales
-  - tablas por prestador, tipo de servicio y medio de pago
-  - click en filas para abrir detalle
-  - ventana emergente con items del grupo seleccionado
+## Frontend consumidor
+- El backend ya no incluye frontend estatico embebido.
+- El consumo de esta API se realiza desde el frontend separado `quedras-front`.
+- La sincronizacion operativa entre terminales se resuelve por eventos del backend y actualizacion del frontend cliente.
 
 ## Persistencia
 - Migracion Flyway:

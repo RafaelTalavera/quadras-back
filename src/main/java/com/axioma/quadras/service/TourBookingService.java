@@ -50,13 +50,16 @@ public class TourBookingService {
 
 	private final TourBookingRepository tourBookingRepository;
 	private final TourProviderService tourProviderService;
+	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
 
 	public TourBookingService(
 			TourBookingRepository tourBookingRepository,
-			TourProviderService tourProviderService
+			TourProviderService tourProviderService,
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher
 	) {
 		this.tourBookingRepository = tourBookingRepository;
 		this.tourProviderService = tourProviderService;
+		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
 	}
 
 	@Transactional
@@ -83,12 +86,21 @@ public class TourBookingService {
 						actorUsername
 				)
 		);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.TOURS,
+				"created",
+				saved.getId(),
+				saved.getStartAt().toLocalDate(),
+				saved.getEndAt().toLocalDate()
+		);
 		return TourBookingDto.from(saved);
 	}
 
 	@Transactional
 	public TourBookingDto update(Long bookingId, UpdateTourBookingDto input, String actorUsername) {
 		final TourBooking booking = findBookingOrThrow(bookingId);
+		final LocalDate previousStartDate = booking.getStartAt().toLocalDate();
+		final LocalDate previousEndDate = booking.getEndAt().toLocalDate();
 		validateCanEdit(booking);
 		validateTimeWindow(input.startAt(), input.endAt());
 		final TourProvider provider = tourProviderService.findProviderOrThrow(input.providerId());
@@ -109,6 +121,13 @@ public class TourBookingService {
 				input.paymentDate(),
 				input.paymentNotes(),
 				actorUsername
+		);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.TOURS,
+				"updated",
+				booking.getId(),
+				minDate(previousStartDate, booking.getStartAt().toLocalDate()),
+				maxDate(previousEndDate, booking.getEndAt().toLocalDate())
 		);
 		return TourBookingDto.from(booking);
 	}
@@ -162,6 +181,13 @@ public class TourBookingService {
 		final TourBooking booking = findBookingOrThrow(bookingId);
 		validateCanEdit(booking);
 		booking.markPayment(input.paymentMethod(), input.paymentDate(), input.paymentNotes(), actorUsername);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.TOURS,
+				"payment-updated",
+				booking.getId(),
+				booking.getStartAt().toLocalDate(),
+				booking.getEndAt().toLocalDate()
+		);
 		return TourBookingDto.from(booking);
 	}
 
@@ -175,6 +201,13 @@ public class TourBookingService {
 			);
 		}
 		booking.markCancelled(input.cancellationNotes(), actorUsername);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.TOURS,
+				"cancelled",
+				booking.getId(),
+				booking.getStartAt().toLocalDate(),
+				booking.getEndAt().toLocalDate()
+		);
 		return TourBookingDto.from(booking);
 	}
 
@@ -602,6 +635,14 @@ public class TourBookingService {
 
 	private BigDecimal safeAmount(BigDecimal value) {
 		return value == null ? BigDecimal.ZERO : value;
+	}
+
+	private LocalDate minDate(LocalDate left, LocalDate right) {
+		return left.isAfter(right) ? right : left;
+	}
+
+	private LocalDate maxDate(LocalDate left, LocalDate right) {
+		return left.isAfter(right) ? left : right;
 	}
 
 	private record DetailContext(

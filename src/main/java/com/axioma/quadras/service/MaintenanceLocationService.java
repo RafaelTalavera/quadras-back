@@ -24,15 +24,18 @@ public class MaintenanceLocationService {
 	private final MaintenanceLocationRepository maintenanceLocationRepository;
 	private final MaintenanceOrderRepository maintenanceOrderRepository;
 	private final MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository;
+	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
 
 	public MaintenanceLocationService(
 			MaintenanceLocationRepository maintenanceLocationRepository,
 			MaintenanceOrderRepository maintenanceOrderRepository,
-			MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository
+			MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository,
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher
 	) {
 		this.maintenanceLocationRepository = maintenanceLocationRepository;
 		this.maintenanceOrderRepository = maintenanceOrderRepository;
 		this.maintenanceOrderAttachmentRepository = maintenanceOrderAttachmentRepository;
+		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
 	}
 
 	public List<MaintenanceLocationDto> list() {
@@ -56,6 +59,7 @@ public class MaintenanceLocationService {
 						actorUsername
 				)
 		);
+		publishCatalogEvent(location.getId(), "location-created");
 		return MaintenanceLocationDto.from(location);
 	}
 
@@ -77,6 +81,7 @@ public class MaintenanceLocationService {
 				input.active(),
 				actorUsername
 		);
+		publishCatalogEvent(location.getId(), "location-updated");
 		return MaintenanceLocationDto.from(location);
 	}
 
@@ -137,5 +142,15 @@ public class MaintenanceLocationService {
 					"Maintenance location code already exists for that type."
 			);
 		}
+	}
+
+	private void publishCatalogEvent(Long entityId, String action) {
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.MAINTENANCE,
+				action,
+				entityId,
+				null,
+				null
+		);
 	}
 }

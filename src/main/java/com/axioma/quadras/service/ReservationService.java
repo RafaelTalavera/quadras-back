@@ -22,13 +22,16 @@ public class ReservationService {
 
 	private final ReservationRepository reservationRepository;
 	private final ScheduleLockService scheduleLockService;
+	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
 
 	public ReservationService(
 			ReservationRepository reservationRepository,
-			ScheduleLockService scheduleLockService
+			ScheduleLockService scheduleLockService,
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher
 	) {
 		this.reservationRepository = reservationRepository;
 		this.scheduleLockService = scheduleLockService;
+		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
 	}
 
 	@Transactional
@@ -44,6 +47,13 @@ public class ReservationService {
 		scheduleLockService.acquireReservationDates(List.of(reservation.getReservationDate()));
 		validateOverlapping(reservation, null);
 		final Reservation saved = reservationRepository.save(reservation);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.RESERVATIONS,
+				"created",
+				saved.getId(),
+				saved.getReservationDate(),
+				saved.getReservationDate()
+		);
 		return ReservationDto.from(saved);
 	}
 
@@ -65,6 +75,13 @@ public class ReservationService {
 				reservation.getReservationDate()
 		));
 		validateOverlapping(reservation, reservationId);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.RESERVATIONS,
+				"updated",
+				reservation.getId(),
+				minDate(previousReservationDate, reservation.getReservationDate()),
+				maxDate(previousReservationDate, reservation.getReservationDate())
+		);
 		return ReservationDto.from(reservation);
 	}
 
@@ -81,6 +98,13 @@ public class ReservationService {
 			return ReservationDto.from(reservation);
 		}
 		reservation.markCancelled();
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.RESERVATIONS,
+				"cancelled",
+				reservation.getId(),
+				reservation.getReservationDate(),
+				reservation.getReservationDate()
+		);
 		return ReservationDto.from(reservation);
 	}
 
@@ -167,5 +191,13 @@ public class ReservationService {
 					"Reservation overlaps with an existing booking."
 			);
 		}
+	}
+
+	private LocalDate minDate(LocalDate left, LocalDate right) {
+		return left.isAfter(right) ? right : left;
+	}
+
+	private LocalDate maxDate(LocalDate left, LocalDate right) {
+		return left.isAfter(right) ? left : right;
 	}
 }

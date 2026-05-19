@@ -16,9 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class MaintenanceProviderService {
 
 	private final MaintenanceProviderRepository maintenanceProviderRepository;
+	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
 
-	public MaintenanceProviderService(MaintenanceProviderRepository maintenanceProviderRepository) {
+	public MaintenanceProviderService(
+			MaintenanceProviderRepository maintenanceProviderRepository,
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher
+	) {
 		this.maintenanceProviderRepository = maintenanceProviderRepository;
+		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
 	}
 
 	public List<MaintenanceProviderDto> list() {
@@ -42,6 +47,7 @@ public class MaintenanceProviderService {
 						actorUsername
 				)
 		);
+		publishCatalogEvent(provider.getId(), "provider-created");
 		return MaintenanceProviderDto.from(provider);
 	}
 
@@ -63,6 +69,7 @@ public class MaintenanceProviderService {
 				input.active(),
 				actorUsername
 		);
+		publishCatalogEvent(provider.getId(), "provider-updated");
 		return MaintenanceProviderDto.from(provider);
 	}
 
@@ -92,5 +99,15 @@ public class MaintenanceProviderService {
 					"Maintenance provider name already exists for that type."
 			);
 		}
+	}
+
+	private void publishCatalogEvent(Long entityId, String action) {
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.MAINTENANCE,
+				action,
+				entityId,
+				null,
+				null
+		);
 	}
 }

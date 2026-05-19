@@ -50,6 +50,7 @@ public class CourtBookingService {
 	private final CourtMaterialSettingRepository courtMaterialSettingRepository;
 	private final CourtConfigurationService courtConfigurationService;
 	private final ScheduleLockService scheduleLockService;
+	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
 
 	public CourtBookingService(
 			CourtBookingRepository courtBookingRepository,
@@ -57,7 +58,8 @@ public class CourtBookingService {
 			CourtRateRepository courtRateRepository,
 			CourtMaterialSettingRepository courtMaterialSettingRepository,
 			CourtConfigurationService courtConfigurationService,
-			ScheduleLockService scheduleLockService
+			ScheduleLockService scheduleLockService,
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher
 	) {
 		this.courtBookingRepository = courtBookingRepository;
 		this.courtBookingMaterialRepository = courtBookingMaterialRepository;
@@ -65,6 +67,7 @@ public class CourtBookingService {
 		this.courtMaterialSettingRepository = courtMaterialSettingRepository;
 		this.courtConfigurationService = courtConfigurationService;
 		this.scheduleLockService = scheduleLockService;
+		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
 	}
 
 	@Transactional
@@ -101,6 +104,13 @@ public class CourtBookingService {
 						pricing.materials(),
 						actorUsername
 				)
+		);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.COURTS,
+				"created",
+				saved.getId(),
+				saved.getBookingDate(),
+				saved.getBookingDate()
 		);
 		return CourtBookingDto.from(saved);
 	}
@@ -140,6 +150,13 @@ public class CourtBookingService {
 				input.paymentNotes(),
 				pricing.materials(),
 				actorUsername
+		);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.COURTS,
+				"updated",
+				booking.getId(),
+				minDate(previousBookingDate, booking.getBookingDate()),
+				maxDate(previousBookingDate, booking.getBookingDate())
 		);
 		return CourtBookingDto.from(booking);
 	}
@@ -185,6 +202,13 @@ public class CourtBookingService {
 		final CourtBooking booking = findBookingOrThrow(bookingId);
 		validateCanEdit(booking);
 		booking.markPayment(input.paymentMethod(), input.paymentDate(), input.paymentNotes(), actorUsername);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.COURTS,
+				"payment-updated",
+				booking.getId(),
+				booking.getBookingDate(),
+				booking.getBookingDate()
+		);
 		return CourtBookingDto.from(booking);
 	}
 
@@ -198,6 +222,13 @@ public class CourtBookingService {
 			);
 		}
 		booking.markCancelled(input.cancellationNotes(), actorUsername);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.COURTS,
+				"cancelled",
+				booking.getId(),
+				booking.getBookingDate(),
+				booking.getBookingDate()
+		);
 		return CourtBookingDto.from(booking);
 	}
 
@@ -551,5 +582,13 @@ public class CourtBookingService {
 			BigDecimal totalAmount,
 			List<CourtBookingMaterial> materials
 	) {}
+
+	private LocalDate minDate(LocalDate left, LocalDate right) {
+		return left.isAfter(right) ? right : left;
+	}
+
+	private LocalDate maxDate(LocalDate left, LocalDate right) {
+		return left.isAfter(right) ? left : right;
+	}
 
 }

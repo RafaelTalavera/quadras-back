@@ -25,15 +25,18 @@ public class MassageBookingService {
 	private final MassageBookingRepository massageBookingRepository;
 	private final MassageProviderService massageProviderService;
 	private final ScheduleLockService scheduleLockService;
+	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
 
 	public MassageBookingService(
 			MassageBookingRepository massageBookingRepository,
 			MassageProviderService massageProviderService,
-			ScheduleLockService scheduleLockService
+			ScheduleLockService scheduleLockService,
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher
 	) {
 		this.massageBookingRepository = massageBookingRepository;
 		this.massageProviderService = massageProviderService;
 		this.scheduleLockService = scheduleLockService;
+		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
 	}
 
 	@Transactional
@@ -90,6 +93,13 @@ public class MassageBookingService {
 						input.paymentNotes(),
 						actorUsername
 				)
+		);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.MASSAGES,
+				"created",
+				saved.getId(),
+				saved.getBookingDate(),
+				saved.getBookingDate()
 		);
 		return MassageBookingDto.from(saved);
 	}
@@ -155,6 +165,13 @@ public class MassageBookingService {
 				input.paymentNotes(),
 				actorUsername
 		);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.MASSAGES,
+				"updated",
+				booking.getId(),
+				minDate(previousBookingDate, booking.getBookingDate()),
+				maxDate(previousBookingDate, booking.getBookingDate())
+		);
 		return MassageBookingDto.from(booking);
 	}
 
@@ -195,6 +212,13 @@ public class MassageBookingService {
 				input.paymentNotes(),
 				actorUsername
 		);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.MASSAGES,
+				"payment-updated",
+				booking.getId(),
+				booking.getBookingDate(),
+				booking.getBookingDate()
+		);
 		return MassageBookingDto.from(booking);
 	}
 
@@ -212,6 +236,13 @@ public class MassageBookingService {
 			);
 		}
 		booking.markCancelled(input.cancellationNotes(), actorUsername);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.MASSAGES,
+				"cancelled",
+				booking.getId(),
+				booking.getBookingDate(),
+				booking.getBookingDate()
+		);
 		return MassageBookingDto.from(booking);
 	}
 
@@ -246,5 +277,13 @@ public class MassageBookingService {
 					"dateFrom must be before or equal to dateTo"
 			);
 		}
+	}
+
+	private LocalDate minDate(LocalDate left, LocalDate right) {
+		return left.isAfter(right) ? right : left;
+	}
+
+	private LocalDate maxDate(LocalDate left, LocalDate right) {
+		return left.isAfter(right) ? left : right;
 	}
 }

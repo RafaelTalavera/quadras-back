@@ -51,17 +51,20 @@ public class MaintenanceOrderService {
 	private final MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository;
 	private final MaintenanceLocationService maintenanceLocationService;
 	private final MaintenanceProviderService maintenanceProviderService;
+	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
 
 	public MaintenanceOrderService(
 			MaintenanceOrderRepository maintenanceOrderRepository,
 			MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository,
 			MaintenanceLocationService maintenanceLocationService,
-			MaintenanceProviderService maintenanceProviderService
+			MaintenanceProviderService maintenanceProviderService,
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher
 	) {
 		this.maintenanceOrderRepository = maintenanceOrderRepository;
 		this.maintenanceOrderAttachmentRepository = maintenanceOrderAttachmentRepository;
 		this.maintenanceLocationService = maintenanceLocationService;
 		this.maintenanceProviderService = maintenanceProviderService;
+		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
 	}
 
 	public List<MaintenanceOrderDto> list(
@@ -156,12 +159,14 @@ public class MaintenanceOrderService {
 						actorRole
 				)
 		);
+		publishOrderEvent(order, "created");
 		return toDto(order);
 	}
 
 	@Transactional
 	public MaintenanceOrderDto update(Long orderId, UpdateMaintenanceOrderDto input, String actorUsername) {
 		final MaintenanceOrder order = findOrThrow(orderId);
+		final LocalDate previousReferenceDate = referenceDate(order);
 		order.update(
 				requireActiveLocation(input.locationId()),
 				requireActiveProvider(input.providerId()),
@@ -179,6 +184,7 @@ public class MaintenanceOrderService {
 				input.scheduledEndAt(),
 				actorUsername
 		);
+		publishOrderEvent(order, "updated", previousReferenceDate);
 		return toDto(order);
 	}
 
@@ -216,6 +222,7 @@ public class MaintenanceOrderService {
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
 		order.start(input == null ? null : input.startedAt(), actorUsername);
+		publishOrderEvent(order, "started");
 		return toDto(order);
 	}
 
@@ -232,6 +239,7 @@ public class MaintenanceOrderService {
 				input.paymentNotes(),
 				actorUsername
 		);
+		publishOrderEvent(order, "payment-updated");
 		return toDto(order);
 	}
 
@@ -243,6 +251,7 @@ public class MaintenanceOrderService {
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
 		order.complete(input.completedAt(), input.resolutionNotes(), actorUsername);
+		publishOrderEvent(order, "completed");
 		return toDto(order);
 	}
 
@@ -254,6 +263,7 @@ public class MaintenanceOrderService {
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
 		order.cancel(input.cancellationNotes(), actorUsername);
+		publishOrderEvent(order, "cancelled");
 		return toDto(order);
 	}
 
@@ -282,6 +292,7 @@ public class MaintenanceOrderService {
 		order.addAttachment(attachment);
 		final MaintenanceOrderAttachment savedAttachment =
 				maintenanceOrderAttachmentRepository.save(attachment);
+		publishOrderEvent(order, "attachment-added");
 		return MaintenanceOrderAttachmentDto.from(savedAttachment);
 	}
 
@@ -299,7 +310,9 @@ public class MaintenanceOrderService {
 					"Maintenance attachment does not belong to the selected order."
 			);
 		}
+		final MaintenanceOrder order = attachment.getOrder();
 		maintenanceOrderAttachmentRepository.delete(attachment);
+		publishOrderEvent(order, "attachment-deleted");
 	}
 
 	public MaintenanceOrder findOrThrow(Long orderId) {
@@ -449,5 +462,42 @@ public class MaintenanceOrderService {
 			MaintenanceOrderAttachmentMetadataView metadata
 	) {
 		return MaintenanceOrderAttachmentDto.from(metadata);
+	}
+
+	private void publishOrderEvent(MaintenanceOrder order, String action) {
+		final LocalDate referenceDate = referenceDate(order);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.MAINTENANCE,
+				action,
+				order.getId(),
+				referenceDate,
+				referenceDate
+		);
+	}
+
+	private void publishOrderEvent(MaintenanceOrder order, String action, LocalDate previousReferenceDate) {
+		final LocalDate currentReferenceDate = referenceDate(order);
+		scheduleSyncEventPublisher.publish(
+				ScheduleSyncDomain.MAINTENANCE,
+				action,
+				order.getId(),
+				minDate(previousReferenceDate, currentReferenceDate),
+				maxDate(previousReferenceDate, currentReferenceDate)
+		);
+	}
+
+	private LocalDate referenceDate(MaintenanceOrder order) {
+		if (order.getScheduledStartAt() != null) {
+			return order.getScheduledStartAt().toLocalDate();
+		}
+		return order.getReportedAt().toLocalDate();
+	}
+
+	private LocalDate minDate(LocalDate left, LocalDate right) {
+		return left.isAfter(right) ? right : left;
+	}
+
+	private LocalDate maxDate(LocalDate left, LocalDate right) {
+		return left.isAfter(right) ? left : right;
 	}
 }
