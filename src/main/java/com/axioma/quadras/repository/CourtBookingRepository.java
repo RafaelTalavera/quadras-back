@@ -13,6 +13,13 @@ import org.springframework.data.repository.query.Param;
 
 public interface CourtBookingRepository extends JpaRepository<CourtBooking, Long> {
 
+	List<CourtBooking> findByRecurrenceGroupIdOrderByBookingDateAscStartTimeAscIdAsc(String recurrenceGroupId);
+
+	List<CourtBooking> findByRecurrenceGroupIdAndStatusOrderByBookingDateAscStartTimeAscIdAsc(
+			String recurrenceGroupId,
+			CourtBookingStatus status
+	);
+
 	boolean existsByBookingDateAndStatusAndStartTimeLessThanAndEndTimeGreaterThan(
 			LocalDate bookingDate,
 			CourtBookingStatus status,
@@ -147,6 +154,9 @@ public interface CourtBookingRepository extends JpaRepository<CourtBooking, Long
 				b.paymentNotes as paymentNotes,
 				b.status as status,
 				b.cancellationNotes as cancellationNotes,
+				b.recurrenceGroupId as recurrenceGroupId,
+				b.recurrenceStartDate as recurrenceStartDate,
+				b.recurrenceEndDate as recurrenceEndDate,
 				b.createdAt as createdAt,
 				b.updatedAt as updatedAt,
 				b.cancelledAt as cancelledAt,

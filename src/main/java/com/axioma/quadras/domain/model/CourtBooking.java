@@ -97,6 +97,15 @@ public class CourtBooking {
 	@Column(name = "cancellation_notes", length = MAX_CANCELLATION_NOTES_LENGTH)
 	private String cancellationNotes;
 
+	@Column(name = "recurrence_group_id", length = 36)
+	private String recurrenceGroupId;
+
+	@Column(name = "recurrence_start_date")
+	private LocalDate recurrenceStartDate;
+
+	@Column(name = "recurrence_end_date")
+	private LocalDate recurrenceEndDate;
+
 	@OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
 	private final List<CourtBookingMaterial> materials = new ArrayList<>();
 
@@ -138,6 +147,9 @@ public class CourtBooking {
 			CourtPaymentMethod paymentMethod,
 			LocalDate paymentDate,
 			String paymentNotes,
+			String recurrenceGroupId,
+			LocalDate recurrenceStartDate,
+			LocalDate recurrenceEndDate,
 			List<CourtBookingMaterial> materials,
 			String actorUsername
 	) {
@@ -155,6 +167,9 @@ public class CourtBooking {
 				courtAmount,
 				materialsAmount,
 				totalAmount,
+				recurrenceGroupId,
+				recurrenceStartDate,
+				recurrenceEndDate,
 				materials
 		);
 		booking.status = CourtBookingStatus.SCHEDULED;
@@ -197,6 +212,9 @@ public class CourtBooking {
 				courtAmount,
 				materialsAmount,
 				totalAmount,
+				this.recurrenceGroupId,
+				this.recurrenceStartDate,
+				this.recurrenceEndDate,
 				materials
 		);
 		this.updatedBy = normalizeActor(actorUsername, "updatedBy");
@@ -309,6 +327,18 @@ public class CourtBooking {
 		return cancellationNotes;
 	}
 
+	public String getRecurrenceGroupId() {
+		return recurrenceGroupId;
+	}
+
+	public LocalDate getRecurrenceStartDate() {
+		return recurrenceStartDate;
+	}
+
+	public LocalDate getRecurrenceEndDate() {
+		return recurrenceEndDate;
+	}
+
 	public List<CourtBookingMaterial> getMaterials() {
 		return List.copyOf(materials);
 	}
@@ -362,6 +392,9 @@ public class CourtBooking {
 			BigDecimal courtAmount,
 			BigDecimal materialsAmount,
 			BigDecimal totalAmount,
+			String recurrenceGroupId,
+			LocalDate recurrenceStartDate,
+			LocalDate recurrenceEndDate,
 			List<CourtBookingMaterial> materials
 	) {
 		this.bookingDate = requireDate(bookingDate, "bookingDate");
@@ -386,6 +419,19 @@ public class CourtBooking {
 		this.courtAmount = requireAmount(courtAmount, "courtAmount");
 		this.materialsAmount = requireAmount(materialsAmount, "materialsAmount");
 		this.totalAmount = requireAmount(totalAmount, "totalAmount");
+		this.recurrenceGroupId = normalizeOptional(recurrenceGroupId, "recurrenceGroupId", 36);
+		this.recurrenceStartDate = this.recurrenceGroupId == null ? null : requireDate(
+				recurrenceStartDate,
+				"recurrenceStartDate"
+		);
+		this.recurrenceEndDate = this.recurrenceGroupId == null ? null : requireDate(
+				recurrenceEndDate,
+				"recurrenceEndDate"
+		);
+		if (this.recurrenceStartDate != null && this.recurrenceEndDate != null
+				&& this.recurrenceEndDate.isBefore(this.recurrenceStartDate)) {
+			throw new IllegalArgumentException("recurrenceEndDate must be on or after recurrenceStartDate");
+		}
 		replaceMaterials(materials);
 	}
 

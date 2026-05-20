@@ -1,6 +1,7 @@
 package com.axioma.quadras.controller;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -113,15 +114,16 @@ class CourtBookingControllerTest {
 				.andExpect(jsonPath("$.expectedAmount").value(180.00))
 				.andExpect(jsonPath("$.averageTicket").value(90.00))
 				.andExpect(jsonPath("$.customerTypeBreakdown.length()").value(4))
-				.andExpect(jsonPath("$.customerTypeBreakdown[0].code").value("GUEST"))
+				.andExpect(jsonPath("$.customerTypeBreakdown[0].groupKey").value("GUEST"))
 				.andExpect(jsonPath("$.customerTypeBreakdown[0].scheduledCount").value(1))
 				.andExpect(jsonPath("$.customerTypeBreakdown[0].materialsAmount").value(40.00))
-				.andExpect(jsonPath("$.customerTypeBreakdown[2].code").value("EXTERNAL"))
+				.andExpect(jsonPath("$.customerTypeBreakdown[2].groupKey").value("EXTERNAL"))
 				.andExpect(jsonPath("$.customerTypeBreakdown[2].pendingCount").value(1))
-				.andExpect(jsonPath("$.pricingPeriodBreakdown[0].code").value("DAY"))
+				.andExpect(jsonPath("$.pricingPeriodBreakdown[0].groupKey").value("DAY"))
 				.andExpect(jsonPath("$.pricingPeriodBreakdown[0].totalAmount").value(40.00))
-				.andExpect(jsonPath("$.pricingPeriodBreakdown[1].code").value("NIGHT"))
+				.andExpect(jsonPath("$.pricingPeriodBreakdown[1].groupKey").value("NIGHT"))
 				.andExpect(jsonPath("$.pricingPeriodBreakdown[1].scheduledCount").value(1))
+				.andExpect(jsonPath("$.paymentMethodBreakdown[0].groupKey").value("PIX"))
 				.andExpect(jsonPath("$.paymentMethodBreakdown[0].code").value("PIX"))
 				.andExpect(jsonPath("$.paymentMethodBreakdown[0].scheduledCount").value(1))
 				.andExpect(jsonPath("$.paymentMethodBreakdown[1].scheduledCount").value(0));
@@ -147,6 +149,9 @@ class CourtBookingControllerTest {
 						CourtPaymentMethod.PIX,
 						LocalDate.of(2026, 3, 14),
 						"Pago registrado",
+						null,
+						null,
+						null,
 						List.of(
 								CourtBookingMaterial.of(
 										CourtMaterialCode.RACKET,
@@ -259,6 +264,137 @@ class CourtBookingControllerTest {
 				.andExpect(jsonPath("$.message").value("Partner coach name must match an active predefined coach."));
 	}
 
+	@Test
+	void shouldCreateRecurringPartnerCoachBookings() throws Exception {
+		final String payload = """
+				{
+				  "bookingDate": "2026-03-02",
+				  "startTime": "09:00",
+				  "endTime": "10:00",
+				  "customerName": "Professor parceiro 1",
+				  "customerReference": "Cancha 1",
+				  "customerType": "PARTNER_COACH",
+				  "paid": false,
+				  "paymentMethod": null,
+				  "paymentDate": null,
+				  "paymentNotes": null,
+				  "recurrence": {
+				    "endDate": "2026-03-16"
+				  },
+				  "materials": []
+				}
+				""";
+
+		mockMvc.perform(post("/api/v1/courts/bookings")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.customerName").value("Professor parceiro 1"))
+				.andExpect(jsonPath("$.recurrenceGroupId").isNotEmpty())
+				.andExpect(jsonPath("$.recurrenceStartDate").value("2026-03-02"))
+				.andExpect(jsonPath("$.recurrenceEndDate").value("2026-03-16"));
+
+		mockMvc.perform(get("/api/v1/courts/bookings")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-03-01")
+						.param("dateTo", "2026-03-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(3))
+				.andExpect(jsonPath("$[0].bookingDate").value("2026-03-02"))
+				.andExpect(jsonPath("$[1].bookingDate").value("2026-03-09"))
+				.andExpect(jsonPath("$[2].bookingDate").value("2026-03-16"));
+	}
+
+	@Test
+	void shouldRejectRecurringBookingForNonPartnerCoach() throws Exception {
+		final String payload = """
+				{
+				  "bookingDate": "2026-03-02",
+				  "startTime": "09:00",
+				  "endTime": "10:00",
+				  "customerName": "Helena",
+				  "customerReference": "Apto 101",
+				  "customerType": "GUEST",
+				  "paid": false,
+				  "paymentMethod": null,
+				  "paymentDate": null,
+				  "paymentNotes": null,
+				  "recurrence": {
+				    "endDate": "2026-03-16"
+				  },
+				  "materials": []
+				}
+				""";
+
+		mockMvc.perform(post("/api/v1/courts/bookings")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("Recurring court bookings are only available for partner coaches."));
+	}
+
+	@Test
+	void shouldCancelOnlySelectedRecurringOccurrenceWhenScopeIsSingle() throws Exception {
+		final CourtBooking first = courtBookingRepository.save(recurringBooking(LocalDate.of(2026, 3, 2)));
+		final CourtBooking second = courtBookingRepository.save(recurringBooking(LocalDate.of(2026, 3, 9)));
+
+		final String payload = """
+				{
+				  "cancellationNotes": "Professor ausente",
+				  "cancellationScope": "SINGLE"
+				}
+				""";
+
+		mockMvc.perform(patch("/api/v1/courts/bookings/{id}/cancel", second.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("CANCELLED"));
+
+		mockMvc.perform(get("/api/v1/courts/bookings")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-03-01")
+						.param("dateTo", "2026-03-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].status").value("SCHEDULED"))
+				.andExpect(jsonPath("$[1].status").value("CANCELLED"));
+	}
+
+	@Test
+	void shouldCancelEntireRecurringSeries() throws Exception {
+		final CourtBooking first = courtBookingRepository.save(recurringBooking(LocalDate.of(2026, 3, 2)));
+		courtBookingRepository.save(recurringBooking(LocalDate.of(2026, 3, 9)));
+		courtBookingRepository.save(recurringBooking(LocalDate.of(2026, 3, 16)));
+
+		final String payload = """
+				{
+				  "cancellationNotes": "Professor encerrou turma",
+				  "cancellationScope": "SERIES"
+				}
+				""";
+
+		mockMvc.perform(patch("/api/v1/courts/bookings/{id}/cancel", first.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(payload))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("CANCELLED"));
+
+		mockMvc.perform(get("/api/v1/courts/bookings")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("dateFrom", "2026-03-01")
+						.param("dateTo", "2026-03-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(3))
+				.andExpect(jsonPath("$[0].status").value("CANCELLED"))
+				.andExpect(jsonPath("$[1].status").value("CANCELLED"))
+				.andExpect(jsonPath("$[2].status").value("CANCELLED"));
+	}
+
 	private CourtBooking scheduledBooking(
 			LocalDate bookingDate,
 			LocalTime startTime,
@@ -289,6 +425,35 @@ class CourtBookingControllerTest {
 				paymentMethod,
 				paid ? bookingDate : null,
 				paid ? "Pago no balcao" : null,
+				null,
+				null,
+				null,
+				List.of(),
+				"operador.demo"
+		);
+	}
+
+	private CourtBooking recurringBooking(LocalDate bookingDate) {
+		return CourtBooking.schedule(
+				bookingDate,
+				LocalTime.of(9, 0),
+				LocalTime.of(10, 0),
+				"Professor parceiro 1",
+				"Cancha 1",
+				CourtCustomerType.PARTNER_COACH,
+				CourtPricingPeriod.DAY,
+				LocalTime.of(6, 0),
+				LocalTime.of(18, 0),
+				BigDecimal.ZERO,
+				BigDecimal.ZERO,
+				BigDecimal.ZERO,
+				false,
+				null,
+				null,
+				null,
+				"serie-quadra-001",
+				LocalDate.of(2026, 3, 2),
+				LocalDate.of(2026, 3, 16),
 				List.of(),
 				"operador.demo"
 		);

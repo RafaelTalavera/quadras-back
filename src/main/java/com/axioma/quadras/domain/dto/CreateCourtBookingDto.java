@@ -32,6 +32,8 @@ public record CreateCourtBookingDto(
 		@Size(max = 500, message = "paymentNotes must be <= 500 chars")
 		String paymentNotes,
 		@Valid
+		CreateCourtBookingRecurrenceDto recurrence,
+		@Valid
 		List<CourtBookingMaterialInputDto> materials
 ) {
 }

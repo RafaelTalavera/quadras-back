@@ -2,6 +2,7 @@ package com.axioma.quadras.service;
 
 import com.axioma.quadras.domain.dto.CancelCourtBookingDto;
 import com.axioma.quadras.domain.dto.CreateCourtBookingDto;
+import com.axioma.quadras.domain.dto.CreateCourtBookingRecurrenceDto;
 import com.axioma.quadras.domain.dto.CourtBookingDto;
 import com.axioma.quadras.domain.dto.CourtBookingMaterialDto;
 import com.axioma.quadras.domain.dto.CourtBookingMaterialInputDto;
@@ -11,6 +12,7 @@ import com.axioma.quadras.domain.dto.UpdateCourtBookingDto;
 import com.axioma.quadras.domain.dto.UpdateCourtPaymentDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.CourtBooking;
+import com.axioma.quadras.domain.model.CourtBookingCancellationScope;
 import com.axioma.quadras.domain.model.CourtBookingMaterial;
 import com.axioma.quadras.domain.model.CourtBookingStatus;
 import com.axioma.quadras.domain.model.CourtCustomerType;
@@ -33,6 +35,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,43 +77,56 @@ public class CourtBookingService {
 	public CourtBookingDto create(CreateCourtBookingDto input, String actorUsername) {
 		validateTimeWindow(input.bookingDate(), input.startTime(), input.endTime());
 		validatePartnerCoachName(input.customerType(), input.customerName());
-		final CourtPricingSnapshot pricing = resolvePricing(
-				input.bookingDate(),
-				input.startTime(),
-				input.endTime(),
-				input.customerType(),
-				input.materials()
+		validateRecurrence(input.customerType(), input.bookingDate(), input.recurrence());
+		final List<LocalDate> bookingDates = resolveBookingDates(input.bookingDate(), input.recurrence());
+		scheduleLockService.acquireCourtBookingDates(bookingDates);
+		for (final LocalDate bookingDate : bookingDates) {
+			validateOverlapping(bookingDate, input.startTime(), input.endTime(), null);
+		}
+		final String recurrenceGroupId = input.recurrence() == null ? null : UUID.randomUUID().toString();
+		final LocalDate recurrenceStartDate = recurrenceGroupId == null ? null : input.bookingDate();
+		final LocalDate recurrenceEndDate = recurrenceGroupId == null ? null : input.recurrence().endDate();
+		final List<CourtBooking> savedBookings = courtBookingRepository.saveAll(
+				bookingDates.stream().map(bookingDate -> {
+					final CourtPricingSnapshot pricing = resolvePricing(
+							bookingDate,
+							input.startTime(),
+							input.endTime(),
+							input.customerType(),
+							input.materials()
+					);
+					return CourtBooking.schedule(
+							bookingDate,
+							input.startTime(),
+							input.endTime(),
+							input.customerName(),
+							input.customerReference(),
+							input.customerType(),
+							pricing.period(),
+							pricing.sunriseEstimate(),
+							pricing.sunsetEstimate(),
+							pricing.courtAmount(),
+							pricing.materialsAmount(),
+							pricing.totalAmount(),
+							input.paid(),
+							input.paymentMethod(),
+							input.paymentDate(),
+							input.paymentNotes(),
+							recurrenceGroupId,
+							recurrenceStartDate,
+							recurrenceEndDate,
+							pricing.materials(),
+							actorUsername
+					);
+				}).toList()
 		);
-		scheduleLockService.acquireCourtBookingDates(List.of(input.bookingDate()));
-		validateOverlapping(input.bookingDate(), input.startTime(), input.endTime(), null);
-		final CourtBooking saved = courtBookingRepository.save(
-				CourtBooking.schedule(
-						input.bookingDate(),
-						input.startTime(),
-						input.endTime(),
-						input.customerName(),
-						input.customerReference(),
-						input.customerType(),
-						pricing.period(),
-						pricing.sunriseEstimate(),
-						pricing.sunsetEstimate(),
-						pricing.courtAmount(),
-						pricing.materialsAmount(),
-						pricing.totalAmount(),
-						input.paid(),
-						input.paymentMethod(),
-						input.paymentDate(),
-						input.paymentNotes(),
-						pricing.materials(),
-						actorUsername
-				)
-		);
+		final CourtBooking saved = savedBookings.get(0);
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.COURTS,
 				"created",
 				saved.getId(),
-				saved.getBookingDate(),
-				saved.getBookingDate()
+				bookingDates.get(0),
+				bookingDates.get(bookingDates.size() - 1)
 		);
 		return CourtBookingDto.from(saved);
 	}
@@ -215,19 +231,32 @@ public class CourtBookingService {
 	@Transactional
 	public CourtBookingDto cancel(Long bookingId, CancelCourtBookingDto input, String actorUsername) {
 		final CourtBooking booking = findBookingOrThrow(bookingId);
-		if (booking.getStatus() == CourtBookingStatus.CANCELLED) {
-			throw new ApplicationException(
-					HttpStatus.CONFLICT,
-					"Cancelled court bookings cannot be cancelled again."
-			);
+		final CourtBookingCancellationScope scope = input.cancellationScope() == null
+				? CourtBookingCancellationScope.SINGLE
+				: input.cancellationScope();
+		final List<CourtBooking> bookingsToCancel;
+		if (scope == CourtBookingCancellationScope.SERIES) {
+			bookingsToCancel = resolveSeriesBookingsForCancellation(booking);
+		} else {
+			if (booking.getStatus() == CourtBookingStatus.CANCELLED) {
+				throw new ApplicationException(
+						HttpStatus.CONFLICT,
+						"Cancelled court bookings cannot be cancelled again."
+				);
+			}
+			bookingsToCancel = List.of(booking);
 		}
-		booking.markCancelled(input.cancellationNotes(), actorUsername);
+		bookingsToCancel.forEach(item -> item.markCancelled(input.cancellationNotes(), actorUsername));
+		final List<LocalDate> affectedDates = bookingsToCancel.stream()
+				.map(CourtBooking::getBookingDate)
+				.sorted()
+				.toList();
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.COURTS,
 				"cancelled",
 				booking.getId(),
-				booking.getBookingDate(),
-				booking.getBookingDate()
+				affectedDates.get(0),
+				affectedDates.get(affectedDates.size() - 1)
 		);
 		return CourtBookingDto.from(booking);
 	}
@@ -274,6 +303,7 @@ public class CourtBookingService {
 		for (final CourtCustomerType value : CourtCustomerType.values()) {
 			breakdown.add(toBreakdownDto(
 					value.name(),
+					value.name(),
 					labelForCustomerType(value),
 					breakdownByCode.get(value.name())
 			));
@@ -289,6 +319,7 @@ public class CourtBookingService {
 		for (final CourtPricingPeriod value : CourtPricingPeriod.values()) {
 			breakdown.add(toBreakdownDto(
 					value.name(),
+					value.name(),
 					labelForPricingPeriod(value),
 					breakdownByCode.get(value.name())
 			));
@@ -303,6 +334,7 @@ public class CourtBookingService {
 		final List<CourtSummaryBreakdownDto> breakdown = new ArrayList<>();
 		for (final CourtPaymentMethod value : CourtPaymentMethod.values()) {
 			breakdown.add(toBreakdownDto(
+					value.name(),
 					value.name(),
 					labelForPaymentMethod(value),
 					breakdownByCode.get(value.name())
@@ -320,12 +352,14 @@ public class CourtBookingService {
 	}
 
 	private CourtSummaryBreakdownDto toBreakdownDto(
+			String groupKey,
 			String code,
 			String label,
 			CourtSummaryBreakdownView view
 	) {
 		if (view == null) {
 			return new CourtSummaryBreakdownDto(
+					groupKey,
 					code,
 					label,
 					0,
@@ -338,6 +372,7 @@ public class CourtBookingService {
 			);
 		}
 		return new CourtSummaryBreakdownDto(
+				groupKey,
 				code,
 				label,
 				Math.toIntExact(view.getScheduledCount()),
@@ -529,6 +564,65 @@ public class CourtBookingService {
 					"Partner coach name must match an active predefined coach."
 			);
 		}
+	}
+
+	private void validateRecurrence(
+			CourtCustomerType customerType,
+			LocalDate bookingDate,
+			CreateCourtBookingRecurrenceDto recurrence
+	) {
+		if (recurrence == null) {
+			return;
+		}
+		if (customerType != CourtCustomerType.PARTNER_COACH) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"Recurring court bookings are only available for partner coaches."
+			);
+		}
+		if (recurrence.endDate() == null) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Recurring booking end date is required.");
+		}
+		if (recurrence.endDate().isBefore(bookingDate)) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"Recurring booking end date must be on or after the first booking date."
+			);
+		}
+	}
+
+	private List<LocalDate> resolveBookingDates(LocalDate bookingDate, CreateCourtBookingRecurrenceDto recurrence) {
+		if (recurrence == null) {
+			return List.of(bookingDate);
+		}
+		final List<LocalDate> bookingDates = new ArrayList<>();
+		LocalDate current = bookingDate;
+		while (!current.isAfter(recurrence.endDate())) {
+			bookingDates.add(current);
+			current = current.plusWeeks(1);
+		}
+		return bookingDates;
+	}
+
+	private List<CourtBooking> resolveSeriesBookingsForCancellation(CourtBooking booking) {
+		if (booking.getRecurrenceGroupId() == null || booking.getRecurrenceGroupId().isBlank()) {
+			throw new ApplicationException(
+					HttpStatus.CONFLICT,
+					"Only recurring court bookings can be cancelled as a series."
+			);
+		}
+		final List<CourtBooking> seriesBookings = courtBookingRepository
+				.findByRecurrenceGroupIdAndStatusOrderByBookingDateAscStartTimeAscIdAsc(
+						booking.getRecurrenceGroupId(),
+						CourtBookingStatus.SCHEDULED
+				);
+		if (seriesBookings.isEmpty()) {
+			throw new ApplicationException(
+					HttpStatus.CONFLICT,
+					"Cancelled court bookings cannot be cancelled again."
+			);
+		}
+		return seriesBookings;
 	}
 
 	private Map<Long, List<CourtBookingMaterialDto>> loadMaterialsByBookingId(Collection<Long> bookingIds) {

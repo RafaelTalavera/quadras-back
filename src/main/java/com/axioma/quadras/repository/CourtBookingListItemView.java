@@ -50,6 +50,12 @@ public interface CourtBookingListItemView {
 
 	String getCancellationNotes();
 
+	String getRecurrenceGroupId();
+
+	LocalDate getRecurrenceStartDate();
+
+	LocalDate getRecurrenceEndDate();
+
 	OffsetDateTime getCreatedAt();
 
 	OffsetDateTime getUpdatedAt();

@@ -1,5 +1,30 @@
 # CHANGELOG DE DESARROLLO - COSTANORTE
 
+## 2026-05-20 | Quadras | Reservas recurrentes para profesor parceiro y cancelacion por alcance
+- Componente afectado: Backend (`Quadras`)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/domain/dto/{CreateCourtBookingDto,CreateCourtBookingRecurrenceDto,CancelCourtBookingDto,CourtBookingDto}.java`
+  - `src/main/java/com/axioma/quadras/domain/model/{CourtBooking,CourtBookingCancellationScope}.java`
+  - `src/main/java/com/axioma/quadras/repository/{CourtBookingRepository,CourtBookingListItemView}.java`
+  - `src/main/java/com/axioma/quadras/service/CourtBookingService.java`
+  - `src/main/resources/db/migration/V21__add_court_booking_recurrence.sql`
+  - `src/test/java/com/axioma/quadras/controller/CourtBookingControllerTest.java`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: permitir que solo los `professores parceiros` lancen reservas recurrentes semanales y que la cancelacion pueda aplicarse a una sola ocurrencia o a toda la serie.
+- Impacto funcional:
+  - `POST /api/v1/courts/bookings` acepta `recurrence.endDate` solo para `PARTNER_COACH`
+  - la recurrencia genera reservas semanales desde la fecha inicial hasta la fecha final, con control de solapamiento por cada ocurrencia
+  - `PATCH /api/v1/courts/bookings/{id}/cancel` acepta `cancellationScope=SINGLE|SERIES`
+  - el DTO de reserva expone `recurrenceGroupId`, `recurrenceStartDate` y `recurrenceEndDate`
+  - se agrega persistencia e indice para metadata de recurrencia en `court_bookings`
+- Validacion ejecutada:
+  - `./mvnw -q -Dtest=CourtBookingControllerTest test`
+  - `./mvnw -q -DskipTests compile`
+- Rollback manual:
+  - revertir la migracion `V21__add_court_booking_recurrence.sql`
+  - revertir cambios de contrato y servicio en `CourtBooking*`
+  - efecto esperado del rollback: el modulo vuelve a admitir solo reservas simples y cancelacion individual
+
 ## 2026-04-15 | Optimizacion operativa | Reduccion de carga inicial en Massagens, Tours y Mantencion
 - Componente afectado: Backend + frontend estatico (`Massagens`, `Tours`, `Mantencion`)
 - Archivos tocados:
@@ -47,7 +72,7 @@
   - `./mvnw -q "-Dtest=TourControllerTest" test`
   - validacion HTTP manual contra backend levantado en puerto alternativo:
     - `GET /api/v1/tours/reports/summary?dateFrom=2026-04-01&dateTo=2026-04-30` -> `200`
-    - `GET /api/v1/tours/reports/summary/details?groupBy=PROVIDER&code=1&dateFrom=2026-04-01&dateTo=2026-04-30` -> `200`
+    - `GET /api/v1/tours/reports/summary/details?groupBy=PROVIDER&groupKey=1&dateFrom=2026-04-01&dateTo=2026-04-30` -> `200`
 - Rollback manual:
   - revertir `cast(tp.id as char)` a `cast(tp.id as varchar)` en `TourBookingRepository.java`
   - efecto esperado del rollback: el bug reaparece en MySQL local y `Tours` vuelve a responder `500` en summary/provider detail
@@ -892,3 +917,13 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Completar el resumen de periodo con navegacion de detalle por fila, de modo que el operador pueda abrir una ventana emergente y ver los bookings reales detras de cada total agregado.
 - Impacto funcional: La API agrega `GET /api/v1/tours/reports/summary/details` y la pantalla `tours-summary.html` pasa a soportar click por fila con modal de detalle para prestadores, tipos de servicio y medios de pago.
+
+## 2026-05-01 | Windows Local | Correccion final de instalador autocontenido
+- Componente afectado: Empaquetado Windows local + scripts operativos + documentacion
+- Archivos tocados:
+  - `scripts/{provision_portable_mysql,start_backend_detached,install_backend_service,stop_portable_mysql}.ps1`
+  - `installer/windows-local/{costanorte-local.iss,README.md,GUIA_COLEGA_WINDOWS.md}`
+  - `installer/windows-local/installer/post_install.txt`
+  - `docs/{ENTREGA_WINDOWS_LOCAL,CHECKLIST_ENTREGA_WINDOWS_LOCAL,VALIDACION_INSTALADOR_WINDOWS_LOCAL,CHANGELOG_DESARROLLO}.md`
+- Motivo del cambio: La instalacion real en `Program Files` no levantaba backend ni MySQL porque los scripts escribian config y logs dentro de la carpeta instalada, lo que fallaba por permisos de Windows fuera del entorno de desarrollo.
+- Impacto funcional: El instalador final pasa a ser realmente usable sin IDE ni Java/MySQL externos; el runtime mutable se genera en `C:\ProgramData\CostanorteLocal`, la provision local se ejecuta al finalizar la instalacion y la validacion real confirma `health` y login demo sobre una instalacion en `Program Files (x86)`.
