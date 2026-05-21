@@ -211,6 +211,68 @@ public interface MaintenanceOrderRepository extends JpaRepository<MaintenanceOrd
 			@Param("reportedToExclusive") OffsetDateTime reportedToExclusive
 	);
 
+	@Query("""
+			select
+				o.id as id,
+				o.location.id as locationId,
+				o.locationTypeSnapshot as locationTypeSnapshot,
+				o.locationCodeSnapshot as locationCodeSnapshot,
+				o.locationLabelSnapshot as locationLabelSnapshot,
+				p.id as providerId,
+				o.providerTypeSnapshot as providerTypeSnapshot,
+				o.providerNameSnapshot as providerNameSnapshot,
+				o.serviceLabelSnapshot as serviceLabelSnapshot,
+				o.title as title,
+				o.description as description,
+				o.priority as priority,
+				o.requestOrigin as requestOrigin,
+				o.requestedForGuest as requestedForGuest,
+				o.guestName as guestName,
+				o.guestReference as guestReference,
+				o.requestedByUsername as requestedByUsername,
+				o.requestedByRole as requestedByRole,
+				o.businessPriority as businessPriority,
+				o.estimatedExecutionMinutes as estimatedExecutionMinutes,
+				o.assignedUsername as assignedUsername,
+				o.assignedAt as assignedAt,
+				o.status as status,
+				o.reportedAt as reportedAt,
+				o.scheduledStartAt as scheduledStartAt,
+				o.scheduledEndAt as scheduledEndAt,
+				o.startedAt as startedAt,
+				o.completedAt as completedAt,
+				o.paid as paid,
+				o.paymentMethod as paymentMethod,
+				o.paymentDate as paymentDate,
+				o.paymentNotes as paymentNotes,
+				o.resolutionNotes as resolutionNotes,
+				o.cancellationNotes as cancellationNotes,
+				o.createdAt as createdAt,
+				o.updatedAt as updatedAt,
+				o.cancelledAt as cancelledAt,
+				o.createdBy as createdBy,
+				o.updatedBy as updatedBy,
+				o.cancelledBy as cancelledBy
+			from MaintenanceOrder o
+			left join o.provider p
+			where o.status in :statuses
+			  and (
+			        (o.scheduledStartAt is not null and o.scheduledStartAt < :scheduledToExclusive)
+			        or
+			        (o.scheduledStartAt is null and o.reportedAt < :reportedToExclusive)
+			  )
+			order by
+				case when o.scheduledStartAt is null then 1 else 0 end asc,
+				o.scheduledStartAt asc,
+				o.reportedAt asc,
+				o.id asc
+			""")
+	List<MaintenanceOrderHistoryItemView> findExecutiveOpenItems(
+			@Param("statuses") Collection<MaintenanceOrderStatus> statuses,
+			@Param("scheduledToExclusive") LocalDateTime scheduledToExclusive,
+			@Param("reportedToExclusive") OffsetDateTime reportedToExclusive
+	);
+
 	@Query(
 			value = """
 					select

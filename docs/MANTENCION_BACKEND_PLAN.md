@@ -4,6 +4,30 @@ Fecha: 2026-03-30
 Modulo propuesto: `maintenance`
 Estado: `Implementado`
 
+## Actualizacion 2026-05-21
+- Se agrego el endpoint `GET /api/v1/maintenance/reports/summary/daily-executive`.
+- Objetivo:
+  - alimentar el bloque `Resumo executivo do dia`
+  - incluir ordenes abiertas del dia
+  - incluir ordenes pendientes no cerradas de dias anteriores
+- Decision tecnica:
+  - resolver la logica en backend y no en frontend
+  - motivo: la regla de arrastre historico pertenece al negocio y debe salir de una sola fuente de verdad
+  - se evita que el cliente tenga que reconstruir backlog abierto trayendo historia cruda
+- El contrato devuelve:
+  - `carryOverOpenCount`
+  - `dayOpenCount`
+  - `totalOpenCount`
+  - `urgentCount`
+  - `scheduledCount`
+  - `inProgressCount`
+  - `unassignedCount`
+  - `carryOverOrders`
+  - `dayOpenOrders`
+- La consulta se resolvio con repository dedicado para traer solo ordenes abiertas hasta la fecha solicitada, sin cargar el historico completo.
+- Validacion ejecutada:
+  - `./mvnw.cmd -q -Dtest=MaintenanceControllerTest test`
+
 ## Estado final implementado
 - Se implemento el dominio backend completo bajo `/api/v1/maintenance`.
 - Se resolvieron:
@@ -100,6 +124,11 @@ Estado: `Implementado`
   - `updatedAt`
   - `createdBy`
   - `updatedBy`
+
+Regla UX/API:
+- `code` se conserva en modelo y DTO como referencia interna.
+- `label` debe ser el identificador principal de negocio para consumo visual.
+- En frontend o documentacion funcional, `code` no debe presentarse como referencia principal del operador.
 
 ### Catalogo de responsables de mantenimiento
 - Entidad: `MaintenanceProvider`
@@ -329,9 +358,10 @@ Estado: `Implementado`
 ### `GET /api/v1/maintenance/reports/summary/details`
 - Parametros:
   - `groupBy`
-  - `code`
+  - `groupKey`
   - `dateFrom`
   - `dateTo`
+- `code` puede mantenerse solo como compatibilidad temporal mientras existan consumidores legacy.
 - Grupos sugeridos:
   - `PROVIDER`
   - `PROVIDER_TYPE`

@@ -77,6 +77,24 @@ class MaintenanceControllerTest {
 	}
 
 	@Test
+	void shouldRejectLocationWhenNumericReferenceIsOmitted() throws Exception {
+		mockMvc.perform(post("/api/v1/maintenance/locations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "locationType": "ROOM",
+								  "code": "",
+								  "label": "Apartamento Vista Mar 301",
+								  "floor": "3",
+								  "description": "Unidad reformada",
+								  "active": true
+								}
+								"""))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void shouldCreateOverlappingOrdersAndExposeConflictsWithoutBlocking() throws Exception {
 		final long locationId = createLocation(
 				"ROOM",
@@ -97,7 +115,6 @@ class MaintenanceControllerTest {
 				providerId,
 				"Revision del aire",
 				"Chequeo de temperatura y filtros",
-				"HIGH",
 				"2026-04-10T10:00:00",
 				"2026-04-10T11:30:00"
 		);
@@ -118,7 +135,6 @@ class MaintenanceControllerTest {
 				providerId,
 				"Chequeo de internet en paralelo",
 				"El operador decide seguir aunque exista conflicto",
-				"MEDIUM",
 				"2026-04-10T11:00:00",
 				"2026-04-10T12:00:00"
 		);
@@ -167,8 +183,8 @@ class MaintenanceControllerTest {
 	void shouldManageOrderAttachmentsAndLifecycle() throws Exception {
 		final long locationId = createLocation(
 				"COMMON_AREA",
-				"LOBBY",
-				"Lobby principal",
+				"500",
+				"Recepcion",
 				"PB",
 				"Area de recepcion"
 		);
@@ -184,7 +200,6 @@ class MaintenanceControllerTest {
 				providerId,
 				"Cambiar luminaria",
 				"Se reporta una luz intermitente",
-				"MEDIUM",
 				"2026-04-12T08:00:00",
 				"2026-04-12T09:00:00"
 		);
@@ -276,7 +291,7 @@ class MaintenanceControllerTest {
 
 		createLocation(
 				"COMMON_AREA",
-				"POOL",
+				"514",
 				"Piscina",
 				"PB",
 				"Zona humeda"
@@ -311,12 +326,12 @@ class MaintenanceControllerTest {
 						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(3))
-				.andExpect(jsonPath("$[0].locationType").value("COMMON_AREA"))
-				.andExpect(jsonPath("$[0].code").value("POOL"))
+				.andExpect(jsonPath("$[0].locationType").value("ROOM"))
+				.andExpect(jsonPath("$[0].code").value("101"))
 				.andExpect(jsonPath("$[1].locationType").value("ROOM"))
-				.andExpect(jsonPath("$[1].code").value("101"))
-				.andExpect(jsonPath("$[2].locationType").value("ROOM"))
-				.andExpect(jsonPath("$[2].code").value("305"));
+				.andExpect(jsonPath("$[1].code").value("305"))
+				.andExpect(jsonPath("$[2].locationType").value("COMMON_AREA"))
+				.andExpect(jsonPath("$[2].code").value("514"));
 	}
 
 	@Test
@@ -340,7 +355,6 @@ class MaintenanceControllerTest {
 				providerId,
 				"Revisar tomacorriente",
 				"Cliente reporta chispa intermitente",
-				"HIGH",
 				"2026-04-14T15:00:00",
 				"2026-04-14T16:00:00"
 		);
@@ -392,7 +406,6 @@ class MaintenanceControllerTest {
 				providerId,
 				"Orden 1",
 				"Detalle 1",
-				"LOW",
 				"2026-04-18T08:00:00",
 				"2026-04-18T09:00:00"
 		);
@@ -401,7 +414,6 @@ class MaintenanceControllerTest {
 				providerId,
 				"Orden 2",
 				"Detalle 2",
-				"MEDIUM",
 				"2026-04-18T09:00:00",
 				"2026-04-18T10:00:00"
 		);
@@ -410,7 +422,6 @@ class MaintenanceControllerTest {
 				providerId,
 				"Orden 3",
 				"Detalle 3",
-				"HIGH",
 				"2026-04-18T10:00:00",
 				"2026-04-18T11:00:00"
 		);
@@ -574,26 +585,147 @@ class MaintenanceControllerTest {
 				.andExpect(jsonPath("$.guestPriorityCount").value(1))
 				.andExpect(jsonPath("$.averageResolutionHours").value(1.50))
 				.andExpect(jsonPath("$.providerBreakdown.length()").value(2))
-				.andExpect(jsonPath("$.providerTypeBreakdown[0].code").value("INTERNAL"))
+				.andExpect(jsonPath("$.providerTypeBreakdown[0].groupKey").value("INTERNAL"))
 				.andExpect(jsonPath("$.providerTypeBreakdown[0].completedCount").value(1))
-				.andExpect(jsonPath("$.providerTypeBreakdown[1].code").value("EXTERNAL"))
+				.andExpect(jsonPath("$.providerTypeBreakdown[1].groupKey").value("EXTERNAL"))
 				.andExpect(jsonPath("$.providerTypeBreakdown[1].scheduledCount").value(1))
+				.andExpect(jsonPath("$.providerTypeBreakdown[0].code").value("INTERNAL"))
 				.andExpect(jsonPath("$.providerTypeBreakdown[1].cancelledCount").value(1));
 
 		mockMvc.perform(get("/api/v1/maintenance/reports/summary/details")
 						.header(HttpHeaders.AUTHORIZATION, bearerToken())
 						.param("groupBy", "PROVIDER")
-						.param("code", String.valueOf(externalProvider.getId()))
+						.param("groupKey", String.valueOf(externalProvider.getId()))
 						.param("dateFrom", "2026-04-01")
 						.param("dateTo", "2026-04-30"))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.groupKey").value(String.valueOf(externalProvider.getId())))
 				.andExpect(jsonPath("$.label").value("Internet Sul"))
+				.andExpect(jsonPath("$.summary.groupKey").value(String.valueOf(externalProvider.getId())))
 				.andExpect(jsonPath("$.summary.scheduledCount").value(1))
 				.andExpect(jsonPath("$.summary.cancelledCount").value(1))
 				.andExpect(jsonPath("$.items.length()").value(2))
 				.andExpect(jsonPath("$.items[0].expectedCompletionAt").value("2026-04-03T10:00:00"))
 				.andExpect(jsonPath("$.items[0].title").value("Revision de routers"))
 				.andExpect(jsonPath("$.items[1].status").value("CANCELLED"));
+
+		mockMvc.perform(get("/api/v1/maintenance/reports/summary/daily-executive")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("date", "2026-04-03"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.carryOverOpenCount").value(0))
+				.andExpect(jsonPath("$.dayOpenCount").value(1))
+				.andExpect(jsonPath("$.totalOpenCount").value(1))
+				.andExpect(jsonPath("$.scheduledCount").value(1))
+				.andExpect(jsonPath("$.carryOverOrders.length()").value(0))
+				.andExpect(jsonPath("$.dayOpenOrders.length()").value(1))
+				.andExpect(jsonPath("$.dayOpenOrders[0].title").value("Revision de routers"));
+	}
+
+	@Test
+	void shouldIncludeOpenOrdersFromPreviousDaysInDailyExecutiveSummary() throws Exception {
+		final MaintenanceLocation room = maintenanceLocationRepository.save(
+				MaintenanceLocation.create(
+						MaintenanceLocationType.ROOM,
+						MaintenanceLocationCategory.APARTMENT,
+						"301",
+						"Apartamento 301",
+						"3",
+						null,
+						true,
+						"system"
+				)
+		);
+		final MaintenanceProvider internalProvider = maintenanceProviderRepository.save(
+				MaintenanceProvider.create(
+						MaintenanceProviderType.INTERNAL,
+						MaintenanceProviderSpecialty.GENERAL_MAINTENANCE,
+						"Equipe interna",
+						"Manutencao geral",
+						null,
+						null,
+						true,
+						"system"
+				)
+		);
+
+		final MaintenanceOrder carryOverOrder = MaintenanceOrder.report(
+				room,
+				internalProvider,
+				"Revisar ducha",
+				"Pendencia do dia anterior",
+				MaintenancePriority.URGENT,
+				MaintenanceRequestOrigin.INTERNAL_ROLE,
+				false,
+				null,
+				null,
+				MaintenanceBusinessPriority.CRITICAL_OPERATION,
+				null,
+				"operador.noite",
+				LocalDateTime.of(2026, 4, 2, 18, 0),
+				LocalDateTime.of(2026, 4, 2, 19, 0),
+				"system",
+				"OPERATOR"
+		);
+		maintenanceOrderRepository.save(carryOverOrder);
+
+		final MaintenanceOrder sameDayOrder = MaintenanceOrder.report(
+				room,
+				null,
+				"Trocar lampada",
+				"Solicitado na manha",
+				MaintenancePriority.MEDIUM,
+				MaintenanceRequestOrigin.INTERNAL_ROLE,
+				false,
+				null,
+				null,
+				MaintenanceBusinessPriority.INTERNAL_STANDARD,
+				null,
+				null,
+				LocalDateTime.of(2026, 4, 3, 9, 0),
+				LocalDateTime.of(2026, 4, 3, 10, 0),
+				"system",
+				"OPERATOR"
+		);
+		maintenanceOrderRepository.save(sameDayOrder);
+
+		final MaintenanceOrder completedPreviousDay = MaintenanceOrder.report(
+				room,
+				internalProvider,
+				"Consertar tomada",
+				"Ja resolvido",
+				MaintenancePriority.HIGH,
+				MaintenanceRequestOrigin.INTERNAL_ROLE,
+				false,
+				null,
+				null,
+				MaintenanceBusinessPriority.INTERNAL_STANDARD,
+				null,
+				"operador.noite",
+				LocalDateTime.of(2026, 4, 1, 14, 0),
+				LocalDateTime.of(2026, 4, 1, 15, 0),
+				"system",
+				"OPERATOR"
+		);
+		completedPreviousDay.start(OffsetDateTime.parse("2026-04-01T14:05:00Z"), "system");
+		completedPreviousDay.complete(OffsetDateTime.parse("2026-04-01T14:50:00Z"), "Resolvido", "system");
+		maintenanceOrderRepository.save(completedPreviousDay);
+
+		mockMvc.perform(get("/api/v1/maintenance/reports/summary/daily-executive")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.param("date", "2026-04-03"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.carryOverOpenCount").value(1))
+				.andExpect(jsonPath("$.dayOpenCount").value(1))
+				.andExpect(jsonPath("$.totalOpenCount").value(2))
+				.andExpect(jsonPath("$.urgentCount").value(1))
+				.andExpect(jsonPath("$.scheduledCount").value(2))
+				.andExpect(jsonPath("$.inProgressCount").value(0))
+				.andExpect(jsonPath("$.unassignedCount").value(1))
+				.andExpect(jsonPath("$.carryOverOrders.length()").value(1))
+				.andExpect(jsonPath("$.carryOverOrders[0].title").value("Revisar ducha"))
+				.andExpect(jsonPath("$.dayOpenOrders.length()").value(1))
+				.andExpect(jsonPath("$.dayOpenOrders[0].title").value("Trocar lampada"));
 	}
 
 	@Test
@@ -731,7 +863,6 @@ class MaintenanceControllerTest {
 			long providerId,
 			String title,
 			String description,
-			String priority,
 			String scheduledStartAt,
 			String scheduledEndAt
 	) throws Exception {
@@ -744,12 +875,9 @@ class MaintenanceControllerTest {
 								  "providerId": %d,
 								  "title": "%s",
 								  "description": "%s",
-								  "priority": "%s",
 								  "requestOrigin": "INTERNAL_ROLE",
 								  "requestedForGuest": false,
 								  "businessPriority": "INTERNAL_STANDARD",
-								  "estimatedExecutionMinutes": 60,
-								  "assignedUsername": "operador.demo",
 								  "scheduledStartAt": "%s",
 								  "scheduledEndAt": "%s"
 								}
@@ -758,7 +886,6 @@ class MaintenanceControllerTest {
 										providerId,
 										title,
 										description,
-										priority,
 										scheduledStartAt,
 										scheduledEndAt
 								)))

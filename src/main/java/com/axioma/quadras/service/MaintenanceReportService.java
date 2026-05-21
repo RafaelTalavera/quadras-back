@@ -1,5 +1,8 @@
 package com.axioma.quadras.service;
 
+import com.axioma.quadras.domain.dto.MaintenanceDailyExecutiveReportDto;
+import com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto;
+import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.MaintenanceSummaryBreakdownDto;
 import com.axioma.quadras.domain.dto.MaintenanceSummaryDetailDto;
 import com.axioma.quadras.domain.dto.MaintenanceSummaryDetailItemDto;
@@ -10,6 +13,9 @@ import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
 import com.axioma.quadras.domain.model.MaintenanceSummaryGroupBy;
+import com.axioma.quadras.repository.MaintenanceOrderAttachmentMetadataView;
+import com.axioma.quadras.repository.MaintenanceOrderAttachmentRepository;
+import com.axioma.quadras.repository.MaintenanceOrderHistoryItemView;
 import com.axioma.quadras.repository.MaintenanceSummaryAggregateView;
 import com.axioma.quadras.repository.MaintenanceSummaryBreakdownView;
 import com.axioma.quadras.repository.MaintenanceOrderRepository;
@@ -20,6 +26,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,11 +39,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class MaintenanceReportService {
 
 	private static final long MAX_REPORT_DAYS = 93;
+	private static final EnumSet<MaintenanceOrderStatus> EXECUTIVE_OPEN_STATUSES = EnumSet.of(
+			MaintenanceOrderStatus.OPEN,
+			MaintenanceOrderStatus.ASSIGNED,
+			MaintenanceOrderStatus.SCHEDULED,
+			MaintenanceOrderStatus.IN_PROGRESS
+	);
 
 	private final MaintenanceOrderRepository maintenanceOrderRepository;
+	private final MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository;
 
-	public MaintenanceReportService(MaintenanceOrderRepository maintenanceOrderRepository) {
+	public MaintenanceReportService(
+			MaintenanceOrderRepository maintenanceOrderRepository,
+			MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository
+	) {
 		this.maintenanceOrderRepository = maintenanceOrderRepository;
+		this.maintenanceOrderAttachmentRepository = maintenanceOrderAttachmentRepository;
 	}
 
 	public MaintenanceSummaryReportDto summary(LocalDate dateFrom, LocalDate dateTo) {
@@ -79,9 +97,46 @@ public class MaintenanceReportService {
 		);
 	}
 
+	public MaintenanceDailyExecutiveReportDto dailyExecutive(LocalDate date) {
+		if (date == null) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "date is required");
+		}
+		final List<MaintenanceOrderHistoryItemView> items = maintenanceOrderRepository.findExecutiveOpenItems(
+				EXECUTIVE_OPEN_STATUSES,
+				scheduledToExclusive(date),
+				reportedToExclusive(date)
+		);
+		final Map<Long, List<MaintenanceOrderAttachmentDto>> attachmentsByOrderId =
+				loadAttachmentMetadataByOrderId(items.stream().map(MaintenanceOrderHistoryItemView::getId).toList());
+		final List<MaintenanceOrderDto> allOpenOrders = items.stream()
+				.map(item -> MaintenanceOrderDto.from(
+						item,
+						attachmentsByOrderId.getOrDefault(item.getId(), List.of())
+				))
+				.toList();
+		final List<MaintenanceOrderDto> carryOverOrders = allOpenOrders.stream()
+				.filter(order -> referenceDate(order).isBefore(date))
+				.toList();
+		final List<MaintenanceOrderDto> dayOpenOrders = allOpenOrders.stream()
+				.filter(order -> referenceDate(order).isEqual(date))
+				.toList();
+
+		return new MaintenanceDailyExecutiveReportDto(
+				carryOverOrders.size(),
+				dayOpenOrders.size(),
+				allOpenOrders.size(),
+				countUrgentOrders(allOpenOrders),
+				countByStatus(allOpenOrders, MaintenanceOrderStatus.SCHEDULED),
+				countByStatus(allOpenOrders, MaintenanceOrderStatus.IN_PROGRESS),
+				(int) allOpenOrders.stream().filter(order -> order.providerId() == null).count(),
+				carryOverOrders,
+				dayOpenOrders
+		);
+	}
+
 	public MaintenanceSummaryDetailDto summaryDetails(
 			MaintenanceSummaryGroupBy groupBy,
-			String code,
+			String groupKey,
 			LocalDate dateFrom,
 			LocalDate dateTo
 	) {
@@ -89,10 +144,10 @@ public class MaintenanceReportService {
 		if (groupBy == null) {
 			throw new ApplicationException(HttpStatus.BAD_REQUEST, "groupBy is required");
 		}
-		if (code == null || code.isBlank()) {
-			throw new ApplicationException(HttpStatus.BAD_REQUEST, "code is required");
+		if (groupKey == null || groupKey.isBlank()) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "groupKey is required");
 		}
-		final DetailFilter filter = resolveDetailFilter(groupBy, code);
+		final DetailFilter filter = resolveDetailFilter(groupBy, groupKey);
 		final List<MaintenanceSummaryDetailItemView> orders = filteredDetailItems(dateFrom, dateTo, filter).stream()
 				.sorted(Comparator.comparing(this::referenceDateTime))
 				.toList();
@@ -102,9 +157,10 @@ public class MaintenanceReportService {
 		final MaintenanceSummaryDetailItemView firstOrder = orders.get(0);
 		return new MaintenanceSummaryDetailDto(
 				groupBy,
-				code,
+				groupKey,
+				groupKey,
 				labelForGroup(firstOrder, groupBy),
-				toBreakdown(code, labelForGroup(firstOrder, groupBy), orders),
+				toBreakdown(groupKey, labelForGroup(firstOrder, groupBy), orders),
 				orders.stream().map(this::toDetailItemDto).toList()
 		);
 	}
@@ -220,6 +276,39 @@ public class MaintenanceReportService {
 		return breakdown;
 	}
 
+	private Map<Long, List<MaintenanceOrderAttachmentDto>> loadAttachmentMetadataByOrderId(
+			List<Long> orderIds
+	) {
+		if (orderIds == null || orderIds.isEmpty()) {
+			return Map.of();
+		}
+		final Map<Long, List<MaintenanceOrderAttachmentDto>> attachmentsByOrderId = new LinkedHashMap<>();
+		for (final MaintenanceOrderAttachmentMetadataView metadata :
+				maintenanceOrderAttachmentRepository.findMetadataByOrderIdInOrderByCreatedAtDesc(orderIds)) {
+			attachmentsByOrderId.computeIfAbsent(metadata.getOrderId(), ignored -> new java.util.ArrayList<>())
+					.add(MaintenanceOrderAttachmentDto.from(metadata));
+		}
+		return attachmentsByOrderId;
+	}
+
+	private LocalDate referenceDate(MaintenanceOrderDto order) {
+		if (order.scheduledStartAt() != null) {
+			return order.scheduledStartAt().toLocalDate();
+		}
+		return order.reportedAt().toLocalDate();
+	}
+
+	private int countUrgentOrders(List<MaintenanceOrderDto> orders) {
+		return (int) orders.stream()
+				.filter(order -> order.priority() == MaintenancePriority.URGENT
+						|| order.businessPriority() == com.axioma.quadras.domain.model.MaintenanceBusinessPriority.CRITICAL_OPERATION)
+				.count();
+	}
+
+	private int countByStatus(List<MaintenanceOrderDto> orders, MaintenanceOrderStatus status) {
+		return (int) orders.stream().filter(order -> order.status() == status).count();
+	}
+
 	private Map<String, MaintenanceSummaryBreakdownView> indexByCode(List<MaintenanceSummaryBreakdownView> views) {
 		final Map<String, MaintenanceSummaryBreakdownView> indexed = new LinkedHashMap<>();
 		for (final MaintenanceSummaryBreakdownView view : views) {
@@ -230,6 +319,7 @@ public class MaintenanceReportService {
 
 	private MaintenanceSummaryBreakdownDto toBreakdownDto(MaintenanceSummaryBreakdownView view) {
 		return new MaintenanceSummaryBreakdownDto(
+				view.getCode(),
 				view.getCode(),
 				view.getLabel(),
 				Math.toIntExact(view.getOpenCount()),
@@ -458,6 +548,7 @@ public class MaintenanceReportService {
 
 		private MaintenanceSummaryBreakdownDto toDto(String code) {
 			return new MaintenanceSummaryBreakdownDto(
+					code,
 					code,
 					label,
 					openCount,

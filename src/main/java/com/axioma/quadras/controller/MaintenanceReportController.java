@@ -1,5 +1,6 @@
 package com.axioma.quadras.controller;
 
+import com.axioma.quadras.domain.dto.MaintenanceDailyExecutiveReportDto;
 import com.axioma.quadras.domain.dto.MaintenanceSummaryDetailDto;
 import com.axioma.quadras.domain.dto.MaintenanceSummaryReportDto;
 import com.axioma.quadras.domain.model.MaintenanceSummaryGroupBy;
@@ -34,10 +35,21 @@ public class MaintenanceReportController {
 		return ResponseEntity.ok(maintenanceReportService.summary(dateFrom, dateTo));
 	}
 
+	@GetMapping("/summary/daily-executive")
+	public ResponseEntity<MaintenanceDailyExecutiveReportDto> dailyExecutive(
+			@RequestParam
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate date
+	) {
+		return ResponseEntity.ok(maintenanceReportService.dailyExecutive(date));
+	}
+
 	@GetMapping("/summary/details")
 	public ResponseEntity<MaintenanceSummaryDetailDto> summaryDetails(
 			@RequestParam MaintenanceSummaryGroupBy groupBy,
-			@RequestParam String code,
+			@RequestParam(required = false) String groupKey,
+			// Legacy compatibility for older clients. New consumers must use groupKey.
+			@RequestParam(required = false) String code,
 			@RequestParam
 			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 			LocalDate dateFrom,
@@ -45,8 +57,9 @@ public class MaintenanceReportController {
 			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 			LocalDate dateTo
 	) {
+		final String resolvedGroupKey = groupKey != null && !groupKey.isBlank() ? groupKey : code;
 		return ResponseEntity.ok(
-				maintenanceReportService.summaryDetails(groupBy, code, dateFrom, dateTo)
+				maintenanceReportService.summaryDetails(groupBy, resolvedGroupKey, dateFrom, dateTo)
 		);
 	}
 }
