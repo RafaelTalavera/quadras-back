@@ -4,6 +4,7 @@ import com.axioma.quadras.domain.model.MaintenanceLocationCategory;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UpdateMaintenanceLocationDto(
@@ -12,6 +13,7 @@ public record UpdateMaintenanceLocationDto(
 		MaintenanceLocationCategory locationCategory,
 		@NotBlank(message = "code is required")
 		@Size(max = 60, message = "code must be <= 60 chars")
+		@Pattern(regexp = "^\\d{2,3}$", message = "code must be a 2-3 digit numeric reference")
 		String code,
 		@NotBlank(message = "label is required")
 		@Size(max = 160, message = "label must be <= 160 chars")

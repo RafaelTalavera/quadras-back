@@ -561,82 +561,83 @@ public class MaintenanceSimulationService {
 		final List<LocationSeed> seeds = new ArrayList<>();
 		seeds.add(new LocationSeed(
 				MaintenanceLocationType.COMMON_AREA,
-				"LOBBY",
-				"Lobby",
-				"PB",
-				"Area principal de recepcion y circulacion."
+				"100",
+				"100 - Areas comunes piso 1",
+				"1",
+				"Pasillos y areas comunes del primer piso."
 		));
+		for (int room = 101; room <= 111; room++) {
+			seeds.add(roomSeed(room, 1));
+		}
 		seeds.add(new LocationSeed(
 				MaintenanceLocationType.COMMON_AREA,
-				"JUEGOS",
-				"Sala de juegos",
-				"PB",
-				"Area recreativa para huespedes."
+				"200",
+				"200 - Areas comunes piso 2",
+				"2",
+				"Pasillos y areas comunes del segundo piso."
 		));
+		for (int room = 201; room <= 211; room++) {
+			seeds.add(roomSeed(room, 2));
+		}
 		seeds.add(new LocationSeed(
 				MaintenanceLocationType.COMMON_AREA,
-				"TV",
-				"Sala de TV",
-				"PB",
-				"Area comun con television y estar."
+				"300",
+				"300 - Areas comunes piso 3",
+				"3",
+				"Pasillos y areas comunes del tercer piso."
 		));
+		for (int room = 301; room <= 311; room++) {
+			seeds.add(roomSeed(room, 3));
+		}
 		seeds.add(new LocationSeed(
 				MaintenanceLocationType.COMMON_AREA,
-				"GOB",
-				"Gobernanza",
-				"PB",
-				"Area operativa de housekeeping."
+				"400",
+				"400 - Areas comunes piso 4",
+				"4",
+				"Pasillos y areas comunes del cuarto piso."
 		));
-		seeds.add(new LocationSeed(
-				MaintenanceLocationType.COMMON_AREA,
-				"REFECTORIO",
-				"Refectorio",
-				"PB",
-				"Sector de servicio y apoyo."
-		));
-		seeds.add(new LocationSeed(
-				MaintenanceLocationType.COMMON_AREA,
-				"ESTAC",
-				"Estacionamiento",
-				"PB",
-				"Area de estacionamiento y circulacion vehicular."
+		for (int room = 401; room <= 407; room++) {
+			seeds.add(roomSeed(room, 4));
+		}
+		seeds.addAll(List.of(
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "500", "500 - Recepcion", "PB", "Area de recepcion del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "501", "501 - Reservas", "PB", "Area administrativa de reservas."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "502", "502 - Sala business", "PB", "Sala business del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "503", "503 - Elevador", "PB", "Elevador principal del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "504", "504 - Sala de TV", "PB", "Sala de TV para huespedes."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "505", "505 - Deposito eventos", "PB", "Deposito de eventos."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "506", "506 - Sala de juego", "PB", "Sala de juego y recreacion."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "507", "507 - Roperia central", "PB", "Roperia central del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "508", "508 - Governanca", "PB", "Area de governanca."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "509", "509 - Oficinas RRHH-Financiero", "PB", "Oficinas administrativas de RRHH y financiero."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "510", "510 - Elevador de servicio", "PB", "Elevador de servicio."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "511", "511 - Almoxarifado", "PB", "Almoxarifado y deposito general."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "512", "512 - Cocina", "PB", "Cocina principal."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "513", "513 - Restaurante", "PB", "Area de restaurante."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "514", "514 - Piscina", "PB", "Piscina exterior."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "515", "515 - Piscina aquecida", "PB", "Piscina aquecida."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "516", "516 - Academia", "PB", "Academia del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "517", "517 - Spa", "PB", "Area de spa."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "518", "518 - Sauna", "PB", "Area de sauna."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "519", "519 - Recreacion", "PB", "Area de recreacion."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "520", "520 - Estacionamiento", "PB", "Estacionamiento del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "521", "521 - Entrada hotel", "PB", "Entrada principal del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "522", "522 - Caldera", "PB", "Sala de caldera."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "523", "523 - Reservorio", "PB", "Reservorio del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "524", "524 - Central electrica", "PB", "Central electrica."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "525", "525 - Camaras", "PB", "Sistema de camaras."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "526", "526 - Playa", "PB", "Area de playa."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "527", "527 - Jakusi", "PB", "Area de jakusi."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "528", "528 - Refectorio", "PB", "Refectorio.")
 		));
 		for (int chalet = 1; chalet <= 12; chalet++) {
 			seeds.add(new LocationSeed(
 					MaintenanceLocationType.ROOM,
-					"CH%02d".formatted(chalet),
-					"Chalet %d".formatted(chalet),
+					"%02d".formatted(chalet),
+					"Chalet %02d".formatted(chalet),
 					"Chalets",
-					"Unidad de alojamiento chalet %d.".formatted(chalet)
+					"Unidad de alojamiento chalet %02d.".formatted(chalet)
 			));
-		}
-		for (int floor = 1; floor <= 4; floor++) {
-			seeds.add(new LocationSeed(
-					MaintenanceLocationType.COMMON_AREA,
-					"P%d-ESC".formatted(floor),
-					"Escalera piso %d".formatted(floor),
-					String.valueOf(floor),
-					"Circulacion vertical del piso %d.".formatted(floor)
-			));
-			seeds.add(new LocationSeed(
-					MaintenanceLocationType.COMMON_AREA,
-					"P%d-COM".formatted(floor),
-					"Area comun piso %d".formatted(floor),
-					String.valueOf(floor),
-					"Pasillo y area comun del piso %d.".formatted(floor)
-			));
-		}
-		for (int room = 101; room <= 111; room++) {
-			seeds.add(roomSeed(room, 1));
-		}
-		for (int room = 201; room <= 211; room++) {
-			seeds.add(roomSeed(room, 2));
-		}
-		for (int room = 301; room <= 311; room++) {
-			seeds.add(roomSeed(room, 3));
-		}
-		for (int room = 401; room <= 407; room++) {
-			seeds.add(roomSeed(room, 4));
 		}
 		return seeds;
 	}

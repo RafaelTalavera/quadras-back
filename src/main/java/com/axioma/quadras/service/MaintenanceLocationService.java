@@ -10,9 +10,11 @@ import com.axioma.quadras.repository.MaintenanceOrderAttachmentRepository;
 import com.axioma.quadras.repository.MaintenanceLocationRepository;
 import com.axioma.quadras.repository.MaintenanceOrderRepository;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class MaintenanceLocationService {
+	private static final Pattern NUMERIC_CODE_PATTERN = Pattern.compile("^\\d+$");
 
 	private final MaintenanceLocationRepository maintenanceLocationRepository;
 	private final MaintenanceOrderRepository maintenanceOrderRepository;
@@ -39,20 +42,23 @@ public class MaintenanceLocationService {
 	}
 
 	public List<MaintenanceLocationDto> list() {
-		return maintenanceLocationRepository.findAllProjectedByOrderByLocationTypeAscCodeAsc().stream()
+		return maintenanceLocationRepository.findAll().stream()
+				.sorted(locationComparator())
 				.map(MaintenanceLocationDto::from)
 				.toList();
 	}
 
 	@Transactional
 	public MaintenanceLocationDto create(CreateMaintenanceLocationDto input, String actorUsername) {
-		validateUniqueCode(input.locationType(), input.code(), null);
+		final String resolvedCode = resolveReferenceCode(input.code());
+		final String resolvedLabel = resolveLabel(input.locationType(), resolvedCode, input.label());
+		validateUniqueCode(input.locationType(), resolvedCode, null);
 		final MaintenanceLocation location = maintenanceLocationRepository.save(
 				MaintenanceLocation.create(
 						input.locationType(),
 						input.locationCategory(),
-						input.code(),
-						input.label(),
+						resolvedCode,
+						resolvedLabel,
 						input.floor(),
 						input.description(),
 						input.active() == null || input.active(),
@@ -70,12 +76,14 @@ public class MaintenanceLocationService {
 			String actorUsername
 	) {
 		final MaintenanceLocation location = findOrThrow(locationId);
-		validateUniqueCode(input.locationType(), input.code(), locationId);
+		final String resolvedCode = resolveReferenceCode(input.code());
+		final String resolvedLabel = resolveLabel(input.locationType(), resolvedCode, input.label());
+		validateUniqueCode(input.locationType(), resolvedCode, locationId);
 		location.update(
 				input.locationType(),
 				input.locationCategory(),
-				input.code(),
-				input.label(),
+				resolvedCode,
+				resolvedLabel,
 				input.floor(),
 				input.description(),
 				input.active(),
@@ -144,6 +152,33 @@ public class MaintenanceLocationService {
 		}
 	}
 
+	private String resolveReferenceCode(String rawCode) {
+		if (rawCode == null || rawCode.isBlank()) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Maintenance location code is required.");
+		}
+		final String code = rawCode.trim();
+		if (!Pattern.matches("^\\d{2,3}$", code)) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"Maintenance location code must be a 2-3 digit numeric reference."
+			);
+		}
+		return code;
+	}
+
+	private String resolveLabel(
+			com.axioma.quadras.domain.model.MaintenanceLocationType locationType,
+			String code,
+			String rawLabel
+	) {
+		final String label = rawLabel == null ? "" : rawLabel.trim();
+		if (locationType != com.axioma.quadras.domain.model.MaintenanceLocationType.COMMON_AREA) {
+			return label;
+		}
+		final String stripped = label.replaceFirst("^\\Q" + code + "\\E\\s*-\\s*", "").trim();
+		return code + " - " + stripped;
+	}
+
 	private void publishCatalogEvent(Long entityId, String action) {
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.MAINTENANCE,
@@ -152,5 +187,29 @@ public class MaintenanceLocationService {
 				null,
 				null
 		);
+	}
+
+	private Comparator<MaintenanceLocation> locationComparator() {
+		return Comparator
+				.comparingInt(this::locationCodeGroup)
+				.thenComparingInt(this::locationNumericValue)
+				.thenComparing(MaintenanceLocation::getCode, String.CASE_INSENSITIVE_ORDER)
+				.thenComparing(MaintenanceLocation::getLabel, String.CASE_INSENSITIVE_ORDER);
+	}
+
+	private int locationCodeGroup(MaintenanceLocation location) {
+		final String code = location.getCode() == null ? "" : location.getCode().trim();
+		if (NUMERIC_CODE_PATTERN.matcher(code).matches()) {
+			return code.length() <= 2 ? 1 : 0;
+		}
+		return 2;
+	}
+
+	private int locationNumericValue(MaintenanceLocation location) {
+		final String code = location.getCode() == null ? "" : location.getCode().trim();
+		if (!NUMERIC_CODE_PATTERN.matcher(code).matches()) {
+			return Integer.MAX_VALUE;
+		}
+		return Integer.parseInt(code);
 	}
 }

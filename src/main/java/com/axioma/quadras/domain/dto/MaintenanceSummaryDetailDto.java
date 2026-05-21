@@ -5,6 +5,7 @@ import java.util.List;
 
 public record MaintenanceSummaryDetailDto(
 		MaintenanceSummaryGroupBy groupBy,
+		String groupKey,
 		String code,
 		String label,
 		MaintenanceSummaryBreakdownDto summary,

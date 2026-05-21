@@ -257,7 +257,7 @@ public class TourBookingService {
 
 	private List<TourSummaryBreakdownDto> buildProviderBreakdown(LocalDateTime startAtFrom, LocalDateTime startAtTo) {
 		return tourBookingRepository.findProviderSummaryBreakdown(startAtFrom, startAtTo).stream()
-				.map(view -> toBreakdownDto(view.getCode(), view.getLabel(), view.getActive(), view))
+				.map(view -> toBreakdownDto(view.getCode(), view.getCode(), view.getLabel(), view.getActive(), view))
 				.toList();
 	}
 
@@ -268,6 +268,7 @@ public class TourBookingService {
 		final List<TourSummaryBreakdownDto> breakdown = new ArrayList<>();
 		for (final TourServiceType value : TourServiceType.values()) {
 			breakdown.add(toBreakdownDto(
+					value.name(),
 					value.name(),
 					labelForServiceType(value),
 					null,
@@ -285,6 +286,7 @@ public class TourBookingService {
 		for (final TourPaymentMethod value : TourPaymentMethod.values()) {
 			breakdown.add(toBreakdownDto(
 					value.name(),
+					value.name(),
 					labelForPaymentMethod(value),
 					null,
 					breakdownByCode.get(value.name())
@@ -295,7 +297,7 @@ public class TourBookingService {
 
 	public TourSummaryDetailDto summaryDetails(
 			TourSummaryGroupBy groupBy,
-			String code,
+			String groupKey,
 			LocalDate dateFrom,
 			LocalDate dateTo
 	) {
@@ -303,11 +305,11 @@ public class TourBookingService {
 		if (groupBy == null) {
 			throw new ApplicationException(HttpStatus.BAD_REQUEST, "groupBy is required");
 		}
-		if (code == null || code.isBlank()) {
-			throw new ApplicationException(HttpStatus.BAD_REQUEST, "code is required");
+		if (groupKey == null || groupKey.isBlank()) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "groupKey is required");
 		}
 
-		final DetailContext context = resolveDetailContext(groupBy, code);
+		final DetailContext context = resolveDetailContext(groupBy, groupKey);
 		final LocalDateTime startAtFrom = dateFrom.atStartOfDay();
 		final LocalDateTime startAtTo = dateTo.atTime(LocalTime.MAX);
 		final TourSummaryBreakdownView summaryView = findDetailSummaryView(groupBy, context, startAtFrom, startAtTo);
@@ -323,10 +325,12 @@ public class TourBookingService {
 
 		return new TourSummaryDetailDto(
 				groupBy,
+				context.groupKey(),
 				context.code(),
 				context.label(),
 				context.active(),
 				toDetailSummaryDto(
+						context.groupKey(),
 						context.code(),
 						context.label(),
 						context.active(),
@@ -467,6 +471,7 @@ public class TourBookingService {
 	}
 
 	private TourSummaryBreakdownDto toBreakdownDto(
+			String groupKey,
 			String code,
 			String label,
 			Boolean active,
@@ -474,6 +479,7 @@ public class TourBookingService {
 	) {
 		if (view == null) {
 			return new TourSummaryBreakdownDto(
+					groupKey,
 					code,
 					label,
 					active,
@@ -488,6 +494,7 @@ public class TourBookingService {
 			);
 		}
 		return new TourSummaryBreakdownDto(
+				groupKey,
 				code,
 				label,
 				active,
@@ -511,6 +518,7 @@ public class TourBookingService {
 	}
 
 	private TourSummaryBreakdownDto toDetailSummaryDto(
+			String groupKey,
 			String code,
 			String label,
 			Boolean active,
@@ -518,6 +526,7 @@ public class TourBookingService {
 	) {
 		if (view == null) {
 			return new TourSummaryBreakdownDto(
+					groupKey,
 					code,
 					label,
 					active,
@@ -531,7 +540,7 @@ public class TourBookingService {
 					BigDecimal.ZERO
 			);
 		}
-		return toBreakdownDto(code, label, active, view);
+		return toBreakdownDto(groupKey, code, label, active, view);
 	}
 
 	private TourSummaryDetailItemDto toDetailItemDto(TourSummaryDetailItemView view) {
@@ -556,23 +565,24 @@ public class TourBookingService {
 		);
 	}
 
-	private DetailContext resolveDetailContext(TourSummaryGroupBy groupBy, String code) {
+	private DetailContext resolveDetailContext(TourSummaryGroupBy groupBy, String groupKey) {
 		return switch (groupBy) {
-			case PROVIDER -> resolveProviderDetailContext(code);
-			case SERVICE_TYPE -> resolveServiceTypeDetailContext(code);
-			case PAYMENT_METHOD -> resolvePaymentMethodDetailContext(code);
+			case PROVIDER -> resolveProviderDetailContext(groupKey);
+			case SERVICE_TYPE -> resolveServiceTypeDetailContext(groupKey);
+			case PAYMENT_METHOD -> resolvePaymentMethodDetailContext(groupKey);
 		};
 	}
 
-	private DetailContext resolveProviderDetailContext(String code) {
+	private DetailContext resolveProviderDetailContext(String groupKey) {
 		final Long providerId;
 		try {
-			providerId = Long.valueOf(code);
+			providerId = Long.valueOf(groupKey);
 		} catch (NumberFormatException exception) {
-			throw new ApplicationException(HttpStatus.BAD_REQUEST, "provider code must be a number");
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "provider groupKey must be a number");
 		}
 		final TourProvider provider = tourProviderService.findProviderOrThrow(providerId);
 		return new DetailContext(
+				String.valueOf(provider.getId()),
 				String.valueOf(provider.getId()),
 				provider.getName(),
 				provider.isActive(),
@@ -582,14 +592,15 @@ public class TourBookingService {
 		);
 	}
 
-	private DetailContext resolveServiceTypeDetailContext(String code) {
+	private DetailContext resolveServiceTypeDetailContext(String groupKey) {
 		final TourServiceType serviceType;
 		try {
-			serviceType = TourServiceType.valueOf(code.trim().toUpperCase());
+			serviceType = TourServiceType.valueOf(groupKey.trim().toUpperCase());
 		} catch (IllegalArgumentException exception) {
-			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Unknown serviceType code: " + code);
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Unknown serviceType groupKey: " + groupKey);
 		}
 		return new DetailContext(
+				serviceType.name(),
 				serviceType.name(),
 				labelForServiceType(serviceType),
 				null,
@@ -599,14 +610,15 @@ public class TourBookingService {
 		);
 	}
 
-	private DetailContext resolvePaymentMethodDetailContext(String code) {
+	private DetailContext resolvePaymentMethodDetailContext(String groupKey) {
 		final TourPaymentMethod paymentMethod;
 		try {
-			paymentMethod = TourPaymentMethod.valueOf(code.trim().toUpperCase());
+			paymentMethod = TourPaymentMethod.valueOf(groupKey.trim().toUpperCase());
 		} catch (IllegalArgumentException exception) {
-			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Unknown paymentMethod code: " + code);
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Unknown paymentMethod groupKey: " + groupKey);
 		}
 		return new DetailContext(
+				paymentMethod.name(),
 				paymentMethod.name(),
 				labelForPaymentMethod(paymentMethod),
 				null,
@@ -646,6 +658,7 @@ public class TourBookingService {
 	}
 
 	private record DetailContext(
+			String groupKey,
 			String code,
 			String label,
 			Boolean active,

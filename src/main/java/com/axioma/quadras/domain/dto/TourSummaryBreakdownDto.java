@@ -3,6 +3,7 @@ package com.axioma.quadras.domain.dto;
 import java.math.BigDecimal;
 
 public record TourSummaryBreakdownDto(
+		String groupKey,
 		String code,
 		String label,
 		Boolean active,

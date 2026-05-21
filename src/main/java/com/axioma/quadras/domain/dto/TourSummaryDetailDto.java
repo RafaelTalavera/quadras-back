@@ -5,6 +5,7 @@ import java.util.List;
 
 public record TourSummaryDetailDto(
 		TourSummaryGroupBy groupBy,
+		String groupKey,
 		String code,
 		String label,
 		Boolean active,

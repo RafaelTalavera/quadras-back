@@ -51,7 +51,9 @@ public class TourReportController {
 	@GetMapping("/summary/details")
 	public ResponseEntity<TourSummaryDetailDto> summaryDetails(
 			@RequestParam TourSummaryGroupBy groupBy,
-			@RequestParam String code,
+			@RequestParam(required = false) String groupKey,
+			// Legacy compatibility for older clients. New consumers must use groupKey.
+			@RequestParam(required = false) String code,
 			@RequestParam
 			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 			LocalDate dateFrom,
@@ -59,8 +61,9 @@ public class TourReportController {
 			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 			LocalDate dateTo
 	) {
+		final String resolvedGroupKey = groupKey != null && !groupKey.isBlank() ? groupKey : code;
 		return ResponseEntity.ok(
-				tourBookingService.summaryDetails(groupBy, code, dateFrom, dateTo)
+				tourBookingService.summaryDetails(groupBy, resolvedGroupKey, dateFrom, dateTo)
 		);
 	}
 }

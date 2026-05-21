@@ -74,6 +74,7 @@
   - `serviceTypeBreakdown`
   - `paymentMethodBreakdown`
 - Cada breakdown devuelve:
+  - `groupKey`
   - `code`
   - `label`
   - `active` cuando aplica
@@ -87,9 +88,10 @@
   - `commissionAmount`
 - El endpoint de detalle recibe:
   - `groupBy` = `PROVIDER` | `SERVICE_TYPE` | `PAYMENT_METHOD`
-  - `code`
+  - `groupKey`
   - `dateFrom`
   - `dateTo`
+- `code` queda solo como compatibilidad temporal para clientes legacy.
 - Devuelve:
   - metadata del grupo seleccionado
   - resumen del grupo

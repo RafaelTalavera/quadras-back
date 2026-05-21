@@ -1,6 +1,7 @@
 package com.axioma.quadras.domain.dto;
 
 public record MaintenanceSummaryBreakdownDto(
+		String groupKey,
 		String code,
 		String label,
 		Integer openCount,

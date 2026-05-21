@@ -16,6 +16,7 @@ import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenanceOrderAttachment;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
+import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProvider;
 import com.axioma.quadras.repository.MaintenanceOrderAttachmentMetadataView;
 import com.axioma.quadras.repository.MaintenanceOrderAttachmentRepository;
@@ -42,6 +43,7 @@ public class MaintenanceOrderService {
 	private static final int MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 	private static final int DEFAULT_COMPACT_PAGE_SIZE = 25;
 	private static final int MAX_COMPACT_PAGE_SIZE = 100;
+	private static final MaintenancePriority DEFAULT_FORM_PRIORITY = MaintenancePriority.MEDIUM;
 	private static final EnumSet<MaintenanceOrderStatus> ACTIVE_CONFLICT_STATUSES = EnumSet.of(
 			MaintenanceOrderStatus.SCHEDULED,
 			MaintenanceOrderStatus.IN_PROGRESS
@@ -145,14 +147,14 @@ public class MaintenanceOrderService {
 						requireActiveProvider(input.providerId()),
 						input.title(),
 						input.description(),
-						input.priority(),
+						DEFAULT_FORM_PRIORITY,
 						input.requestOrigin(),
 						input.requestedForGuest() != null && input.requestedForGuest(),
 						input.guestName(),
 						input.guestReference(),
 						input.businessPriority(),
-						input.estimatedExecutionMinutes(),
-						input.assignedUsername(),
+						null,
+						null,
 						input.scheduledStartAt(),
 						input.scheduledEndAt(),
 						actorUsername,
@@ -172,14 +174,14 @@ public class MaintenanceOrderService {
 				requireActiveProvider(input.providerId()),
 				input.title(),
 				input.description(),
-				input.priority(),
+				order.getPriority(),
 				input.requestOrigin(),
 				input.requestedForGuest() != null && input.requestedForGuest(),
 				input.guestName(),
 				input.guestReference(),
 				input.businessPriority(),
-				input.estimatedExecutionMinutes(),
-				input.assignedUsername(),
+				order.getEstimatedExecutionMinutes(),
+				order.getAssignedUsername(),
 				input.scheduledStartAt(),
 				input.scheduledEndAt(),
 				actorUsername
