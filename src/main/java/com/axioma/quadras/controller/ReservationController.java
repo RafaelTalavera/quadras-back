@@ -3,10 +3,13 @@ package com.axioma.quadras.controller;
 import com.axioma.quadras.domain.dto.CreateReservationDto;
 import com.axioma.quadras.domain.dto.ReservationDto;
 import com.axioma.quadras.domain.dto.UpdateReservationDto;
+import com.axioma.quadras.domain.dto.AuditEventDto;
+import com.axioma.quadras.service.AuthenticatedUserPrincipal;
 import com.axioma.quadras.service.ReservationService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -25,8 +28,11 @@ public class ReservationController {
 	}
 
 	@PostMapping
-	public ResponseEntity<ReservationDto> create(@Valid @RequestBody CreateReservationDto input) {
-		final ReservationDto created = reservationService.create(input);
+	public ResponseEntity<ReservationDto> create(
+			@Valid @RequestBody CreateReservationDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
+	) {
+		final ReservationDto created = reservationService.create(input, principal.getUsername());
 		final URI location = ServletUriComponentsBuilder.fromCurrentRequest()
 				.path("/{id}")
 				.buildAndExpand(created.id())
@@ -51,13 +57,22 @@ public class ReservationController {
 	@PutMapping("/{reservationId}")
 	public ResponseEntity<ReservationDto> update(
 			@PathVariable Long reservationId,
-			@Valid @RequestBody UpdateReservationDto input
+			@Valid @RequestBody UpdateReservationDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
-		return ResponseEntity.ok(reservationService.update(reservationId, input));
+		return ResponseEntity.ok(reservationService.update(reservationId, input, principal.getUsername()));
 	}
 
 	@PatchMapping("/{reservationId}/cancel")
-	public ResponseEntity<ReservationDto> cancel(@PathVariable Long reservationId) {
-		return ResponseEntity.ok(reservationService.cancel(reservationId));
+	public ResponseEntity<ReservationDto> cancel(
+			@PathVariable Long reservationId,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
+	) {
+		return ResponseEntity.ok(reservationService.cancel(reservationId, principal.getUsername()));
+	}
+
+	@GetMapping("/{reservationId}/audit")
+	public ResponseEntity<List<AuditEventDto>> audit(@PathVariable Long reservationId) {
+		return ResponseEntity.ok(reservationService.audit(reservationId));
 	}
 }

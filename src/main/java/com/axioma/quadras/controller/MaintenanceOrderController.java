@@ -1,6 +1,7 @@
 package com.axioma.quadras.controller;
 
 import com.axioma.quadras.domain.dto.AddMaintenanceAttachmentDto;
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CancelMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.CompleteMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.CreateMaintenanceOrderDto;
@@ -195,6 +196,11 @@ public class MaintenanceOrderController {
 		return ResponseEntity.ok(
 				maintenanceOrderService.cancel(orderId, input, principal.getUsername())
 		);
+	}
+
+	@GetMapping("/{orderId}/audit")
+	public ResponseEntity<List<AuditEventDto>> audit(@PathVariable Long orderId) {
+		return ResponseEntity.ok(maintenanceOrderService.audit(orderId));
 	}
 
 	@GetMapping("/{orderId}/attachments")

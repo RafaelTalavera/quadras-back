@@ -23,4 +23,12 @@ public interface ReservationListItemView {
 	OffsetDateTime getCreatedAt();
 
 	OffsetDateTime getUpdatedAt();
+
+	String getCreatedBy();
+
+	String getUpdatedBy();
+
+	OffsetDateTime getCancelledAt();
+
+	String getCancelledBy();
 }

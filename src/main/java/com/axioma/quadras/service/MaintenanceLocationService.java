@@ -1,5 +1,6 @@
 package com.axioma.quadras.service;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CreateMaintenanceLocationDto;
 import com.axioma.quadras.domain.dto.MaintenanceLocationDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
@@ -14,6 +15,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,17 +30,20 @@ public class MaintenanceLocationService {
 	private final MaintenanceOrderRepository maintenanceOrderRepository;
 	private final MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository;
 	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
+	private final AuditTrailService auditTrailService;
 
 	public MaintenanceLocationService(
 			MaintenanceLocationRepository maintenanceLocationRepository,
 			MaintenanceOrderRepository maintenanceOrderRepository,
 			MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository,
-			ScheduleSyncEventPublisher scheduleSyncEventPublisher
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher,
+			AuditTrailService auditTrailService
 	) {
 		this.maintenanceLocationRepository = maintenanceLocationRepository;
 		this.maintenanceOrderRepository = maintenanceOrderRepository;
 		this.maintenanceOrderAttachmentRepository = maintenanceOrderAttachmentRepository;
 		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
+		this.auditTrailService = auditTrailService;
 	}
 
 	public List<MaintenanceLocationDto> list() {
@@ -65,6 +70,16 @@ public class MaintenanceLocationService {
 						actorUsername
 				)
 		);
+		auditTrailService.record(
+				"maintenance",
+				"maintenance-location",
+				location.getId(),
+				"CREATED",
+				"Ubicacion de mantenimiento creada",
+				List.of(),
+				null,
+				snapshot(location)
+		);
 		publishCatalogEvent(location.getId(), "location-created");
 		return MaintenanceLocationDto.from(location);
 	}
@@ -76,6 +91,7 @@ public class MaintenanceLocationService {
 			String actorUsername
 	) {
 		final MaintenanceLocation location = findOrThrow(locationId);
+		final Map<String, Object> beforeState = snapshot(location);
 		final String resolvedCode = resolveReferenceCode(input.code());
 		final String resolvedLabel = resolveLabel(input.locationType(), resolvedCode, input.label());
 		validateUniqueCode(input.locationType(), resolvedCode, locationId);
@@ -89,8 +105,14 @@ public class MaintenanceLocationService {
 				input.active(),
 				actorUsername
 		);
+		recordAudit(location.getId(), "UPDATED", "Ubicacion de mantenimiento actualizada", beforeState, snapshot(location));
 		publishCatalogEvent(location.getId(), "location-updated");
 		return MaintenanceLocationDto.from(location);
+	}
+
+	public List<AuditEventDto> audit(Long locationId) {
+		findOrThrow(locationId);
+		return auditTrailService.findByEntity("maintenance-location", locationId);
 	}
 
 	public List<MaintenanceOrderDto> history(Long locationId) {
@@ -211,5 +233,58 @@ public class MaintenanceLocationService {
 			return Integer.MAX_VALUE;
 		}
 		return Integer.parseInt(code);
+	}
+
+	private void recordAudit(
+			Long entityId,
+			String actionName,
+			String summaryText,
+			Map<String, Object> beforeState,
+			Map<String, Object> afterState
+	) {
+		auditTrailService.record(
+				"maintenance",
+				"maintenance-location",
+				entityId,
+				actionName,
+				summaryText,
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
+		);
+	}
+
+	private Map<String, Object> snapshot(MaintenanceLocation location) {
+		final Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("id", location.getId());
+		snapshot.put("locationType", location.getLocationType() == null ? null : location.getLocationType().name());
+		snapshot.put("locationCategory", location.getLocationCategory() == null ? null : location.getLocationCategory().name());
+		snapshot.put("code", location.getCode());
+		snapshot.put("label", location.getLabel());
+		snapshot.put("floor", location.getFloor());
+		snapshot.put("description", location.getDescription());
+		snapshot.put("active", location.isActive());
+		snapshot.put("createdAt", toValue(location.getCreatedAt()));
+		snapshot.put("updatedAt", toValue(location.getUpdatedAt()));
+		snapshot.put("createdBy", location.getCreatedBy());
+		snapshot.put("updatedBy", location.getUpdatedBy());
+		return snapshot;
+	}
+
+	private List<Map<String, Object>> diff(Map<String, Object> before, Map<String, Object> after) {
+		return before.keySet().stream()
+				.filter(field -> !Objects.equals(before.get(field), after.get(field)))
+				.map(field -> {
+					final Map<String, Object> change = new LinkedHashMap<>();
+					change.put("field", field);
+					change.put("before", before.get(field));
+					change.put("after", after.get(field));
+					return change;
+				})
+				.toList();
+	}
+
+	private String toValue(Object value) {
+		return value == null ? null : value.toString();
 	}
 }

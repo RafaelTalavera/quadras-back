@@ -1,16 +1,19 @@
 package com.axioma.quadras.controller;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CreateMassageProviderDto;
 import com.axioma.quadras.domain.dto.CreateMassageTherapistDto;
 import com.axioma.quadras.domain.dto.MassageProviderDto;
 import com.axioma.quadras.domain.dto.MassageTherapistDto;
 import com.axioma.quadras.domain.dto.UpdateMassageProviderDto;
 import com.axioma.quadras.domain.dto.UpdateMassageTherapistDto;
+import com.axioma.quadras.service.AuthenticatedUserPrincipal;
 import com.axioma.quadras.service.MassageProviderService;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,7 +36,8 @@ public class MassageProviderController {
 
 	@PostMapping
 	public ResponseEntity<MassageProviderDto> create(
-			@Valid @RequestBody CreateMassageProviderDto input
+			@Valid @RequestBody CreateMassageProviderDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
 		final MassageProviderDto created = massageProviderService.create(input);
 		final URI location = ServletUriComponentsBuilder.fromCurrentRequest()
@@ -46,7 +50,8 @@ public class MassageProviderController {
 	@PutMapping("/{providerId}")
 	public ResponseEntity<MassageProviderDto> update(
 			@PathVariable Long providerId,
-			@Valid @RequestBody UpdateMassageProviderDto input
+			@Valid @RequestBody UpdateMassageProviderDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
 		return ResponseEntity.ok(massageProviderService.update(providerId, input));
 	}
@@ -61,7 +66,8 @@ public class MassageProviderController {
 	@PostMapping("/{providerId}/therapists")
 	public ResponseEntity<MassageTherapistDto> createTherapist(
 			@PathVariable Long providerId,
-			@Valid @RequestBody CreateMassageTherapistDto input
+			@Valid @RequestBody CreateMassageTherapistDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
 		final MassageTherapistDto created = massageProviderService.createTherapist(
 				providerId,
@@ -78,10 +84,24 @@ public class MassageProviderController {
 	public ResponseEntity<MassageTherapistDto> updateTherapist(
 			@PathVariable Long providerId,
 			@PathVariable Long therapistId,
-			@Valid @RequestBody UpdateMassageTherapistDto input
+			@Valid @RequestBody UpdateMassageTherapistDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
 		return ResponseEntity.ok(
 				massageProviderService.updateTherapist(providerId, therapistId, input)
 		);
+	}
+
+	@GetMapping("/{providerId}/audit")
+	public ResponseEntity<List<AuditEventDto>> providerAudit(@PathVariable Long providerId) {
+		return ResponseEntity.ok(massageProviderService.providerAudit(providerId));
+	}
+
+	@GetMapping("/{providerId}/therapists/{therapistId}/audit")
+	public ResponseEntity<List<AuditEventDto>> therapistAudit(
+			@PathVariable Long providerId,
+			@PathVariable Long therapistId
+	) {
+		return ResponseEntity.ok(massageProviderService.therapistAudit(providerId, therapistId));
 	}
 }

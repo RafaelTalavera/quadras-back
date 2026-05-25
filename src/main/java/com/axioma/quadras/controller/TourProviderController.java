@@ -1,5 +1,6 @@
 package com.axioma.quadras.controller;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CreateTourProviderDto;
 import com.axioma.quadras.domain.dto.TourProviderDto;
 import com.axioma.quadras.domain.dto.UpdateTourProviderDto;
@@ -57,5 +58,18 @@ public class TourProviderController {
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
 		return ResponseEntity.ok(tourProviderService.update(providerId, input, principal.getUsername()));
+	}
+
+	@GetMapping("/{providerId}/audit")
+	public ResponseEntity<List<AuditEventDto>> providerAudit(@PathVariable Long providerId) {
+		return ResponseEntity.ok(tourProviderService.providerAudit(providerId));
+	}
+
+	@GetMapping("/{providerId}/offerings/{offeringId}/audit")
+	public ResponseEntity<List<AuditEventDto>> offeringAudit(
+			@PathVariable Long providerId,
+			@PathVariable Long offeringId
+	) {
+		return ResponseEntity.ok(tourProviderService.offeringAudit(providerId, offeringId));
 	}
 }

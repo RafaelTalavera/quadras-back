@@ -1,5 +1,6 @@
 package com.axioma.quadras.controller;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CreateMaintenanceProviderDto;
 import com.axioma.quadras.domain.dto.MaintenanceProviderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenanceProviderDto;
@@ -56,5 +57,10 @@ public class MaintenanceProviderController {
 		return ResponseEntity.ok(
 				maintenanceProviderService.update(providerId, input, principal.getUsername())
 		);
+	}
+
+	@GetMapping("/{providerId}/audit")
+	public ResponseEntity<List<AuditEventDto>> audit(@PathVariable Long providerId) {
+		return ResponseEntity.ok(maintenanceProviderService.audit(providerId));
 	}
 }

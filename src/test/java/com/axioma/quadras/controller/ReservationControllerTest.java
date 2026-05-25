@@ -81,14 +81,16 @@ class ReservationControllerTest {
 				LocalDate.of(2026, 3, 13),
 				LocalTime.of(8, 0),
 				LocalTime.of(9, 0),
-				null
+				null,
+				"operador.demo"
 		));
 		reservationRepository.save(Reservation.schedule(
 				"Guest 2",
 				LocalDate.of(2026, 3, 13),
 				LocalTime.of(10, 0),
 				LocalTime.of(11, 0),
-				null
+				null,
+				"operador.demo"
 		));
 
 		mockMvc.perform(get("/api/v1/reservations")
@@ -107,21 +109,24 @@ class ReservationControllerTest {
 				LocalDate.of(2026, 3, 14),
 				LocalTime.of(9, 0),
 				LocalTime.of(10, 0),
-				null
+				null,
+				"operador.demo"
 		));
 		reservationRepository.save(Reservation.schedule(
 				"Guest 3",
 				LocalDate.of(2026, 3, 15),
 				LocalTime.of(7, 0),
 				LocalTime.of(8, 0),
-				null
+				null,
+				"operador.demo"
 		));
 		reservationRepository.save(Reservation.schedule(
 				"Guest 1",
 				LocalDate.of(2026, 3, 14),
 				LocalTime.of(8, 0),
 				LocalTime.of(9, 0),
-				null
+				null,
+				"operador.demo"
 		));
 
 		mockMvc.perform(get("/api/v1/reservations")
@@ -140,7 +145,8 @@ class ReservationControllerTest {
 				LocalDate.of(2026, 3, 14),
 				LocalTime.of(15, 0),
 				LocalTime.of(16, 0),
-				"Cancha preferente"
+				"Cancha preferente",
+				"operador.demo"
 		));
 
 		mockMvc.perform(get("/api/v1/reservations/{id}", saved.getId())
@@ -184,7 +190,8 @@ class ReservationControllerTest {
 				LocalDate.of(2026, 3, 13),
 				LocalTime.of(9, 0),
 				LocalTime.of(10, 0),
-				null
+				null,
+				"operador.demo"
 		));
 
 		final String payload = """
@@ -249,7 +256,8 @@ class ReservationControllerTest {
 				LocalDate.of(2026, 3, 21),
 				LocalTime.of(9, 0),
 				LocalTime.of(10, 0),
-				"Nota inicial"
+				"Nota inicial",
+				"operador.demo"
 		));
 
 		final String payload = """
@@ -300,14 +308,16 @@ class ReservationControllerTest {
 				LocalDate.of(2026, 3, 21),
 				LocalTime.of(10, 0),
 				LocalTime.of(11, 0),
-				null
+				null,
+				"operador.demo"
 		));
 		reservationRepository.save(Reservation.schedule(
 				"Guest Existing",
 				LocalDate.of(2026, 3, 21),
 				LocalTime.of(11, 0),
 				LocalTime.of(12, 0),
-				null
+				null,
+				"operador.demo"
 		));
 
 		final String payload = """
@@ -334,9 +344,10 @@ class ReservationControllerTest {
 				LocalDate.of(2026, 3, 22),
 				LocalTime.of(12, 0),
 				LocalTime.of(13, 0),
-				null
+				null,
+				"operador.demo"
 		));
-		reservation.markCancelled();
+		reservation.markCancelled("operador.demo");
 		reservationRepository.save(reservation);
 
 		final String payload = """
@@ -363,7 +374,8 @@ class ReservationControllerTest {
 				LocalDate.of(2026, 3, 22),
 				LocalTime.of(14, 0),
 				LocalTime.of(15, 0),
-				null
+				null,
+				"operador.demo"
 		));
 
 		mockMvc.perform(patch("/api/v1/reservations/{id}/cancel", reservation.getId())
@@ -388,15 +400,65 @@ class ReservationControllerTest {
 				LocalDate.of(2026, 3, 22),
 				LocalTime.of(16, 0),
 				LocalTime.of(17, 0),
-				null
+				null,
+				"operador.demo"
 		));
-		reservation.markCompleted();
+		reservation.markCompleted("operador.demo");
 		reservationRepository.save(reservation);
 
 		mockMvc.perform(patch("/api/v1/reservations/{id}/cancel", reservation.getId())
 						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.message").value("Completed reservations cannot be cancelled."));
+	}
+
+	@Test
+	void shouldExposeReservationAuditTrail() throws Exception {
+		final String createPayload = """
+				{
+				  "guestName": "Audit Guest",
+				  "reservationDate": "2026-03-24",
+				  "startTime": "09:00:00",
+				  "endTime": "10:00:00",
+				  "notes": "Inicial"
+				}
+				""";
+
+		final String createdBody = mockMvc.perform(post("/api/v1/reservations")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(createPayload))
+				.andExpect(status().isCreated())
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+		final long reservationId = objectMapper.readTree(createdBody).get("id").asLong();
+
+		final String updatePayload = """
+				{
+				  "guestName": "Audit Guest",
+				  "reservationDate": "2026-03-24",
+				  "startTime": "10:00:00",
+				  "endTime": "11:00:00",
+				  "notes": "Actualizada"
+				}
+				""";
+
+		mockMvc.perform(put("/api/v1/reservations/{id}", reservationId)
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(updatePayload))
+				.andExpect(status().isOk());
+
+		mockMvc.perform(get("/api/v1/reservations/{id}/audit", reservationId)
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].actionName").value("UPDATED"))
+				.andExpect(jsonPath("$[0].actorUsername").value("operador.demo"))
+				.andExpect(jsonPath("$[0].changes").isArray())
+				.andExpect(jsonPath("$[1].actionName").value("CREATED"));
 	}
 
 	private String bearerToken() {

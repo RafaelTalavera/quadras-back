@@ -16,7 +16,8 @@ class ReservationTest {
 				LocalDate.of(2026, 3, 13),
 				LocalTime.of(9, 0),
 				LocalTime.of(10, 0),
-				" Cancha techada "
+				" Cancha techada ",
+				"operador.demo"
 		);
 
 		assertThat(reservation.getGuestName()).isEqualTo("Juan Perez");
@@ -32,7 +33,8 @@ class ReservationTest {
 				LocalDate.of(2026, 3, 13),
 				LocalTime.of(10, 0),
 				LocalTime.of(10, 0),
-				null
+				null,
+				"operador.demo"
 		))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessage("startTime must be before endTime");
@@ -45,7 +47,8 @@ class ReservationTest {
 				LocalDate.of(2026, 3, 13),
 				LocalTime.of(10, 0),
 				LocalTime.of(11, 0),
-				null
+				null,
+				"operador.demo"
 		))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessage("guestName is required");

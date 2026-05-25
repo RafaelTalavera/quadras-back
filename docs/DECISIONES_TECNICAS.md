@@ -1,5 +1,16 @@
 # DECISIONES TECNICAS - COSTANORTE
 
+## DT-018 - Auditoria transversal append-only por eventos de negocio
+- Fecha: 2026-05-25
+- Estado: Activa
+- Contexto: El sistema necesita mostrar historial de cambios por modulo y entidad, indicando usuario, fecha/hora y detalle de campos modificados. Las columnas `updatedBy` y `updatedAt` no alcanzan para reconstruir el historial.
+- Decision: Implementar una auditoria generica basada en eventos `append-only` en tabla `audit_events`, registrada desde la capa de servicio con snapshots `before/after`, diff por campo y actor resuelto desde `SecurityContext`.
+- Impacto:
+  - permite consultar historial detallado por entidad sin acoplar cada modulo a una estructura de auditoria distinta
+  - mantiene control explicito sobre que acciones de negocio generan eventos y que datos se excluyen del snapshot
+  - evita auditar blobs o payloads pesados; en adjuntos solo se persisten metadatos relevantes
+  - facilita reutilizar una misma UI de timeline en frontend para todos los modulos
+
 ## DT-001 - Arquitectura local sin dependencia de internet
 - Fecha: 2026-03-12
 - Estado: Activa

@@ -1,5 +1,50 @@
 # CHANGELOG DE DESARROLLO - COSTANORTE
 
+## 2026-05-25 | Auditoria transversal | Historial de cambios por modulo y entidad
+- Componente afectado: Backend (`Quadras`) + frontend desktop (`quedras-front`)
+- Archivos tocados:
+  - Backend:
+    - `src/main/java/com/axioma/quadras/config/JacksonConfig.java`
+    - `src/main/java/com/axioma/quadras/controller/{CourtBookingController,CourtConfigurationController,MaintenanceLocationController,MaintenanceOrderController,MaintenanceProviderController,MassageBookingController,MassageProviderController,ReservationController,TourBookingController,TourProviderController}.java`
+    - `src/main/java/com/axioma/quadras/domain/dto/{AuditEventDto,ReservationDto}.java`
+    - `src/main/java/com/axioma/quadras/domain/model/{AuditEvent,Reservation}.java`
+    - `src/main/java/com/axioma/quadras/repository/{AuditEventRepository,ReservationListItemView}.java`
+    - `src/main/java/com/axioma/quadras/service/{AuditTrailService,CurrentActorService,CourtBookingService,CourtConfigurationService,MaintenanceLocationService,MaintenanceOrderService,MaintenanceProviderService,MassageBookingService,MassageProviderService,ReservationService,TourBookingService,TourProviderService}.java`
+    - `src/main/resources/db/migration/V25__add_reservation_audit_trail.sql`
+    - `src/test/java/com/axioma/quadras/{controller/ReservationControllerTest,domain/dto/ReservationDtoTest,domain/model/ReservationTest}.java`
+  - Frontend:
+    - `lib/core/audit/{audit_models.dart,audit_timeline_dialog.dart}`
+    - `lib/features/courts/{application/court_app_service.dart,infrastructure/http_court_app_service.dart}`
+    - `lib/features/maintenance/{application/maintenance_app_service.dart,infrastructure/http_maintenance_app_service.dart,presentation/maintenance_page.dart}`
+    - `lib/features/massages/{application/massage_app_service.dart,infrastructure/http_massage_app_service.dart,presentation/massage_booking_page.dart}`
+    - `lib/features/reservations/{application/reservation_app_service.dart,domain/reservation_model.dart,infrastructure/http_reservation_app_service.dart}`
+    - `lib/features/schedule/presentation/schedule_page.dart`
+    - `lib/features/tennis/presentation/tennis_rental_page.dart`
+    - `lib/features/tours/{application/tours_app_service.dart,infrastructure/http_tours_app_service.dart,presentation/tours_travel_page.dart}`
+    - repositorio separado: `C:\Users\Public\Documents\Proyectos\quedras-front`
+- Motivo del cambio: el sistema necesitaba trazabilidad operativa completa para saber que cambio se hizo, en que momento y por que usuario, tanto en operaciones como en catalogos.
+- Impacto funcional:
+  - se agrega tabla `audit_events` con snapshots `before/after` y diff por campo
+  - `Reservations`, `Courts`, `Massages`, `Maintenance` y `Tours` exponen endpoints de historial por entidad
+  - `Reservation` pasa a persistir `createdBy`, `updatedBy` y `cancelledBy`
+  - mantenimiento registra historial de adjuntos solo con metadatos, sin contenido binario
+  - el frontend incorpora timeline reutilizable de auditoria y botones `Historial` en modulos operativos y catalogos principales
+- Validacion ejecutada:
+  - backend:
+    - `.\mvnw.cmd -q "-Dtest=ReservationControllerTest,ReservationDtoTest,ReservationTest" test`
+    - `.\mvnw.cmd -q -DskipTests compile`
+  - frontend:
+    - `flutter analyze lib/core/audit lib/features/reservations lib/features/schedule/presentation/schedule_page.dart`
+    - `flutter analyze lib/features/courts lib/features/tennis/presentation/tennis_rental_page.dart`
+    - `flutter analyze lib/features/massages`
+    - `flutter analyze lib/features/maintenance`
+    - `flutter analyze lib/features/tours`
+- Rollback manual:
+  - revertir migracion `V25__add_reservation_audit_trail.sql`
+  - revertir servicios/controladores que publican endpoints `/audit`
+  - revertir integracion del timeline y botones `Historial` en `quedras-front`
+  - efecto esperado del rollback: el sistema vuelve a exponer solo estado actual sin historial detallado por cambio
+
 ## 2026-05-20 | Quadras | Reservas recurrentes para profesor parceiro y cancelacion por alcance
 - Componente afectado: Backend (`Quadras`)
 - Archivos tocados:

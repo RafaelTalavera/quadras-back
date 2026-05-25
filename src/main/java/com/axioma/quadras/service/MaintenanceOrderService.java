@@ -1,6 +1,7 @@
 package com.axioma.quadras.service;
 
 import com.axioma.quadras.domain.dto.AddMaintenanceAttachmentDto;
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CancelMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.CompleteMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.CreateMaintenanceOrderDto;
@@ -31,6 +32,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -54,19 +56,22 @@ public class MaintenanceOrderService {
 	private final MaintenanceLocationService maintenanceLocationService;
 	private final MaintenanceProviderService maintenanceProviderService;
 	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
+	private final AuditTrailService auditTrailService;
 
 	public MaintenanceOrderService(
 			MaintenanceOrderRepository maintenanceOrderRepository,
 			MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository,
 			MaintenanceLocationService maintenanceLocationService,
 			MaintenanceProviderService maintenanceProviderService,
-			ScheduleSyncEventPublisher scheduleSyncEventPublisher
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher,
+			AuditTrailService auditTrailService
 	) {
 		this.maintenanceOrderRepository = maintenanceOrderRepository;
 		this.maintenanceOrderAttachmentRepository = maintenanceOrderAttachmentRepository;
 		this.maintenanceLocationService = maintenanceLocationService;
 		this.maintenanceProviderService = maintenanceProviderService;
 		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
+		this.auditTrailService = auditTrailService;
 	}
 
 	public List<MaintenanceOrderDto> list(
@@ -161,6 +166,16 @@ public class MaintenanceOrderService {
 						actorRole
 				)
 		);
+		auditTrailService.record(
+				"maintenance",
+				"maintenance-order",
+				order.getId(),
+				"CREATED",
+				"Orden de mantenimiento creada",
+				List.of(),
+				null,
+				snapshot(order)
+		);
 		publishOrderEvent(order, "created");
 		return toDto(order);
 	}
@@ -168,6 +183,7 @@ public class MaintenanceOrderService {
 	@Transactional
 	public MaintenanceOrderDto update(Long orderId, UpdateMaintenanceOrderDto input, String actorUsername) {
 		final MaintenanceOrder order = findOrThrow(orderId);
+		final Map<String, Object> beforeState = snapshot(order);
 		final LocalDate previousReferenceDate = referenceDate(order);
 		order.update(
 				requireActiveLocation(input.locationId()),
@@ -186,6 +202,7 @@ public class MaintenanceOrderService {
 				input.scheduledEndAt(),
 				actorUsername
 		);
+		recordAudit("UPDATED", "Orden de mantenimiento actualizada", order, beforeState);
 		publishOrderEvent(order, "updated", previousReferenceDate);
 		return toDto(order);
 	}
@@ -223,7 +240,9 @@ public class MaintenanceOrderService {
 			String actorUsername
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
+		final Map<String, Object> beforeState = snapshot(order);
 		order.start(input == null ? null : input.startedAt(), actorUsername);
+		recordAudit("STARTED", "Orden de mantenimiento iniciada", order, beforeState);
 		publishOrderEvent(order, "started");
 		return toDto(order);
 	}
@@ -235,12 +254,14 @@ public class MaintenanceOrderService {
 			String actorUsername
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
+		final Map<String, Object> beforeState = snapshot(order);
 		order.markPayment(
 				input.paymentMethod(),
 				input.paymentDate(),
 				input.paymentNotes(),
 				actorUsername
 		);
+		recordAudit("PAYMENT_UPDATED", "Pago de orden de mantenimiento actualizado", order, beforeState);
 		publishOrderEvent(order, "payment-updated");
 		return toDto(order);
 	}
@@ -252,7 +273,9 @@ public class MaintenanceOrderService {
 			String actorUsername
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
+		final Map<String, Object> beforeState = snapshot(order);
 		order.complete(input.completedAt(), input.resolutionNotes(), actorUsername);
+		recordAudit("COMPLETED", "Orden de mantenimiento completada", order, beforeState);
 		publishOrderEvent(order, "completed");
 		return toDto(order);
 	}
@@ -264,7 +287,9 @@ public class MaintenanceOrderService {
 			String actorUsername
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
+		final Map<String, Object> beforeState = snapshot(order);
 		order.cancel(input.cancellationNotes(), actorUsername);
+		recordAudit("CANCELLED", "Orden de mantenimiento cancelada", order, beforeState);
 		publishOrderEvent(order, "cancelled");
 		return toDto(order);
 	}
@@ -283,6 +308,7 @@ public class MaintenanceOrderService {
 			String actorUsername
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
+		final Map<String, Object> beforeState = snapshot(order);
 		final byte[] content = decodeBase64(input.base64Content());
 		final MaintenanceOrderAttachment attachment = MaintenanceOrderAttachment.create(
 				input.attachmentType(),
@@ -294,13 +320,25 @@ public class MaintenanceOrderService {
 		order.addAttachment(attachment);
 		final MaintenanceOrderAttachment savedAttachment =
 				maintenanceOrderAttachmentRepository.save(attachment);
+		final Map<String, Object> afterState = snapshot(order);
+		auditTrailService.record(
+				"maintenance",
+				"maintenance-order",
+				order.getId(),
+				"ATTACHMENT_ADDED",
+				"Anexo agregado a orden de mantenimiento",
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
+		);
 		publishOrderEvent(order, "attachment-added");
 		return MaintenanceOrderAttachmentDto.from(savedAttachment);
 	}
 
 	@Transactional
 	public void deleteAttachment(Long orderId, Long attachmentId) {
-		findOrThrow(orderId);
+		final MaintenanceOrder order = findOrThrow(orderId);
+		final Map<String, Object> beforeState = snapshot(order);
 		final MaintenanceOrderAttachment attachment = maintenanceOrderAttachmentRepository.findById(attachmentId)
 				.orElseThrow(() -> new ApplicationException(
 						HttpStatus.NOT_FOUND,
@@ -312,9 +350,25 @@ public class MaintenanceOrderService {
 					"Maintenance attachment does not belong to the selected order."
 			);
 		}
-		final MaintenanceOrder order = attachment.getOrder();
 		maintenanceOrderAttachmentRepository.delete(attachment);
+		order.getAttachments().removeIf(item -> Objects.equals(item.getId(), attachmentId));
+		final Map<String, Object> afterState = snapshot(order);
+		auditTrailService.record(
+				"maintenance",
+				"maintenance-order",
+				order.getId(),
+				"ATTACHMENT_DELETED",
+				"Anexo eliminado de orden de mantenimiento",
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
+		);
 		publishOrderEvent(order, "attachment-deleted");
+	}
+
+	public List<AuditEventDto> audit(Long orderId) {
+		findOrThrow(orderId);
+		return auditTrailService.findByEntity("maintenance-order", orderId);
 	}
 
 	public MaintenanceOrder findOrThrow(Long orderId) {
@@ -501,5 +555,90 @@ public class MaintenanceOrderService {
 
 	private LocalDate maxDate(LocalDate left, LocalDate right) {
 		return left.isAfter(right) ? left : right;
+	}
+
+	private void recordAudit(
+			String actionName,
+			String summaryText,
+			MaintenanceOrder order,
+			Map<String, Object> beforeState
+	) {
+		final Map<String, Object> afterState = snapshot(order);
+		auditTrailService.record(
+				"maintenance",
+				"maintenance-order",
+				order.getId(),
+				actionName,
+				summaryText,
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
+		);
+	}
+
+	private Map<String, Object> snapshot(MaintenanceOrder order) {
+		final Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("id", order.getId());
+		snapshot.put("locationId", order.getLocation() == null ? null : order.getLocation().getId());
+		snapshot.put("locationLabel", order.getLocation() == null ? null : order.getLocation().getLabel());
+		snapshot.put("providerId", order.getProvider() == null ? null : order.getProvider().getId());
+		snapshot.put("providerName", order.getProviderNameSnapshot());
+		snapshot.put("providerType", order.getProviderTypeSnapshot() == null ? null : order.getProviderTypeSnapshot().name());
+		snapshot.put("status", order.getStatus() == null ? null : order.getStatus().name());
+		snapshot.put("priority", order.getPriority() == null ? null : order.getPriority().name());
+		snapshot.put("title", order.getTitle());
+		snapshot.put("description", order.getDescription());
+		snapshot.put("requestOrigin", order.getRequestOrigin());
+		snapshot.put("requestedForGuest", order.isRequestedForGuest());
+		snapshot.put("guestName", order.getGuestName());
+		snapshot.put("guestReference", order.getGuestReference());
+		snapshot.put("businessPriority", order.getBusinessPriority());
+		snapshot.put("estimatedExecutionMinutes", order.getEstimatedExecutionMinutes());
+		snapshot.put("assignedUsername", order.getAssignedUsername());
+		snapshot.put("scheduledStartAt", toValue(order.getScheduledStartAt()));
+		snapshot.put("scheduledEndAt", toValue(order.getScheduledEndAt()));
+		snapshot.put("reportedAt", toValue(order.getReportedAt()));
+		snapshot.put("startedAt", toValue(order.getStartedAt()));
+		snapshot.put("completedAt", toValue(order.getCompletedAt()));
+		snapshot.put("resolutionNotes", order.getResolutionNotes());
+		snapshot.put("cancellationNotes", order.getCancellationNotes());
+		snapshot.put("paymentMethod", order.getPaymentMethod() == null ? null : order.getPaymentMethod().name());
+		snapshot.put("paymentDate", toValue(order.getPaymentDate()));
+		snapshot.put("paymentNotes", order.getPaymentNotes());
+		snapshot.put("createdAt", toValue(order.getCreatedAt()));
+		snapshot.put("updatedAt", toValue(order.getUpdatedAt()));
+		snapshot.put("cancelledAt", toValue(order.getCancelledAt()));
+		snapshot.put("createdBy", order.getCreatedBy());
+		snapshot.put("updatedBy", order.getUpdatedBy());
+		snapshot.put("cancelledBy", order.getCancelledBy());
+		snapshot.put("attachments", order.getAttachments().stream().map(attachment -> {
+			final Map<String, Object> item = new LinkedHashMap<>();
+			item.put("id", attachment.getId());
+			item.put("attachmentType", attachment.getAttachmentType() == null ? null : attachment.getAttachmentType().name());
+			item.put("fileName", attachment.getFileName());
+			item.put("contentType", attachment.getContentType());
+			item.put("fileSize", attachment.getFileSize());
+			item.put("createdAt", toValue(attachment.getCreatedAt()));
+			item.put("createdBy", attachment.getCreatedBy());
+			return item;
+		}).toList());
+		return snapshot;
+	}
+
+	private List<Map<String, Object>> diff(Map<String, Object> before, Map<String, Object> after) {
+		return before.keySet().stream()
+				.filter(field -> !Objects.equals(before.get(field), after.get(field)))
+				.map(field -> {
+					final Map<String, Object> change = new LinkedHashMap<>();
+					change.put("field", field);
+					change.put("before", before.get(field));
+					change.put("after", after.get(field));
+					return change;
+				})
+				.toList();
+	}
+
+	private String toValue(Object value) {
+		return value == null ? null : value.toString();
 	}
 }

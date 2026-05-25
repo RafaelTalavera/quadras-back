@@ -16,7 +16,8 @@ class ReservationDtoTest {
 				LocalDate.of(2026, 3, 14),
 				LocalTime.of(8, 30),
 				LocalTime.of(9, 30),
-				"Cliente del hotel"
+				"Cliente del hotel",
+				"operador.demo"
 		);
 
 		final ReservationDto dto = ReservationDto.from(reservation);
@@ -28,5 +29,7 @@ class ReservationDtoTest {
 		assertThat(dto.endTime()).isEqualTo(LocalTime.of(9, 30));
 		assertThat(dto.status().name()).isEqualTo("SCHEDULED");
 		assertThat(dto.notes()).isEqualTo("Cliente del hotel");
+		assertThat(dto.createdBy()).isEqualTo("operador.demo");
+		assertThat(dto.updatedBy()).isEqualTo("operador.demo");
 	}
 }

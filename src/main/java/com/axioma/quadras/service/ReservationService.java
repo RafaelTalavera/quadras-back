@@ -1,5 +1,6 @@
 package com.axioma.quadras.service;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CreateReservationDto;
 import com.axioma.quadras.domain.dto.ReservationDto;
 import com.axioma.quadras.domain.dto.UpdateReservationDto;
@@ -14,7 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional(readOnly = true)
@@ -23,30 +27,44 @@ public class ReservationService {
 	private final ReservationRepository reservationRepository;
 	private final ScheduleLockService scheduleLockService;
 	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
+	private final AuditTrailService auditTrailService;
 
 	public ReservationService(
 			ReservationRepository reservationRepository,
 			ScheduleLockService scheduleLockService,
-			ScheduleSyncEventPublisher scheduleSyncEventPublisher
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher,
+			AuditTrailService auditTrailService
 	) {
 		this.reservationRepository = reservationRepository;
 		this.scheduleLockService = scheduleLockService;
 		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
+		this.auditTrailService = auditTrailService;
 	}
 
 	@Transactional
-	public ReservationDto create(CreateReservationDto input) {
+	public ReservationDto create(CreateReservationDto input, String actorUsername) {
 		final Reservation reservation = Reservation.schedule(
 				input.guestName(),
 				input.reservationDate(),
 				input.startTime(),
 				input.endTime(),
-				input.notes()
+				input.notes(),
+				actorUsername
 		);
 		validateBusinessRules(reservation);
 		scheduleLockService.acquireReservationDates(List.of(reservation.getReservationDate()));
 		validateOverlapping(reservation, null);
 		final Reservation saved = reservationRepository.save(reservation);
+		auditTrailService.record(
+				"reservations",
+				"reservation",
+				saved.getId(),
+				"CREATED",
+				"Reserva creada",
+				List.of(),
+				null,
+				snapshot(saved)
+		);
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.RESERVATIONS,
 				"created",
@@ -58,8 +76,9 @@ public class ReservationService {
 	}
 
 	@Transactional
-	public ReservationDto update(Long reservationId, UpdateReservationDto input) {
+	public ReservationDto update(Long reservationId, UpdateReservationDto input, String actorUsername) {
 		final Reservation reservation = findReservationOrThrow(reservationId);
+		final Map<String, Object> beforeState = snapshot(reservation);
 		final LocalDate previousReservationDate = reservation.getReservationDate();
 		validateCanEdit(reservation);
 		reservation.reschedule(
@@ -67,7 +86,8 @@ public class ReservationService {
 				input.reservationDate(),
 				input.startTime(),
 				input.endTime(),
-				input.notes()
+				input.notes(),
+				actorUsername
 		);
 		validateBusinessRules(reservation);
 		scheduleLockService.acquireReservationDates(List.of(
@@ -75,6 +95,16 @@ public class ReservationService {
 				reservation.getReservationDate()
 		));
 		validateOverlapping(reservation, reservationId);
+		auditTrailService.record(
+				"reservations",
+				"reservation",
+				reservation.getId(),
+				"UPDATED",
+				"Reserva actualizada",
+				diff(beforeState, snapshot(reservation)),
+				beforeState,
+				snapshot(reservation)
+		);
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.RESERVATIONS,
 				"updated",
@@ -86,8 +116,9 @@ public class ReservationService {
 	}
 
 	@Transactional
-	public ReservationDto cancel(Long reservationId) {
+	public ReservationDto cancel(Long reservationId, String actorUsername) {
 		final Reservation reservation = findReservationOrThrow(reservationId);
+		final Map<String, Object> beforeState = snapshot(reservation);
 		if (reservation.getStatus() == ReservationStatus.COMPLETED) {
 			throw new ApplicationException(
 					HttpStatus.CONFLICT,
@@ -97,7 +128,17 @@ public class ReservationService {
 		if (reservation.getStatus() == ReservationStatus.CANCELLED) {
 			return ReservationDto.from(reservation);
 		}
-		reservation.markCancelled();
+		reservation.markCancelled(actorUsername);
+		auditTrailService.record(
+				"reservations",
+				"reservation",
+				reservation.getId(),
+				"CANCELLED",
+				"Reserva cancelada",
+				diff(beforeState, snapshot(reservation)),
+				beforeState,
+				snapshot(reservation)
+		);
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.RESERVATIONS,
 				"cancelled",
@@ -121,6 +162,11 @@ public class ReservationService {
 	public ReservationDto findById(Long reservationId) {
 		final Reservation reservation = findReservationOrThrow(reservationId);
 		return ReservationDto.from(reservation);
+	}
+
+	public List<AuditEventDto> audit(Long reservationId) {
+		findReservationOrThrow(reservationId);
+		return auditTrailService.findByEntity("reservation", reservationId);
 	}
 
 	private Reservation findReservationOrThrow(Long reservationId) {
@@ -199,5 +245,44 @@ public class ReservationService {
 
 	private LocalDate maxDate(LocalDate left, LocalDate right) {
 		return left.isAfter(right) ? left : right;
+	}
+
+	private Map<String, Object> snapshot(Reservation reservation) {
+		final Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("id", reservation.getId());
+		snapshot.put("guestName", reservation.getGuestName());
+		snapshot.put("reservationDate", toValue(reservation.getReservationDate()));
+		snapshot.put("startTime", toValue(reservation.getStartTime()));
+		snapshot.put("endTime", toValue(reservation.getEndTime()));
+		snapshot.put("status", reservation.getStatus() == null ? null : reservation.getStatus().name());
+		snapshot.put("notes", reservation.getNotes());
+		snapshot.put("createdAt", toValue(reservation.getCreatedAt()));
+		snapshot.put("updatedAt", toValue(reservation.getUpdatedAt()));
+		snapshot.put("createdBy", reservation.getCreatedBy());
+		snapshot.put("updatedBy", reservation.getUpdatedBy());
+		snapshot.put("cancelledAt", toValue(reservation.getCancelledAt()));
+		snapshot.put("cancelledBy", reservation.getCancelledBy());
+		return snapshot;
+	}
+
+	private List<Map<String, Object>> diff(Map<String, Object> before, Map<String, Object> after) {
+		return before.keySet().stream()
+				.filter(field -> !equalsValue(before.get(field), after.get(field)))
+				.map(field -> {
+					final Map<String, Object> change = new LinkedHashMap<>();
+					change.put("field", field);
+					change.put("before", before.get(field));
+					change.put("after", after.get(field));
+					return change;
+				})
+				.toList();
+	}
+
+	private boolean equalsValue(Object left, Object right) {
+		return java.util.Objects.equals(left, right);
+	}
+
+	private String toValue(Object value) {
+		return value == null ? null : value.toString();
 	}
 }

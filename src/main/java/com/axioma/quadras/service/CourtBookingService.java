@@ -1,5 +1,6 @@
 package com.axioma.quadras.service;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CancelCourtBookingDto;
 import com.axioma.quadras.domain.dto.CreateCourtBookingDto;
 import com.axioma.quadras.domain.dto.CreateCourtBookingRecurrenceDto;
@@ -35,6 +36,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -54,6 +56,7 @@ public class CourtBookingService {
 	private final CourtConfigurationService courtConfigurationService;
 	private final ScheduleLockService scheduleLockService;
 	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
+	private final AuditTrailService auditTrailService;
 
 	public CourtBookingService(
 			CourtBookingRepository courtBookingRepository,
@@ -62,7 +65,8 @@ public class CourtBookingService {
 			CourtMaterialSettingRepository courtMaterialSettingRepository,
 			CourtConfigurationService courtConfigurationService,
 			ScheduleLockService scheduleLockService,
-			ScheduleSyncEventPublisher scheduleSyncEventPublisher
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher,
+			AuditTrailService auditTrailService
 	) {
 		this.courtBookingRepository = courtBookingRepository;
 		this.courtBookingMaterialRepository = courtBookingMaterialRepository;
@@ -71,6 +75,7 @@ public class CourtBookingService {
 		this.courtConfigurationService = courtConfigurationService;
 		this.scheduleLockService = scheduleLockService;
 		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
+		this.auditTrailService = auditTrailService;
 	}
 
 	@Transactional
@@ -121,6 +126,16 @@ public class CourtBookingService {
 				}).toList()
 		);
 		final CourtBooking saved = savedBookings.get(0);
+		savedBookings.forEach(booking -> auditTrailService.record(
+				"courts",
+				"court-booking",
+				booking.getId(),
+				"CREATED",
+				"Reserva de cancha creada",
+				List.of(),
+				null,
+				snapshot(booking)
+		));
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.COURTS,
 				"created",
@@ -134,6 +149,7 @@ public class CourtBookingService {
 	@Transactional
 	public CourtBookingDto update(Long bookingId, UpdateCourtBookingDto input, String actorUsername) {
 		final CourtBooking booking = findBookingOrThrow(bookingId);
+		final Map<String, Object> beforeState = snapshot(booking);
 		final LocalDate previousBookingDate = booking.getBookingDate();
 		validateCanEdit(booking);
 		validateTimeWindow(input.bookingDate(), input.startTime(), input.endTime());
@@ -166,6 +182,17 @@ public class CourtBookingService {
 				input.paymentNotes(),
 				pricing.materials(),
 				actorUsername
+		);
+		final Map<String, Object> afterState = snapshot(booking);
+		auditTrailService.record(
+				"courts",
+				"court-booking",
+				booking.getId(),
+				"UPDATED",
+				"Reserva de cancha actualizada",
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
 		);
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.COURTS,
@@ -216,8 +243,20 @@ public class CourtBookingService {
 	@Transactional
 	public CourtBookingDto updatePayment(Long bookingId, UpdateCourtPaymentDto input, String actorUsername) {
 		final CourtBooking booking = findBookingOrThrow(bookingId);
+		final Map<String, Object> beforeState = snapshot(booking);
 		validateCanEdit(booking);
 		booking.markPayment(input.paymentMethod(), input.paymentDate(), input.paymentNotes(), actorUsername);
+		final Map<String, Object> afterState = snapshot(booking);
+		auditTrailService.record(
+				"courts",
+				"court-booking",
+				booking.getId(),
+				"PAYMENT_UPDATED",
+				"Pago de reserva de cancha actualizado",
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
+		);
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.COURTS,
 				"payment-updated",
@@ -246,7 +285,23 @@ public class CourtBookingService {
 			}
 			bookingsToCancel = List.of(booking);
 		}
+		final Map<Long, Map<String, Object>> beforeStateById = new LinkedHashMap<>();
+		bookingsToCancel.forEach(item -> beforeStateById.put(item.getId(), snapshot(item)));
 		bookingsToCancel.forEach(item -> item.markCancelled(input.cancellationNotes(), actorUsername));
+		bookingsToCancel.forEach(item -> {
+			final Map<String, Object> beforeState = beforeStateById.get(item.getId());
+			final Map<String, Object> afterState = snapshot(item);
+			auditTrailService.record(
+					"courts",
+					"court-booking",
+					item.getId(),
+					"CANCELLED",
+					"Reserva de cancha cancelada",
+					diff(beforeState, afterState),
+					beforeState,
+					afterState
+			);
+		});
 		final List<LocalDate> affectedDates = bookingsToCancel.stream()
 				.map(CourtBooking::getBookingDate)
 				.sorted()
@@ -259,6 +314,11 @@ public class CourtBookingService {
 				affectedDates.get(affectedDates.size() - 1)
 		);
 		return CourtBookingDto.from(booking);
+	}
+
+	public List<AuditEventDto> audit(Long bookingId) {
+		findBookingOrThrow(bookingId);
+		return auditTrailService.findByEntity("court-booking", bookingId);
 	}
 
 	public CourtSummaryReportDto summary(LocalDate dateFrom, LocalDate dateTo) {
@@ -683,6 +743,63 @@ public class CourtBookingService {
 
 	private LocalDate maxDate(LocalDate left, LocalDate right) {
 		return left.isAfter(right) ? left : right;
+	}
+
+	private Map<String, Object> snapshot(CourtBooking booking) {
+		final Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("id", booking.getId());
+		snapshot.put("bookingDate", toValue(booking.getBookingDate()));
+		snapshot.put("startTime", toValue(booking.getStartTime()));
+		snapshot.put("endTime", toValue(booking.getEndTime()));
+		snapshot.put("customerName", booking.getCustomerName());
+		snapshot.put("customerReference", booking.getCustomerReference());
+		snapshot.put("customerType", booking.getCustomerType() == null ? null : booking.getCustomerType().name());
+		snapshot.put("status", booking.getStatus() == null ? null : booking.getStatus().name());
+		snapshot.put("pricingPeriod", booking.getPricingPeriod() == null ? null : booking.getPricingPeriod().name());
+		snapshot.put("courtAmount", toValue(booking.getCourtAmount()));
+		snapshot.put("materialsAmount", toValue(booking.getMaterialsAmount()));
+		snapshot.put("totalAmount", toValue(booking.getTotalAmount()));
+		snapshot.put("paid", booking.isPaid());
+		snapshot.put("paymentMethod", booking.getPaymentMethod() == null ? null : booking.getPaymentMethod().name());
+		snapshot.put("paymentDate", toValue(booking.getPaymentDate()));
+		snapshot.put("paymentNotes", booking.getPaymentNotes());
+		snapshot.put("cancellationNotes", booking.getCancellationNotes());
+		snapshot.put("recurrenceGroupId", booking.getRecurrenceGroupId());
+		snapshot.put("recurrenceStartDate", toValue(booking.getRecurrenceStartDate()));
+		snapshot.put("recurrenceEndDate", toValue(booking.getRecurrenceEndDate()));
+		snapshot.put("createdAt", toValue(booking.getCreatedAt()));
+		snapshot.put("updatedAt", toValue(booking.getUpdatedAt()));
+		snapshot.put("cancelledAt", toValue(booking.getCancelledAt()));
+		snapshot.put("createdBy", booking.getCreatedBy());
+		snapshot.put("updatedBy", booking.getUpdatedBy());
+		snapshot.put("cancelledBy", booking.getCancelledBy());
+		snapshot.put("materials", booking.getMaterials().stream().map(material -> {
+			final Map<String, Object> item = new LinkedHashMap<>();
+			item.put("code", material.getMaterialCode());
+			item.put("label", material.getMaterialLabel());
+			item.put("quantity", material.getQuantity());
+			item.put("unitPrice", toValue(material.getUnitPrice()));
+			item.put("totalPrice", toValue(material.getTotalPrice()));
+			return item;
+		}).toList());
+		return snapshot;
+	}
+
+	private List<Map<String, Object>> diff(Map<String, Object> before, Map<String, Object> after) {
+		return before.keySet().stream()
+				.filter(field -> !Objects.equals(before.get(field), after.get(field)))
+				.map(field -> {
+					final Map<String, Object> change = new LinkedHashMap<>();
+					change.put("field", field);
+					change.put("before", before.get(field));
+					change.put("after", after.get(field));
+					return change;
+				})
+				.toList();
+	}
+
+	private String toValue(Object value) {
+		return value == null ? null : value.toString();
 	}
 
 }

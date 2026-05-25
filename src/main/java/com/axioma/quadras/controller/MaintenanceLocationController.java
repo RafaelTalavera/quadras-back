@@ -1,5 +1,6 @@
 package com.axioma.quadras.controller;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CreateMaintenanceLocationDto;
 import com.axioma.quadras.domain.dto.MaintenanceLocationDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
@@ -62,5 +63,10 @@ public class MaintenanceLocationController {
 	@GetMapping("/{locationId}/history")
 	public ResponseEntity<List<MaintenanceOrderDto>> history(@PathVariable Long locationId) {
 		return ResponseEntity.ok(maintenanceLocationService.history(locationId));
+	}
+
+	@GetMapping("/{locationId}/audit")
+	public ResponseEntity<List<AuditEventDto>> audit(@PathVariable Long locationId) {
+		return ResponseEntity.ok(maintenanceLocationService.audit(locationId));
 	}
 }

@@ -1,5 +1,6 @@
 package com.axioma.quadras.service;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CreateMassageProviderDto;
 import com.axioma.quadras.domain.dto.CreateMassageTherapistDto;
 import com.axioma.quadras.domain.dto.MassageProviderDto;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,13 +29,16 @@ public class MassageProviderService {
 
 	private final MassageProviderRepository massageProviderRepository;
 	private final MassageTherapistRepository massageTherapistRepository;
+	private final AuditTrailService auditTrailService;
 
 	public MassageProviderService(
 			MassageProviderRepository massageProviderRepository,
-			MassageTherapistRepository massageTherapistRepository
+			MassageTherapistRepository massageTherapistRepository,
+			AuditTrailService auditTrailService
 	) {
 		this.massageProviderRepository = massageProviderRepository;
 		this.massageTherapistRepository = massageTherapistRepository;
+		this.auditTrailService = auditTrailService;
 	}
 
 	@Transactional
@@ -42,18 +47,37 @@ public class MassageProviderService {
 		final MassageProvider saved = massageProviderRepository.save(
 				MassageProvider.create(input.name(), input.specialty(), input.contact())
 		);
+		auditTrailService.record(
+				"massages",
+				"massage-provider",
+				saved.getId(),
+				"CREATED",
+				"Prestador de masajes creado",
+				List.of(),
+				null,
+				snapshot(saved)
+		);
 		return MassageProviderDto.from(saved);
 	}
 
 	@Transactional
 	public MassageProviderDto update(Long providerId, UpdateMassageProviderDto input) {
 		final MassageProvider provider = findProviderOrThrow(providerId);
+		final Map<String, Object> beforeState = snapshot(provider);
 		validateDuplicatedName(input.name(), providerId);
 		provider.update(
 				input.name(),
 				input.specialty(),
 				input.contact(),
 				input.active()
+		);
+		recordAudit(
+				"massage-provider",
+				provider.getId(),
+				"UPDATED",
+				"Prestador de masajes actualizado",
+				beforeState,
+				snapshot(provider)
 		);
 		return MassageProviderDto.from(provider);
 	}
@@ -75,6 +99,16 @@ public class MassageProviderService {
 		final MassageTherapist saved = massageTherapistRepository.save(
 				MassageTherapist.create(provider, input.name())
 		);
+		auditTrailService.record(
+				"massages",
+				"massage-therapist",
+				saved.getId(),
+				"CREATED",
+				"Masajista creado",
+				List.of(),
+				null,
+				snapshot(saved)
+		);
 		return MassageTherapistDto.from(saved);
 	}
 
@@ -85,9 +119,28 @@ public class MassageProviderService {
 			UpdateMassageTherapistDto input
 	) {
 		final MassageTherapist therapist = findTherapistOrThrow(providerId, therapistId);
+		final Map<String, Object> beforeState = snapshot(therapist);
 		validateDuplicatedTherapistName(providerId, input.name(), therapistId);
 		therapist.update(input.name(), input.active());
+		recordAudit(
+				"massage-therapist",
+				therapist.getId(),
+				"UPDATED",
+				"Masajista actualizado",
+				beforeState,
+				snapshot(therapist)
+		);
 		return MassageTherapistDto.from(therapist);
+	}
+
+	public List<AuditEventDto> providerAudit(Long providerId) {
+		findProviderOrThrow(providerId);
+		return auditTrailService.findByEntity("massage-provider", providerId);
+	}
+
+	public List<AuditEventDto> therapistAudit(Long providerId, Long therapistId) {
+		findTherapistOrThrow(providerId, therapistId);
+		return auditTrailService.findByEntity("massage-therapist", therapistId);
 	}
 
 	public MassageProvider findProviderOrThrow(Long providerId) {
@@ -156,5 +209,66 @@ public class MassageProviderService {
 			).add(MassageTherapistDto.from(therapist));
 		}
 		return therapistsByProvider;
+	}
+
+	private void recordAudit(
+			String entityType,
+			Long entityId,
+			String actionName,
+			String summaryText,
+			Map<String, Object> beforeState,
+			Map<String, Object> afterState
+	) {
+		auditTrailService.record(
+				"massages",
+				entityType,
+				entityId,
+				actionName,
+				summaryText,
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
+		);
+	}
+
+	private Map<String, Object> snapshot(MassageProvider provider) {
+		final Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("id", provider.getId());
+		snapshot.put("name", provider.getName());
+		snapshot.put("specialty", provider.getSpecialty());
+		snapshot.put("contact", provider.getContact());
+		snapshot.put("active", provider.isActive());
+		snapshot.put("createdAt", toValue(provider.getCreatedAt()));
+		snapshot.put("updatedAt", toValue(provider.getUpdatedAt()));
+		return snapshot;
+	}
+
+	private Map<String, Object> snapshot(MassageTherapist therapist) {
+		final Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("id", therapist.getId());
+		snapshot.put("providerId", therapist.getProvider() == null ? null : therapist.getProvider().getId());
+		snapshot.put("providerName", therapist.getProvider() == null ? null : therapist.getProvider().getName());
+		snapshot.put("name", therapist.getName());
+		snapshot.put("active", therapist.isActive());
+		snapshot.put("createdAt", toValue(therapist.getCreatedAt()));
+		snapshot.put("updatedAt", toValue(therapist.getUpdatedAt()));
+		return snapshot;
+	}
+
+	private List<Map<String, Object>> diff(Map<String, Object> before, Map<String, Object> after) {
+		return before.keySet().stream()
+				.filter(field -> !Objects.equals(before.get(field), after.get(field)))
+				.map(field -> {
+					final Map<String, Object> change = new LinkedHashMap<>();
+					change.put("field", field);
+					change.put("before", before.get(field));
+					change.put("after", after.get(field));
+					return change;
+				})
+				.toList();
+	}
+
+	private String toValue(Object value) {
+		return value == null ? null : value.toString();
 	}
 }

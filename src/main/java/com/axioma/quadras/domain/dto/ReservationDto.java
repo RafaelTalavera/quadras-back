@@ -16,7 +16,11 @@ public record ReservationDto(
 		ReservationStatus status,
 		String notes,
 		OffsetDateTime createdAt,
-		OffsetDateTime updatedAt
+		OffsetDateTime updatedAt,
+		String createdBy,
+		String updatedBy,
+		OffsetDateTime cancelledAt,
+		String cancelledBy
 ) {
 	public static ReservationDto from(Reservation reservation) {
 		return new ReservationDto(
@@ -28,7 +32,11 @@ public record ReservationDto(
 				reservation.getStatus(),
 				reservation.getNotes(),
 				reservation.getCreatedAt(),
-				reservation.getUpdatedAt()
+				reservation.getUpdatedAt(),
+				reservation.getCreatedBy(),
+				reservation.getUpdatedBy(),
+				reservation.getCancelledAt(),
+				reservation.getCancelledBy()
 		);
 	}
 
@@ -42,7 +50,11 @@ public record ReservationDto(
 				reservation.getStatus(),
 				reservation.getNotes(),
 				reservation.getCreatedAt(),
-				reservation.getUpdatedAt()
+				reservation.getUpdatedAt(),
+				reservation.getCreatedBy(),
+				reservation.getUpdatedBy(),
+				reservation.getCancelledAt(),
+				reservation.getCancelledBy()
 		);
 	}
 }

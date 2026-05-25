@@ -1,5 +1,6 @@
 package com.axioma.quadras.controller;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CourtMaterialSettingDto;
 import com.axioma.quadras.domain.dto.CourtPartnerCoachDto;
 import com.axioma.quadras.domain.dto.CourtRateDto;
@@ -46,6 +47,11 @@ public class CourtConfigurationController {
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
 		return ResponseEntity.ok(courtConfigurationService.updateRate(rateId, input, principal.getUsername()));
+	}
+
+	@GetMapping("/rates/{rateId}/audit")
+	public ResponseEntity<List<AuditEventDto>> rateAudit(@PathVariable Long rateId) {
+		return ResponseEntity.ok(courtConfigurationService.rateAudit(rateId));
 	}
 
 	@GetMapping("/materials")
@@ -100,5 +106,15 @@ public class CourtConfigurationController {
 		return ResponseEntity.ok(
 				courtConfigurationService.updateMaterial(materialId, input, principal.getUsername())
 		);
+	}
+
+	@GetMapping("/materials/{materialId}/audit")
+	public ResponseEntity<List<AuditEventDto>> materialAudit(@PathVariable Long materialId) {
+		return ResponseEntity.ok(courtConfigurationService.materialAudit(materialId));
+	}
+
+	@GetMapping("/partner-coaches/{partnerCoachId}/audit")
+	public ResponseEntity<List<AuditEventDto>> partnerCoachAudit(@PathVariable Long partnerCoachId) {
+		return ResponseEntity.ok(courtConfigurationService.partnerCoachAudit(partnerCoachId));
 	}
 }

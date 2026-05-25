@@ -52,6 +52,18 @@ public class Reservation {
 	@Column(name = "updated_at", nullable = false)
 	private OffsetDateTime updatedAt;
 
+	@Column(name = "created_by", length = 120, updatable = false)
+	private String createdBy;
+
+	@Column(name = "updated_by", length = 120)
+	private String updatedBy;
+
+	@Column(name = "cancelled_at")
+	private OffsetDateTime cancelledAt;
+
+	@Column(name = "cancelled_by", length = 120)
+	private String cancelledBy;
+
 	protected Reservation() {
 	}
 
@@ -61,7 +73,8 @@ public class Reservation {
 			LocalTime startTime,
 			LocalTime endTime,
 			String notes,
-			ReservationStatus status
+			ReservationStatus status,
+			String actorUsername
 	) {
 		this.guestName = normalizeGuestName(guestName);
 		this.reservationDate = requireNonNullDate(reservationDate);
@@ -70,6 +83,8 @@ public class Reservation {
 		validateTimeWindow(this.startTime, this.endTime);
 		this.notes = normalizeNotes(notes);
 		this.status = requireStatus(status);
+		this.createdBy = normalizeActor(actorUsername, "createdBy");
+		this.updatedBy = this.createdBy;
 	}
 
 	public static Reservation schedule(
@@ -77,7 +92,8 @@ public class Reservation {
 			LocalDate reservationDate,
 			LocalTime startTime,
 			LocalTime endTime,
-			String notes
+			String notes,
+			String actorUsername
 	) {
 		return new Reservation(
 				guestName,
@@ -85,7 +101,8 @@ public class Reservation {
 				startTime,
 				endTime,
 				notes,
-				ReservationStatus.SCHEDULED
+				ReservationStatus.SCHEDULED,
+				actorUsername
 		);
 	}
 
@@ -125,6 +142,22 @@ public class Reservation {
 		return updatedAt;
 	}
 
+	public String getCreatedBy() {
+		return createdBy;
+	}
+
+	public String getUpdatedBy() {
+		return updatedBy;
+	}
+
+	public OffsetDateTime getCancelledAt() {
+		return cancelledAt;
+	}
+
+	public String getCancelledBy() {
+		return cancelledBy;
+	}
+
 	public long durationInMinutes() {
 		return Duration.between(startTime, endTime).toMinutes();
 	}
@@ -134,7 +167,8 @@ public class Reservation {
 			LocalDate reservationDate,
 			LocalTime startTime,
 			LocalTime endTime,
-			String notes
+			String notes,
+			String actorUsername
 	) {
 		this.guestName = normalizeGuestName(guestName);
 		this.reservationDate = requireNonNullDate(reservationDate);
@@ -142,14 +176,19 @@ public class Reservation {
 		this.endTime = requireNonNullTime(endTime, "endTime");
 		validateTimeWindow(this.startTime, this.endTime);
 		this.notes = normalizeNotes(notes);
+		this.updatedBy = normalizeActor(actorUsername, "updatedBy");
 	}
 
-	public void markCancelled() {
+	public void markCancelled(String actorUsername) {
 		this.status = ReservationStatus.CANCELLED;
+		this.cancelledAt = OffsetDateTime.now(ZoneOffset.UTC);
+		this.cancelledBy = normalizeActor(actorUsername, "cancelledBy");
+		this.updatedBy = this.cancelledBy;
 	}
 
-	public void markCompleted() {
+	public void markCompleted(String actorUsername) {
 		this.status = ReservationStatus.COMPLETED;
+		this.updatedBy = normalizeActor(actorUsername, "updatedBy");
 	}
 
 	@PrePersist
@@ -213,6 +252,17 @@ public class Reservation {
 			throw new IllegalArgumentException(
 					"notes must be <= " + MAX_NOTES_LENGTH + " chars"
 			);
+		}
+		return normalized;
+	}
+
+	private static String normalizeActor(String actorUsername, String fieldName) {
+		if (actorUsername == null || actorUsername.isBlank()) {
+			throw new IllegalArgumentException(fieldName + " is required");
+		}
+		final String normalized = actorUsername.trim().toLowerCase();
+		if (normalized.length() > 120) {
+			throw new IllegalArgumentException(fieldName + " must be <= 120 chars");
 		}
 		return normalized;
 	}

@@ -1,5 +1,6 @@
 package com.axioma.quadras.service;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CancelTourBookingDto;
 import com.axioma.quadras.domain.dto.TourBookingCompactDto;
 import com.axioma.quadras.domain.dto.TourBookingCompactPageDto;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -51,15 +53,18 @@ public class TourBookingService {
 	private final TourBookingRepository tourBookingRepository;
 	private final TourProviderService tourProviderService;
 	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
+	private final AuditTrailService auditTrailService;
 
 	public TourBookingService(
 			TourBookingRepository tourBookingRepository,
 			TourProviderService tourProviderService,
-			ScheduleSyncEventPublisher scheduleSyncEventPublisher
+			ScheduleSyncEventPublisher scheduleSyncEventPublisher,
+			AuditTrailService auditTrailService
 	) {
 		this.tourBookingRepository = tourBookingRepository;
 		this.tourProviderService = tourProviderService;
 		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
+		this.auditTrailService = auditTrailService;
 	}
 
 	@Transactional
@@ -86,6 +91,16 @@ public class TourBookingService {
 						actorUsername
 				)
 		);
+		auditTrailService.record(
+				"tours",
+				"tour-booking",
+				saved.getId(),
+				"CREATED",
+				"Agendamiento de tour creado",
+				List.of(),
+				null,
+				snapshot(saved)
+		);
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.TOURS,
 				"created",
@@ -99,6 +114,7 @@ public class TourBookingService {
 	@Transactional
 	public TourBookingDto update(Long bookingId, UpdateTourBookingDto input, String actorUsername) {
 		final TourBooking booking = findBookingOrThrow(bookingId);
+		final Map<String, Object> beforeState = snapshot(booking);
 		final LocalDate previousStartDate = booking.getStartAt().toLocalDate();
 		final LocalDate previousEndDate = booking.getEndAt().toLocalDate();
 		validateCanEdit(booking);
@@ -121,6 +137,17 @@ public class TourBookingService {
 				input.paymentDate(),
 				input.paymentNotes(),
 				actorUsername
+		);
+		final Map<String, Object> afterState = snapshot(booking);
+		auditTrailService.record(
+				"tours",
+				"tour-booking",
+				booking.getId(),
+				"UPDATED",
+				"Agendamiento de tour actualizado",
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
 		);
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.TOURS,
@@ -179,8 +206,20 @@ public class TourBookingService {
 	@Transactional
 	public TourBookingDto updatePayment(Long bookingId, UpdateTourPaymentDto input, String actorUsername) {
 		final TourBooking booking = findBookingOrThrow(bookingId);
+		final Map<String, Object> beforeState = snapshot(booking);
 		validateCanEdit(booking);
 		booking.markPayment(input.paymentMethod(), input.paymentDate(), input.paymentNotes(), actorUsername);
+		final Map<String, Object> afterState = snapshot(booking);
+		auditTrailService.record(
+				"tours",
+				"tour-booking",
+				booking.getId(),
+				"PAYMENT_UPDATED",
+				"Pago de tour actualizado",
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
+		);
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.TOURS,
 				"payment-updated",
@@ -194,6 +233,7 @@ public class TourBookingService {
 	@Transactional
 	public TourBookingDto cancel(Long bookingId, CancelTourBookingDto input, String actorUsername) {
 		final TourBooking booking = findBookingOrThrow(bookingId);
+		final Map<String, Object> beforeState = snapshot(booking);
 		if (booking.getStatus() == TourBookingStatus.CANCELLED) {
 			throw new ApplicationException(
 					HttpStatus.CONFLICT,
@@ -201,6 +241,17 @@ public class TourBookingService {
 			);
 		}
 		booking.markCancelled(input.cancellationNotes(), actorUsername);
+		final Map<String, Object> afterState = snapshot(booking);
+		auditTrailService.record(
+				"tours",
+				"tour-booking",
+				booking.getId(),
+				"CANCELLED",
+				"Agendamiento de tour cancelado",
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
+		);
 		scheduleSyncEventPublisher.publish(
 				ScheduleSyncDomain.TOURS,
 				"cancelled",
@@ -209,6 +260,11 @@ public class TourBookingService {
 				booking.getEndAt().toLocalDate()
 		);
 		return TourBookingDto.from(booking);
+	}
+
+	public List<AuditEventDto> audit(Long bookingId) {
+		findBookingOrThrow(bookingId);
+		return auditTrailService.findByEntity("tour-booking", bookingId);
 	}
 
 	public List<TourProviderSummaryDto> providerSummary(LocalDate dateFrom, LocalDate dateTo) {
@@ -666,4 +722,51 @@ public class TourBookingService {
 			String serviceTypeCode,
 			String paymentMethodCode
 	) {}
+
+	private Map<String, Object> snapshot(TourBooking booking) {
+		final Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("id", booking.getId());
+		snapshot.put("serviceType", booking.getServiceType() == null ? null : booking.getServiceType().name());
+		snapshot.put("startAt", toValue(booking.getStartAt()));
+		snapshot.put("endAt", toValue(booking.getEndAt()));
+		snapshot.put("clientName", booking.getClientName());
+		snapshot.put("guestReference", booking.getGuestReference());
+		snapshot.put("providerId", booking.getProvider() == null ? null : booking.getProvider().getId());
+		snapshot.put("providerName", booking.getProvider() == null ? null : booking.getProvider().getName());
+		snapshot.put("providerOfferingId", booking.getProviderOffering() == null ? null : booking.getProviderOffering().getId());
+		snapshot.put("providerOfferingName", booking.getProviderOffering() == null ? null : booking.getProviderOffering().getName());
+		snapshot.put("amount", toValue(booking.getAmount()));
+		snapshot.put("commissionPercent", toValue(booking.getCommissionPercent()));
+		snapshot.put("description", booking.getDescription());
+		snapshot.put("status", booking.getStatus() == null ? null : booking.getStatus().name());
+		snapshot.put("paid", booking.isPaid());
+		snapshot.put("paymentMethod", booking.getPaymentMethod() == null ? null : booking.getPaymentMethod().name());
+		snapshot.put("paymentDate", toValue(booking.getPaymentDate()));
+		snapshot.put("paymentNotes", booking.getPaymentNotes());
+		snapshot.put("cancellationNotes", booking.getCancellationNotes());
+		snapshot.put("createdAt", toValue(booking.getCreatedAt()));
+		snapshot.put("updatedAt", toValue(booking.getUpdatedAt()));
+		snapshot.put("cancelledAt", toValue(booking.getCancelledAt()));
+		snapshot.put("createdBy", booking.getCreatedBy());
+		snapshot.put("updatedBy", booking.getUpdatedBy());
+		snapshot.put("cancelledBy", booking.getCancelledBy());
+		return snapshot;
+	}
+
+	private List<Map<String, Object>> diff(Map<String, Object> before, Map<String, Object> after) {
+		return before.keySet().stream()
+				.filter(field -> !Objects.equals(before.get(field), after.get(field)))
+				.map(field -> {
+					final Map<String, Object> change = new LinkedHashMap<>();
+					change.put("field", field);
+					change.put("before", before.get(field));
+					change.put("after", after.get(field));
+					return change;
+				})
+				.toList();
+	}
+
+	private String toValue(Object value) {
+		return value == null ? null : value.toString();
+	}
 }

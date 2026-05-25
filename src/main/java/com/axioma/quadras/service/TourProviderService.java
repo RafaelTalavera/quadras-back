@@ -1,5 +1,6 @@
 package com.axioma.quadras.service;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CreateTourProviderDto;
 import com.axioma.quadras.domain.dto.TourProviderDto;
 import com.axioma.quadras.domain.dto.TourProviderOfferingDto;
@@ -17,6 +18,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -29,13 +31,16 @@ public class TourProviderService {
 
 	private final TourProviderRepository tourProviderRepository;
 	private final TourProviderOfferingRepository tourProviderOfferingRepository;
+	private final AuditTrailService auditTrailService;
 
 	public TourProviderService(
 			TourProviderRepository tourProviderRepository,
-			TourProviderOfferingRepository tourProviderOfferingRepository
+			TourProviderOfferingRepository tourProviderOfferingRepository,
+			AuditTrailService auditTrailService
 	) {
 		this.tourProviderRepository = tourProviderRepository;
 		this.tourProviderOfferingRepository = tourProviderOfferingRepository;
+		this.auditTrailService = auditTrailService;
 	}
 
 	public List<TourProviderDto> list(boolean activeOnly) {
@@ -60,6 +65,17 @@ public class TourProviderService {
 						actorUsername
 				)
 		);
+		final Map<String, Object> providerAfterState = snapshot(saved);
+		auditTrailService.record(
+				"tours",
+				"tour-provider",
+				saved.getId(),
+				"CREATED",
+				"Proveedor de tours creado",
+				List.of(),
+				null,
+				providerAfterState
+		);
 		final List<TourProviderOfferingDto> offerings = syncOfferings(saved, input.offerings(), actorUsername);
 		return toDto(saved, offerings);
 	}
@@ -67,6 +83,7 @@ public class TourProviderService {
 	@Transactional
 	public TourProviderDto update(Long providerId, UpdateTourProviderDto input, String actorUsername) {
 		final TourProvider provider = findProviderOrThrow(providerId);
+		final Map<String, Object> beforeState = snapshot(provider);
 		validateDuplicatedProvider(input.name(), input.contact(), providerId);
 		validateOfferingNames(input.offerings());
 		provider.update(
@@ -76,8 +93,29 @@ public class TourProviderService {
 				input.active(),
 				actorUsername
 		);
+		recordAudit(
+				"tour-provider",
+				provider.getId(),
+				"UPDATED",
+				"Proveedor de tours actualizado",
+				beforeState,
+				snapshot(provider)
+		);
 		final List<TourProviderOfferingDto> offerings = syncOfferings(provider, input.offerings(), actorUsername);
 		return toDto(provider, offerings);
+	}
+
+	public List<AuditEventDto> providerAudit(Long providerId) {
+		findProviderOrThrow(providerId);
+		return auditTrailService.findByEntity("tour-provider", providerId);
+	}
+
+	public List<AuditEventDto> offeringAudit(Long providerId, Long offeringId) {
+		final TourProviderOffering offering = findOfferingOrThrow(offeringId);
+		if (!Objects.equals(offering.getProvider().getId(), providerId)) {
+			throw new ApplicationException(HttpStatus.NOT_FOUND, "Tour provider offering " + offeringId + " not found");
+		}
+		return auditTrailService.findByEntity("tour-provider-offering", offeringId);
 	}
 
 	public TourProvider findProviderOrThrow(Long providerId) {
@@ -125,6 +163,16 @@ public class TourProviderService {
 		}
 		if (safeOfferings.isEmpty()) {
 			if (!existingByName.isEmpty()) {
+				existingByName.values().forEach(offering -> auditTrailService.record(
+						"tours",
+						"tour-provider-offering",
+						offering.getId(),
+						"DELETED",
+						"Oferta de tour eliminada",
+						List.of(Map.of("field", "active", "before", snapshot(offering), "after", null)),
+						snapshot(offering),
+						null
+				));
 				tourProviderOfferingRepository.deleteAllInBatch(existingByName.values());
 			}
 			return List.of();
@@ -134,7 +182,7 @@ public class TourProviderService {
 		for (final TourProviderOfferingInputDto item : safeOfferings) {
 			final TourProviderOffering existing = existingByName.remove(normalizeOfferingName(item.name()));
 			if (existing == null) {
-				offeringsToCreate.add(TourProviderOffering.create(
+				final TourProviderOffering created = TourProviderOffering.create(
 						provider,
 						item.serviceType(),
 						item.name(),
@@ -142,9 +190,11 @@ public class TourProviderService {
 						item.description(),
 						Boolean.TRUE.equals(item.active()),
 						actorUsername
-				));
+				);
+				offeringsToCreate.add(created);
 				continue;
 			}
+			final Map<String, Object> beforeState = snapshot(existing);
 			existing.update(
 					item.serviceType(),
 					item.name(),
@@ -153,13 +203,42 @@ public class TourProviderService {
 					Boolean.TRUE.equals(item.active()),
 					actorUsername
 			);
+			recordAudit(
+					"tour-provider-offering",
+					existing.getId(),
+					"UPDATED",
+					"Oferta de tour actualizada",
+					beforeState,
+					snapshot(existing)
+			);
 			synchronizedOfferings.add(existing);
 		}
 		if (!existingByName.isEmpty()) {
+			existingByName.values().forEach(offering -> auditTrailService.record(
+					"tours",
+					"tour-provider-offering",
+					offering.getId(),
+					"DELETED",
+					"Oferta de tour eliminada",
+					List.of(Map.of("field", "offering", "before", snapshot(offering), "after", null)),
+					snapshot(offering),
+					null
+			));
 			tourProviderOfferingRepository.deleteAllInBatch(existingByName.values());
 		}
 		if (!offeringsToCreate.isEmpty()) {
-			synchronizedOfferings.addAll(tourProviderOfferingRepository.saveAll(offeringsToCreate));
+			final List<TourProviderOffering> savedOfferings = tourProviderOfferingRepository.saveAll(offeringsToCreate);
+			savedOfferings.forEach(offering -> auditTrailService.record(
+					"tours",
+					"tour-provider-offering",
+					offering.getId(),
+					"CREATED",
+					"Oferta de tour creada",
+					List.of(),
+					null,
+					snapshot(offering)
+			));
+			synchronizedOfferings.addAll(savedOfferings);
 		}
 		return synchronizedOfferings.stream()
 				.sorted(Comparator.comparing(item -> item.getName().toLowerCase()))
@@ -212,5 +291,70 @@ public class TourProviderService {
 					"Tour provider offerings must have unique names per provider."
 			);
 		}
+	}
+
+	private void recordAudit(
+			String entityType,
+			Long entityId,
+			String actionName,
+			String summaryText,
+			Map<String, Object> beforeState,
+			Map<String, Object> afterState
+	) {
+		auditTrailService.record(
+				"tours",
+				entityType,
+				entityId,
+				actionName,
+				summaryText,
+				diff(beforeState, afterState),
+				beforeState,
+				afterState
+		);
+	}
+
+	private Map<String, Object> snapshot(TourProvider provider) {
+		final Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("id", provider.getId());
+		snapshot.put("name", provider.getName());
+		snapshot.put("contact", provider.getContact());
+		snapshot.put("defaultCommissionPercent", toValue(provider.getDefaultCommissionPercent()));
+		snapshot.put("active", provider.isActive());
+		snapshot.put("createdAt", toValue(provider.getCreatedAt()));
+		snapshot.put("updatedAt", toValue(provider.getUpdatedAt()));
+		snapshot.put("updatedBy", provider.getUpdatedBy());
+		return snapshot;
+	}
+
+	private Map<String, Object> snapshot(TourProviderOffering offering) {
+		final Map<String, Object> snapshot = new LinkedHashMap<>();
+		snapshot.put("id", offering.getId());
+		snapshot.put("providerId", offering.getProvider() == null ? null : offering.getProvider().getId());
+		snapshot.put("providerName", offering.getProvider() == null ? null : offering.getProvider().getName());
+		snapshot.put("serviceType", offering.getServiceType() == null ? null : offering.getServiceType().name());
+		snapshot.put("name", offering.getName());
+		snapshot.put("amount", toValue(offering.getAmount()));
+		snapshot.put("description", offering.getDescription());
+		snapshot.put("active", offering.isActive());
+		snapshot.put("updatedAt", toValue(offering.getUpdatedAt()));
+		snapshot.put("updatedBy", offering.getUpdatedBy());
+		return snapshot;
+	}
+
+	private List<Map<String, Object>> diff(Map<String, Object> before, Map<String, Object> after) {
+		return before.keySet().stream()
+				.filter(field -> !Objects.equals(before.get(field), after.get(field)))
+				.map(field -> {
+					final Map<String, Object> change = new LinkedHashMap<>();
+					change.put("field", field);
+					change.put("before", before.get(field));
+					change.put("after", after.get(field));
+					return change;
+				})
+				.toList();
+	}
+
+	private String toValue(Object value) {
+		return value == null ? null : value.toString();
 	}
 }

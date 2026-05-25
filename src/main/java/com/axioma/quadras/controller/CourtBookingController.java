@@ -1,5 +1,6 @@
 package com.axioma.quadras.controller;
 
+import com.axioma.quadras.domain.dto.AuditEventDto;
 import com.axioma.quadras.domain.dto.CancelCourtBookingDto;
 import com.axioma.quadras.domain.dto.CreateCourtBookingDto;
 import com.axioma.quadras.domain.dto.CourtBookingDto;
@@ -92,6 +93,11 @@ public class CourtBookingController {
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
 		return ResponseEntity.ok(courtBookingService.cancel(bookingId, input, principal.getUsername()));
+	}
+
+	@GetMapping("/{bookingId}/audit")
+	public ResponseEntity<List<AuditEventDto>> audit(@PathVariable Long bookingId) {
+		return ResponseEntity.ok(courtBookingService.audit(bookingId));
 	}
 
 	@GetMapping("/summary")
