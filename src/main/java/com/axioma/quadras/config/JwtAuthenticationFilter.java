@@ -63,11 +63,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			final Jwt jwt = jwtService.decode(token);
 			final String username = AppUser.normalizeUsername(jwt.getSubject());
 			final AppUserRole role = AppUserRole.fromClaim(jwt.getClaimAsString("role"));
+			final Long securityVersion = extractSecurityVersion(jwt.getClaim("securityVersion"));
 			final AuthenticatedUserPrincipal principal =
 					(AuthenticatedUserPrincipal) userDetailsService.loadUserByUsername(username);
 
 			if (principal.getRole() != role) {
 				throw new BadCredentialsException("JWT role does not match persisted user role.");
+			}
+			if (securityVersion == null || principal.getSecurityVersion() != securityVersion.longValue()) {
+				throw new BadCredentialsException("JWT security version does not match persisted user state.");
 			}
 
 			if (SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -86,5 +90,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 					new BadCredentialsException("Invalid JWT token.", ex)
 			);
 		}
+	}
+
+	private Long extractSecurityVersion(Object claimValue) {
+		if (claimValue instanceof Number number) {
+			return number.longValue();
+		}
+		if (claimValue instanceof String rawValue && !rawValue.isBlank()) {
+			return Long.parseLong(rawValue.trim());
+		}
+		return null;
 	}
 }

@@ -3,7 +3,8 @@ package com.axioma.quadras.domain.model;
 import java.util.Locale;
 
 public enum AppUserRole {
-	OPERATOR;
+	OPERATOR,
+	SUPERVISOR;
 
 	public String authority() {
 		return "ROLE_" + name();

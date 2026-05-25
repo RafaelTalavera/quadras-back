@@ -32,7 +32,11 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
-@EnableConfigurationProperties({JwtProperties.class, DemoUserProperties.class})
+@EnableConfigurationProperties({
+		JwtProperties.class,
+		DemoUserProperties.class,
+		BootstrapSupervisorProperties.class
+})
 public class SecurityConfig {
 
 	@Bean
@@ -61,7 +65,8 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/maintenance/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/tours/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/sync/**").hasRole(AppUserRole.OPERATOR.name())
-						.requestMatchers("/api/v1/users/**").authenticated()
+						.requestMatchers("/api/v1/users/me", "/api/v1/users/me/password").authenticated()
+						.requestMatchers("/api/v1/users/**").hasRole(AppUserRole.SUPERVISOR.name())
 						.anyRequest().authenticated()
 				)
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

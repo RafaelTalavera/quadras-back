@@ -129,7 +129,17 @@ class AuthControllerTest {
 
 	@Test
 	void shouldRejectJwtWhenRoleClaimIsInvalid() throws Exception {
-		final String forgedToken = forgeToken("operador.demo", "ADMIN");
+		final String forgedToken = forgeToken("operador.demo", "ADMIN", 1L);
+
+		mockMvc.perform(get("/api/v1/users/me")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + forgedToken))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.message").value("Invalid JWT token."));
+	}
+
+	@Test
+	void shouldRejectJwtWhenSecurityVersionClaimIsOutdated() throws Exception {
+		final String forgedToken = forgeToken("operador.demo", "OPERATOR", 999L);
 
 		mockMvc.perform(get("/api/v1/users/me")
 						.header(HttpHeaders.AUTHORIZATION, "Bearer " + forgedToken))
@@ -150,7 +160,7 @@ class AuthControllerTest {
 		return response.get("accessToken").asText();
 	}
 
-	private String forgeToken(String username, String role) {
+	private String forgeToken(String username, String role, long securityVersion) {
 		final Instant issuedAt = Instant.now();
 		final JwtClaimsSet claims = JwtClaimsSet.builder()
 				.issuer(jwtProperties.issuer())
@@ -158,6 +168,7 @@ class AuthControllerTest {
 				.expiresAt(issuedAt.plusSeconds(jwtProperties.expirationSeconds()))
 				.subject(username)
 				.claim("role", role)
+				.claim("securityVersion", securityVersion)
 				.build();
 		final JwsHeader header = JwsHeader.with(MacAlgorithm.HS256)
 				.type("JWT")

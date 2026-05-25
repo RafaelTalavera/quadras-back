@@ -39,6 +39,9 @@ public class AppUser {
 	@Column(name = "enabled", nullable = false)
 	private boolean enabled;
 
+	@Column(name = "security_version", nullable = false)
+	private long securityVersion;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private OffsetDateTime createdAt;
 
@@ -53,6 +56,7 @@ public class AppUser {
 		this.passwordHash = normalizePasswordHash(passwordHash);
 		this.role = requireRole(role);
 		this.enabled = enabled;
+		this.securityVersion = 1L;
 	}
 
 	public static AppUser create(String username, String passwordHash, AppUserRole role, boolean enabled) {
@@ -72,10 +76,31 @@ public class AppUser {
 		return normalized;
 	}
 
-	public void updateSecurity(String passwordHash, AppUserRole role, boolean enabled) {
-		this.passwordHash = normalizePasswordHash(passwordHash);
-		this.role = requireRole(role);
-		this.enabled = enabled;
+	public boolean updateRoleAndStatus(AppUserRole role, boolean enabled) {
+		final AppUserRole normalizedRole = requireRole(role);
+		boolean changed = false;
+		if (this.role != normalizedRole) {
+			this.role = normalizedRole;
+			changed = true;
+		}
+		if (this.enabled != enabled) {
+			this.enabled = enabled;
+			changed = true;
+		}
+		if (changed) {
+			this.securityVersion++;
+		}
+		return changed;
+	}
+
+	public boolean changePasswordHash(String passwordHash) {
+		final String normalizedPasswordHash = normalizePasswordHash(passwordHash);
+		if (this.passwordHash.equals(normalizedPasswordHash)) {
+			return false;
+		}
+		this.passwordHash = normalizedPasswordHash;
+		this.securityVersion++;
+		return true;
 	}
 
 	public Long getId() {
@@ -96,6 +121,10 @@ public class AppUser {
 
 	public boolean isEnabled() {
 		return enabled;
+	}
+
+	public long getSecurityVersion() {
+		return securityVersion;
 	}
 
 	public OffsetDateTime getCreatedAt() {

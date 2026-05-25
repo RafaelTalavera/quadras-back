@@ -38,16 +38,18 @@ public class DemoUserInitializer implements org.springframework.beans.factory.In
 	public void afterPropertiesSet() {
 		transactionTemplate.executeWithoutResult(status -> {
 			final String username = AppUser.normalizeUsername(demoUserProperties.username());
-			final String passwordHash = passwordEncoder.encode(demoUserProperties.password());
 			final AppUser demoUser = appUserRepository.findByUsername(username)
 					.orElseGet(() -> AppUser.create(
 							username,
-							passwordHash,
+							passwordEncoder.encode(demoUserProperties.password()),
 							demoUserProperties.role(),
 							true
 					));
 
-			demoUser.updateSecurity(passwordHash, demoUserProperties.role(), true);
+			demoUser.updateRoleAndStatus(demoUserProperties.role(), true);
+			if (!passwordEncoder.matches(demoUserProperties.password(), demoUser.getPasswordHash())) {
+				demoUser.changePasswordHash(passwordEncoder.encode(demoUserProperties.password()));
+			}
 			appUserRepository.save(demoUser);
 		});
 	}

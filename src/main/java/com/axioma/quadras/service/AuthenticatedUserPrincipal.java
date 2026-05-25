@@ -25,6 +25,10 @@ public class AuthenticatedUserPrincipal implements UserDetails {
 		return appUser.getRole();
 	}
 
+	public long getSecurityVersion() {
+		return appUser.getSecurityVersion();
+	}
+
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
 		return List.of(new SimpleGrantedAuthority(appUser.getRole().authority()));
