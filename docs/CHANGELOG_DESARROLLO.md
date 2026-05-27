@@ -972,3 +972,12 @@
   - `docs/{ENTREGA_WINDOWS_LOCAL,CHECKLIST_ENTREGA_WINDOWS_LOCAL,VALIDACION_INSTALADOR_WINDOWS_LOCAL,CHANGELOG_DESARROLLO}.md`
 - Motivo del cambio: La instalacion real en `Program Files` no levantaba backend ni MySQL porque los scripts escribian config y logs dentro de la carpeta instalada, lo que fallaba por permisos de Windows fuera del entorno de desarrollo.
 - Impacto funcional: El instalador final pasa a ser realmente usable sin IDE ni Java/MySQL externos; el runtime mutable se genera en `C:\ProgramData\CostanorteLocal`, la provision local se ejecuta al finalizar la instalacion y la validacion real confirma `health` y login demo sobre una instalacion en `Program Files (x86)`.
+
+## 2026-05-27 | Seguridad | Supervisor hereda permisos operativos completos
+- Componente afectado: Backend (`security` + tests + documentacion)
+- Archivos tocados:
+  - `src/main/java/com/axioma/quadras/service/AuthenticatedUserPrincipal.java`
+  - `src/test/java/com/axioma/quadras/controller/UserManagementControllerTest.java`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: El perfil `supervisor.demo` podia entrar al modulo de usuarios, pero quedaba bloqueado en endpoints que exigian `ROLE_OPERATOR`, rompiendo la regla operativa de que supervisor debe ser `supervisor + operador`.
+- Impacto funcional: Todo usuario `SUPERVISOR` ahora publica dos authorities en Spring Security (`ROLE_SUPERVISOR` y `ROLE_OPERATOR`), por lo que conserva `Configuraciones` y ademas puede ejecutar reservas, quadras, massagens, manutencao, tours y sincronizacion sin restricciones extra.

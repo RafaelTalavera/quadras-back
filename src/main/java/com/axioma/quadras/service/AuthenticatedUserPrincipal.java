@@ -31,6 +31,12 @@ public class AuthenticatedUserPrincipal implements UserDetails {
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
+		if (appUser.getRole() == AppUserRole.SUPERVISOR) {
+			return List.of(
+					new SimpleGrantedAuthority(AppUserRole.SUPERVISOR.authority()),
+					new SimpleGrantedAuthority(AppUserRole.OPERATOR.authority())
+			);
+		}
 		return List.of(new SimpleGrantedAuthority(appUser.getRole().authority()));
 	}
 

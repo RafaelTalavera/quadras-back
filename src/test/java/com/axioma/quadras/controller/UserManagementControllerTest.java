@@ -54,13 +54,13 @@ class UserManagementControllerTest {
 				.map(AppUser::getId)
 				.toList()
 				.forEach(appUserRepository::deleteById);
-		createOrUpdateUser("operador.demo", "Costanorte2026!", AppUserRole.OPERATOR, true);
-		createOrUpdateUser("supervisor.demo", "Supervisor2026!", AppUserRole.SUPERVISOR, true);
+		createOrUpdateUser("operador.demo", "123456", AppUserRole.OPERATOR, true);
+		createOrUpdateUser("supervisor.demo", "654321", AppUserRole.SUPERVISOR, true);
 	}
 
 	@Test
 	void supervisorShouldListUsers() throws Exception {
-		final String supervisorToken = authenticate("supervisor.demo", "Supervisor2026!");
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
 
 		mockMvc.perform(get("/api/v1/users")
 						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken))
@@ -71,8 +71,18 @@ class UserManagementControllerTest {
 	}
 
 	@Test
+	void supervisorShouldAccessOperatorEndpoints() throws Exception {
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
+
+		mockMvc.perform(get("/api/v1/courts/rates")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$").isArray());
+	}
+
+	@Test
 	void operatorShouldNotAccessUserAdministrationEndpoints() throws Exception {
-		final String operatorToken = authenticate("operador.demo", "Costanorte2026!");
+		final String operatorToken = authenticate("operador.demo", "123456");
 
 		mockMvc.perform(get("/api/v1/users")
 						.header(HttpHeaders.AUTHORIZATION, "Bearer " + operatorToken))
@@ -82,7 +92,7 @@ class UserManagementControllerTest {
 
 	@Test
 	void supervisorShouldCreateOperatorUser() throws Exception {
-		final String supervisorToken = authenticate("supervisor.demo", "Supervisor2026!");
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
 
 		mockMvc.perform(post("/api/v1/users")
 						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken)
@@ -90,7 +100,7 @@ class UserManagementControllerTest {
 						.content("""
 								{
 								  "username": "nuevo.operador",
-								  "password": "NuevoOperador2026!",
+								  "password": "111111",
 								  "role": "OPERATOR",
 								  "enabled": true
 								}
@@ -103,8 +113,8 @@ class UserManagementControllerTest {
 
 	@Test
 	void supervisorShouldResetPasswordAndInvalidatePreviousJwt() throws Exception {
-		final String supervisorToken = authenticate("supervisor.demo", "Supervisor2026!");
-		final String operatorToken = authenticate("operador.demo", "Costanorte2026!");
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
+		final String operatorToken = authenticate("operador.demo", "123456");
 		final Long operatorId = appUserRepository.findByUsername("operador.demo").orElseThrow().getId();
 
 		mockMvc.perform(patch("/api/v1/users/{userId}/password", operatorId)
@@ -112,7 +122,7 @@ class UserManagementControllerTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{
-								  "newPassword": "OperadorRenovado2026!"
+								  "newPassword": "222222"
 								}
 								"""))
 				.andExpect(status().isNoContent());
@@ -124,22 +134,22 @@ class UserManagementControllerTest {
 
 		mockMvc.perform(post("/api/v1/auth/login")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(loginPayload("operador.demo", "OperadorRenovado2026!")))
+						.content(loginPayload("operador.demo", "222222")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.username").value("operador.demo"));
 	}
 
 	@Test
 	void userShouldChangeOwnPasswordAndInvalidatePreviousJwt() throws Exception {
-		final String operatorToken = authenticate("operador.demo", "Costanorte2026!");
+		final String operatorToken = authenticate("operador.demo", "123456");
 
 		mockMvc.perform(patch("/api/v1/users/me/password")
 						.header(HttpHeaders.AUTHORIZATION, "Bearer " + operatorToken)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{
-								  "currentPassword": "Costanorte2026!",
-								  "newPassword": "CostanorteNova2026!"
+								  "currentPassword": "123456",
+								  "newPassword": "333333"
 								}
 								"""))
 				.andExpect(status().isNoContent());
@@ -151,14 +161,14 @@ class UserManagementControllerTest {
 
 		mockMvc.perform(post("/api/v1/auth/login")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(loginPayload("operador.demo", "CostanorteNova2026!")))
+						.content(loginPayload("operador.demo", "333333")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.username").value("operador.demo"));
 	}
 
 	@Test
 	void shouldRejectDisablingLastEnabledSupervisor() throws Exception {
-		final String supervisorToken = authenticate("supervisor.demo", "Supervisor2026!");
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
 		final Long supervisorId = appUserRepository.findByUsername("supervisor.demo").orElseThrow().getId();
 
 		mockMvc.perform(put("/api/v1/users/{userId}", supervisorId)
