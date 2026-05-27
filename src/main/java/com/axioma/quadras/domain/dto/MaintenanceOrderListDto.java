@@ -1,6 +1,7 @@
 package com.axioma.quadras.domain.dto;
 
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
+import com.axioma.quadras.domain.model.MaintenanceOrderKind;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
@@ -15,9 +16,11 @@ public record MaintenanceOrderListDto(
 		String locationCodeSnapshot,
 		String locationLabelSnapshot,
 		Long providerId,
+		Long planId,
 		MaintenanceProviderType providerTypeSnapshot,
 		String providerNameSnapshot,
 		String serviceLabelSnapshot,
+		MaintenanceOrderKind orderKind,
 		String title,
 		MaintenancePriority priority,
 		MaintenanceOrderStatus status,
@@ -37,9 +40,11 @@ public record MaintenanceOrderListDto(
 				item.getLocationCodeSnapshot(),
 				item.getLocationLabelSnapshot(),
 				item.getProviderId(),
+				item.getPlanId(),
 				item.getProviderTypeSnapshot(),
 				item.getProviderNameSnapshot(),
 				item.getServiceLabelSnapshot(),
+				item.getOrderKind(),
 				item.getTitle(),
 				item.getPriority(),
 				item.getStatus(),

@@ -66,6 +66,10 @@ public class MaintenanceOrder {
 	@JoinColumn(name = "provider_id")
 	private MaintenanceProvider provider;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "plan_id")
+	private MaintenancePlan plan;
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "provider_type_snapshot", length = 20)
 	private MaintenanceProviderType providerTypeSnapshot;
@@ -75,6 +79,10 @@ public class MaintenanceOrder {
 
 	@Column(name = "service_label_snapshot", length = MAX_SERVICE_LABEL_LENGTH)
 	private String serviceLabelSnapshot;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "order_kind", nullable = false, length = 20)
+	private MaintenanceOrderKind orderKind;
 
 	@Column(name = "title", nullable = false, length = MAX_TITLE_LENGTH)
 	private String title;
@@ -198,6 +206,48 @@ public class MaintenanceOrder {
 			String actorUsername,
 			String actorRole
 	) {
+		return report(
+				location,
+				provider,
+				title,
+				description,
+				priority,
+				requestOrigin,
+				requestedForGuest,
+				guestName,
+				guestReference,
+				businessPriority,
+				estimatedExecutionMinutes,
+				assignedUsername,
+				scheduledStartAt,
+				scheduledEndAt,
+				MaintenanceOrderKind.CORRECTIVE,
+				null,
+				actorUsername,
+				actorRole
+		);
+	}
+
+	public static MaintenanceOrder report(
+			MaintenanceLocation location,
+			MaintenanceProvider provider,
+			String title,
+			String description,
+			MaintenancePriority priority,
+			MaintenanceRequestOrigin requestOrigin,
+			boolean requestedForGuest,
+			String guestName,
+			String guestReference,
+			MaintenanceBusinessPriority businessPriority,
+			Integer estimatedExecutionMinutes,
+			String assignedUsername,
+			LocalDateTime scheduledStartAt,
+			LocalDateTime scheduledEndAt,
+			MaintenanceOrderKind orderKind,
+			MaintenancePlan plan,
+			String actorUsername,
+			String actorRole
+	) {
 		final MaintenanceOrder order = new MaintenanceOrder();
 		order.createdBy = normalizeActor(actorUsername, "createdBy");
 		order.updatedBy = order.createdBy;
@@ -218,7 +268,9 @@ public class MaintenanceOrder {
 				estimatedExecutionMinutes,
 				assignedUsername,
 				scheduledStartAt,
-				scheduledEndAt
+				scheduledEndAt,
+				orderKind,
+				plan
 		);
 		if (order.hasAssignee()) {
 			order.assignedAt = OffsetDateTime.now(ZoneOffset.UTC);
@@ -242,6 +294,8 @@ public class MaintenanceOrder {
 			String assignedUsername,
 			LocalDateTime scheduledStartAt,
 			LocalDateTime scheduledEndAt,
+			MaintenanceOrderKind orderKind,
+			MaintenancePlan plan,
 			String actorUsername
 	) {
 		if (status == MaintenanceOrderStatus.IN_PROGRESS
@@ -266,7 +320,9 @@ public class MaintenanceOrder {
 				estimatedExecutionMinutes,
 				assignedUsername,
 				scheduledStartAt,
-				scheduledEndAt
+				scheduledEndAt,
+				orderKind,
+				plan
 		);
 		updateAssignmentAudit(previousProviderId, previousAssignedUsername);
 	}
@@ -372,6 +428,10 @@ public class MaintenanceOrder {
 		return provider;
 	}
 
+	public MaintenancePlan getPlan() {
+		return plan;
+	}
+
 	public MaintenanceProviderType getProviderTypeSnapshot() {
 		return providerTypeSnapshot;
 	}
@@ -382,6 +442,10 @@ public class MaintenanceOrder {
 
 	public String getServiceLabelSnapshot() {
 		return serviceLabelSnapshot;
+	}
+
+	public MaintenanceOrderKind getOrderKind() {
+		return orderKind;
 	}
 
 	public String getTitle() {
@@ -553,10 +617,13 @@ public class MaintenanceOrder {
 			Integer estimatedExecutionMinutes,
 			String assignedUsername,
 			LocalDateTime scheduledStartAt,
-			LocalDateTime scheduledEndAt
+			LocalDateTime scheduledEndAt,
+			MaintenanceOrderKind orderKind,
+			MaintenancePlan plan
 	) {
 		this.location = requireLocation(location);
 		this.provider = provider;
+		this.plan = plan;
 		this.locationTypeSnapshot = location.getLocationType();
 		this.locationCodeSnapshot = normalize(
 				location.getCode(),
@@ -587,6 +654,12 @@ public class MaintenanceOrder {
 		}
 		this.title = normalize(title, "title", MAX_TITLE_LENGTH);
 		this.description = normalizeOptional(description, "description", MAX_DESCRIPTION_LENGTH);
+		if (orderKind == null) {
+			throw new IllegalArgumentException("orderKind is required");
+		}
+		if (plan != null && orderKind != MaintenanceOrderKind.PREVENTIVE) {
+			throw new IllegalArgumentException("plan requires PREVENTIVE orderKind");
+		}
 		if (priority == null) {
 			throw new IllegalArgumentException("priority is required");
 		}
@@ -597,6 +670,7 @@ public class MaintenanceOrder {
 			throw new IllegalArgumentException("businessPriority is required");
 		}
 		this.priority = priority;
+		this.orderKind = orderKind;
 		this.requestOrigin = requestOrigin;
 		this.businessPriority = businessPriority;
 		applyGuestContext(requestOrigin, requestedForGuest, guestName, guestReference);

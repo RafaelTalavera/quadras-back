@@ -1,6 +1,7 @@
 package com.axioma.quadras.repository;
 
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
+import com.axioma.quadras.domain.model.MaintenanceOrderKind;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
@@ -20,11 +21,15 @@ public interface MaintenanceOrderListItemView {
 
 	Long getProviderId();
 
+	Long getPlanId();
+
 	MaintenanceProviderType getProviderTypeSnapshot();
 
 	String getProviderNameSnapshot();
 
 	String getServiceLabelSnapshot();
+
+	MaintenanceOrderKind getOrderKind();
 
 	String getTitle();
 

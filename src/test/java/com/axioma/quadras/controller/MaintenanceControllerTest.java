@@ -20,6 +20,7 @@ import com.axioma.quadras.domain.model.MaintenanceRequestOrigin;
 import com.axioma.quadras.repository.MaintenanceLocationRepository;
 import com.axioma.quadras.repository.MaintenanceOrderAttachmentRepository;
 import com.axioma.quadras.repository.MaintenanceOrderRepository;
+import com.axioma.quadras.repository.MaintenancePlanRepository;
 import com.axioma.quadras.repository.MaintenanceProviderRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -61,6 +62,9 @@ class MaintenanceControllerTest {
 	private MaintenanceProviderRepository maintenanceProviderRepository;
 
 	@Autowired
+	private MaintenancePlanRepository maintenancePlanRepository;
+
+	@Autowired
 	private MaintenanceLocationRepository maintenanceLocationRepository;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
@@ -71,6 +75,7 @@ class MaintenanceControllerTest {
 	void cleanDb() throws Exception {
 		maintenanceOrderAttachmentRepository.deleteAll();
 		maintenanceOrderRepository.deleteAll();
+		maintenancePlanRepository.deleteAll();
 		maintenanceProviderRepository.deleteAll();
 		maintenanceLocationRepository.deleteAll();
 		accessToken = authenticate();
@@ -441,6 +446,76 @@ class MaintenanceControllerTest {
 				.andExpect(jsonPath("$.items[0].expectedCompletionAt").value("2026-04-18T09:00:00"))
 				.andExpect(jsonPath("$.items[0].paid").value(false))
 				.andExpect(jsonPath("$.items[0].attachments").doesNotExist());
+	}
+
+	@Test
+	void shouldCreateAndGeneratePreventiveMaintenancePlan() throws Exception {
+		final long locationId = createLocation(
+				"ROOM",
+				"101",
+				"Apartamento 101",
+				"1",
+				"Apartamento frente piscina"
+		);
+		final long providerId = createProvider(
+				"EXTERNAL",
+				"AIR_CONDITIONING",
+				"Clima Norte",
+				"Mantenimiento de aires",
+				"Limpieza y mantenimiento preventivo"
+		);
+
+		final String planResponseBody = mockMvc.perform(post("/api/v1/maintenance/plans")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "locationId": %d,
+								  "providerId": %d,
+								  "title": "Mantenimiento anual aire 101",
+								  "description": "Revision general y limpieza",
+								  "recurrenceUnit": "YEARLY",
+								  "recurrenceInterval": 1,
+								  "nextDueDate": "2026-06-15",
+								  "active": true
+								}
+								""".formatted(locationId, providerId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.title").value("Mantenimiento anual aire 101"))
+				.andExpect(jsonPath("$.recurrenceUnit").value("YEARLY"))
+				.andExpect(jsonPath("$.nextDueDate").value("2026-06-15"))
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+
+		final long planId = objectMapper.readTree(planResponseBody).get("id").asLong();
+
+		mockMvc.perform(get("/api/v1/maintenance/plans")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].id").value(planId))
+				.andExpect(jsonPath("$[0].providerSpecialty").value("AIR_CONDITIONING"));
+
+		mockMvc.perform(post("/api/v1/maintenance/plans/{planId}/generate-order", planId)
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "scheduledStartAt": "2026-06-15T09:00:00",
+								  "scheduledEndAt": "2026-06-15T10:00:00"
+								}
+								"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.orderKind").value("PREVENTIVE"))
+				.andExpect(jsonPath("$.planId").value(planId))
+				.andExpect(jsonPath("$.title").value("Mantenimiento anual aire 101"));
+
+		mockMvc.perform(get("/api/v1/maintenance/plans")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].lastGeneratedOn").exists())
+				.andExpect(jsonPath("$[0].nextDueDate").value("2027-06-15"));
 	}
 
 	@Test
@@ -908,7 +983,7 @@ class MaintenanceControllerTest {
 		final String payload = """
 				{
 				  "username": "operador.demo",
-				  "password": "Costanorte2026!"
+				  "password": "123456"
 				}
 				""";
 

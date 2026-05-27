@@ -15,7 +15,9 @@ import com.axioma.quadras.domain.dto.UpdateMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenancePaymentDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
+import com.axioma.quadras.domain.model.MaintenanceOrderKind;
 import com.axioma.quadras.domain.model.MaintenanceOrderAttachment;
+import com.axioma.quadras.domain.model.MaintenancePlan;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProvider;
@@ -55,6 +57,7 @@ public class MaintenanceOrderService {
 	private final MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository;
 	private final MaintenanceLocationService maintenanceLocationService;
 	private final MaintenanceProviderService maintenanceProviderService;
+	private final MaintenancePlanService maintenancePlanService;
 	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
 	private final AuditTrailService auditTrailService;
 
@@ -63,6 +66,7 @@ public class MaintenanceOrderService {
 			MaintenanceOrderAttachmentRepository maintenanceOrderAttachmentRepository,
 			MaintenanceLocationService maintenanceLocationService,
 			MaintenanceProviderService maintenanceProviderService,
+			MaintenancePlanService maintenancePlanService,
 			ScheduleSyncEventPublisher scheduleSyncEventPublisher,
 			AuditTrailService auditTrailService
 	) {
@@ -70,6 +74,7 @@ public class MaintenanceOrderService {
 		this.maintenanceOrderAttachmentRepository = maintenanceOrderAttachmentRepository;
 		this.maintenanceLocationService = maintenanceLocationService;
 		this.maintenanceProviderService = maintenanceProviderService;
+		this.maintenancePlanService = maintenancePlanService;
 		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
 		this.auditTrailService = auditTrailService;
 	}
@@ -162,6 +167,8 @@ public class MaintenanceOrderService {
 						null,
 						input.scheduledStartAt(),
 						input.scheduledEndAt(),
+						resolveOrderKind(input.orderKind()),
+						requirePlan(input.planId()),
 						actorUsername,
 						actorRole
 				)
@@ -200,6 +207,8 @@ public class MaintenanceOrderService {
 				order.getAssignedUsername(),
 				input.scheduledStartAt(),
 				input.scheduledEndAt(),
+				resolveOrderKind(input.orderKind(), order.getOrderKind()),
+				requirePlan(input.planId()),
 				actorUsername
 		);
 		recordAudit("UPDATED", "Orden de mantenimiento actualizada", order, beforeState);
@@ -350,8 +359,7 @@ public class MaintenanceOrderService {
 					"Maintenance attachment does not belong to the selected order."
 			);
 		}
-		maintenanceOrderAttachmentRepository.delete(attachment);
-		order.getAttachments().removeIf(item -> Objects.equals(item.getId(), attachmentId));
+		order.removeAttachment(attachment);
 		final Map<String, Object> afterState = snapshot(order);
 		auditTrailService.record(
 				"maintenance",
@@ -582,8 +590,10 @@ public class MaintenanceOrderService {
 		snapshot.put("locationId", order.getLocation() == null ? null : order.getLocation().getId());
 		snapshot.put("locationLabel", order.getLocation() == null ? null : order.getLocation().getLabel());
 		snapshot.put("providerId", order.getProvider() == null ? null : order.getProvider().getId());
+		snapshot.put("planId", order.getPlan() == null ? null : order.getPlan().getId());
 		snapshot.put("providerName", order.getProviderNameSnapshot());
 		snapshot.put("providerType", order.getProviderTypeSnapshot() == null ? null : order.getProviderTypeSnapshot().name());
+		snapshot.put("orderKind", order.getOrderKind() == null ? null : order.getOrderKind().name());
 		snapshot.put("status", order.getStatus() == null ? null : order.getStatus().name());
 		snapshot.put("priority", order.getPriority() == null ? null : order.getPriority().name());
 		snapshot.put("title", order.getTitle());
@@ -640,5 +650,23 @@ public class MaintenanceOrderService {
 
 	private String toValue(Object value) {
 		return value == null ? null : value.toString();
+	}
+
+	private MaintenanceOrderKind resolveOrderKind(MaintenanceOrderKind requestedKind) {
+		return requestedKind == null ? MaintenanceOrderKind.CORRECTIVE : requestedKind;
+	}
+
+	private MaintenanceOrderKind resolveOrderKind(
+			MaintenanceOrderKind requestedKind,
+			MaintenanceOrderKind currentKind
+	) {
+		return requestedKind == null ? currentKind : requestedKind;
+	}
+
+	private MaintenancePlan requirePlan(Long planId) {
+		if (planId == null) {
+			return null;
+		}
+		return maintenancePlanService.findOrThrow(planId);
 	}
 }

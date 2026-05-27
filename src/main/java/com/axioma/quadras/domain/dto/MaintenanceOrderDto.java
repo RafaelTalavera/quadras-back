@@ -2,6 +2,7 @@ package com.axioma.quadras.domain.dto;
 
 import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
+import com.axioma.quadras.domain.model.MaintenanceOrderKind;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenancePaymentMethod;
@@ -22,9 +23,11 @@ public record MaintenanceOrderDto(
 		String locationCodeSnapshot,
 		String locationLabelSnapshot,
 		Long providerId,
+		Long planId,
 		MaintenanceProviderType providerTypeSnapshot,
 		String providerNameSnapshot,
 		String serviceLabelSnapshot,
+		MaintenanceOrderKind orderKind,
 		String title,
 		String description,
 		MaintenancePriority priority,
@@ -77,9 +80,11 @@ public record MaintenanceOrderDto(
 				order.getLocationCodeSnapshot(),
 				order.getLocationLabelSnapshot(),
 				order.getProvider() == null ? null : order.getProvider().getId(),
+				order.getPlan() == null ? null : order.getPlan().getId(),
 				order.getProviderTypeSnapshot(),
 				order.getProviderNameSnapshot(),
 				order.getServiceLabelSnapshot(),
+				order.getOrderKind(),
 				order.getTitle(),
 				order.getDescription(),
 				order.getPriority(),
@@ -132,9 +137,11 @@ public record MaintenanceOrderDto(
 				order.getLocationCodeSnapshot(),
 				order.getLocationLabelSnapshot(),
 				order.getProviderId(),
+				order.getPlanId(),
 				order.getProviderTypeSnapshot(),
 				order.getProviderNameSnapshot(),
 				order.getServiceLabelSnapshot(),
+				order.getOrderKind(),
 				order.getTitle(),
 				order.getDescription(),
 				order.getPriority(),
