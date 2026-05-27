@@ -169,7 +169,7 @@ public class TourProviderService {
 						offering.getId(),
 						"DELETED",
 						"Oferta de tour eliminada",
-						List.of(Map.of("field", "active", "before", snapshot(offering), "after", null)),
+						deletionChange("active", snapshot(offering)),
 						snapshot(offering),
 						null
 				));
@@ -220,7 +220,7 @@ public class TourProviderService {
 					offering.getId(),
 					"DELETED",
 					"Oferta de tour eliminada",
-					List.of(Map.of("field", "offering", "before", snapshot(offering), "after", null)),
+					deletionChange("offering", snapshot(offering)),
 					snapshot(offering),
 					null
 			));
@@ -352,6 +352,14 @@ public class TourProviderService {
 					return change;
 				})
 				.toList();
+	}
+
+	private List<Map<String, Object>> deletionChange(String field, Object beforeValue) {
+		final Map<String, Object> change = new LinkedHashMap<>();
+		change.put("field", field);
+		change.put("before", beforeValue);
+		change.put("after", null);
+		return List.of(change);
 	}
 
 	private String toValue(Object value) {
