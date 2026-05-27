@@ -469,7 +469,7 @@ class ReservationControllerTest {
 		final String payload = """
 				{
 				  "username": "operador.demo",
-				  "password": "Costanorte2026!"
+				  "password": "123456"
 				}
 				""";
 

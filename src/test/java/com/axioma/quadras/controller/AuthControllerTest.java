@@ -3,6 +3,8 @@ package com.axioma.quadras.controller;
 import com.axioma.quadras.config.JwtProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,9 +19,6 @@ import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -53,7 +52,7 @@ class AuthControllerTest {
 	void shouldAuthenticateAndReturnJwt() throws Exception {
 		mockMvc.perform(post("/api/v1/auth/login")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(loginPayload("operador.demo", "Costanorte2026!")))
+						.content(loginPayload("operador.demo", "123456")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.accessToken").isString())
 				.andExpect(jsonPath("$.tokenType").value("Bearer"))
@@ -75,14 +74,14 @@ class AuthControllerTest {
 	void shouldRejectInvalidCredentialsWithNonAsciiPassword() throws Exception {
 		mockMvc.perform(post("/api/v1/auth/login")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(loginPayload("operador.demo", "Costanorte2026ª")))
+						.content(loginPayload("operador.demo", "12345Â")))
 				.andExpect(status().isUnauthorized())
 				.andExpect(jsonPath("$.message").value("Invalid username or password."));
 	}
 
 	@Test
 	void shouldReturnBadRequestWhenLoginPayloadUsesUnsupportedEncoding() throws Exception {
-		final byte[] latin1Payload = loginPayload("operador.demo", "costanorte2026ª")
+		final byte[] latin1Payload = loginPayload("operador.demo", "12345Â")
 				.getBytes(StandardCharsets.ISO_8859_1);
 
 		mockMvc.perform(post("/api/v1/auth/login")
@@ -150,7 +149,7 @@ class AuthControllerTest {
 	private String authenticate() throws Exception {
 		final String responseBody = mockMvc.perform(post("/api/v1/auth/login")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(loginPayload("operador.demo", "Costanorte2026!")))
+						.content(loginPayload("operador.demo", "123456")))
 				.andExpect(status().isOk())
 				.andReturn()
 				.getResponse()
