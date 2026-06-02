@@ -301,4 +301,35 @@ class FlywayReservationMigrationTest {
 		assertThat(dailyCounts).allMatch(count -> count >= 1 && count <= 3);
 		assertThat(dailyCounts).contains(1, 2, 3);
 	}
+
+	@Test
+	void shouldKeepOnlyCanonicalMaintenanceLocationCodesAfterFlyway() {
+		final Integer invalidLocations = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM maintenance_locations
+				WHERE code IS NULL
+				   OR TRIM(code) NOT REGEXP '^[0-9]{2,3}$'
+				""",
+				Integer.class
+		);
+
+		assertThat(invalidLocations).isZero();
+	}
+
+	@Test
+	void shouldNotKeepMaintenanceOrdersLinkedToLegacyLocationsAfterFlyway() {
+		final Integer invalidOrders = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM maintenance_orders mo
+				JOIN maintenance_locations ml ON ml.id = mo.location_id
+				WHERE ml.code IS NULL
+				   OR TRIM(ml.code) NOT REGEXP '^[0-9]{2,3}$'
+				""",
+				Integer.class
+		);
+
+		assertThat(invalidOrders).isZero();
+	}
 }
