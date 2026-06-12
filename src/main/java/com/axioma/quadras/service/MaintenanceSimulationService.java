@@ -54,25 +54,25 @@ public class MaintenanceSimulationService {
 			new ProviderSeed(
 					MaintenanceProviderType.INTERNAL,
 					MaintenanceProviderSpecialty.GENERAL_MAINTENANCE,
-					"Equipo interno de mantenimiento",
-					"Manutencao geral del hotel",
-					"Atiende correctivos generales, habitaciones, chalets y areas comunes.",
+					"Equipe interna de manutencao",
+					"Manutencao geral do hotel",
+					"Atende corretivas gerais, quartos, chales e areas comuns.",
 					"interno.mantenimiento@hotel.local"
 			),
 			new ProviderSeed(
 					MaintenanceProviderType.EXTERNAL,
 					MaintenanceProviderSpecialty.ELEVATORS,
-					"Ascensores del Norte",
-					"Servicio de elevadores",
-					"Inspeccion, reparacion y soporte tecnico de elevadores.",
+					"Elevadores do Norte",
+					"Servico de elevadores",
+					"Inspecao, reparo e suporte tecnico de elevadores.",
 					"guardia@ascensoresnorte.local"
 			),
 			new ProviderSeed(
 					MaintenanceProviderType.EXTERNAL,
 					MaintenanceProviderSpecialty.AIR_CONDITIONING,
 					"Clima Sul",
-					"Servicio de aires acondicionados",
-					"Limpieza, mantenimiento preventivo y correctivo de aire acondicionado.",
+					"Servico de ar-condicionado",
+					"Limpeza, manutencao preventiva e corretiva de ar-condicionado.",
 					"soporte@climasul.local"
 			)
 	);
@@ -91,45 +91,45 @@ public class MaintenanceSimulationService {
 			"Sra. Medina",
 			"Sr. Correa",
 			"Familia Paredes",
-			"Huesped VIP 1",
-			"Huesped VIP 2",
-			"Pareja suite 3"
+			"Hospede VIP 1",
+			"Hospede VIP 2",
+			"Casal suite 3"
 	);
 	private static final List<String> GENERAL_ROOM_TITLES = List.of(
-			"Ajustar cerradura",
-			"Corregir luminaria",
-			"Destapar desague",
-			"Revisar ducha",
-			"Corregir TV sin senal",
-			"Reparar toma electrica"
+			"Ajustar fechadura",
+			"Corrigir luminaria",
+			"Desentupir ralo",
+			"Revisar chuveiro",
+			"Corrigir TV sem sinal",
+			"Reparar tomada eletrica"
 	);
 	private static final List<String> GENERAL_COMMON_AREA_TITLES = List.of(
-			"Revisar iluminacion",
-			"Ajustar puerta de acceso",
-			"Corregir filtracion menor",
-			"Repasar pintura correctiva",
-			"Inspeccion preventiva"
+			"Revisar iluminacao",
+			"Ajustar porta de acesso",
+			"Corrigir filtracao leve",
+			"Retocar pintura corretiva",
+			"Inspecao preventiva"
 	);
 	private static final List<String> AIR_TITLES = List.of(
-			"Aire no enfria",
-			"Limpieza de filtros",
-			"Goteo de aire acondicionado",
-			"Ruido en unidad interior"
+			"Ar-condicionado nao esfria",
+			"Limpeza de filtros",
+			"Gotejamento de ar-condicionado",
+			"Ruido na unidade interna"
 	);
 	private static final List<String> ELEVATOR_TITLES = List.of(
-			"Revision preventiva de elevador",
-			"Puerta del elevador no cierra",
-			"Alarma del elevador activada"
+			"Revisao preventiva de elevador",
+			"Porta do elevador nao fecha",
+			"Alarme do elevador acionado"
 	);
 	private static final List<String> COMPLETION_NOTES = List.of(
-			"Trabajo finalizado y validado por mantenimiento.",
-			"Incidencia resuelta y area operativa nuevamente.",
-			"Se reemplazo componente y se dejo evidencia en orden."
+			"Trabalho finalizado e validado pela manutencao.",
+			"Ocorrencia resolvida e area operando novamente.",
+			"Componente substituido e evidencia anexada a ordem."
 	);
 	private static final List<String> CANCELLATION_NOTES = List.of(
-			"Se reprograma por disponibilidad de proveedor.",
-			"Se pospone por espera de repuesto.",
-			"El area solicitante informo que ya no requiere intervencion."
+			"Reprogramado por disponibilidade do fornecedor.",
+			"Adiado por espera de reposicao.",
+			"A area solicitante informou que nao precisa mais de intervencao."
 	);
 
 	private final MaintenanceLocationRepository maintenanceLocationRepository;
@@ -515,8 +515,8 @@ public class MaintenanceSimulationService {
 			boolean guestRequest
 	) {
 		final String target = guestRequest
-				? "Incidencia reportada para atencion prioritaria al huesped"
-				: "Incidencia relevada para seguimiento operativo interno";
+				? "Ocorrencia reportada para atendimento prioritario ao hospede"
+				: "Ocorrencia registrada para acompanhamento operacional interno";
 		return "%s en %s. %s.".formatted(issue.title(), location.getLabel(), target);
 	}
 
@@ -562,9 +562,9 @@ public class MaintenanceSimulationService {
 		seeds.add(new LocationSeed(
 				MaintenanceLocationType.COMMON_AREA,
 				"100",
-				"100 - Areas comunes piso 1",
+				"100 - Areas comuns piso 1",
 				"1",
-				"Pasillos y areas comunes del primer piso."
+				"Corredores e areas comuns do primeiro piso."
 		));
 		for (int room = 101; room <= 111; room++) {
 			seeds.add(roomSeed(room, 1));
@@ -572,9 +572,9 @@ public class MaintenanceSimulationService {
 		seeds.add(new LocationSeed(
 				MaintenanceLocationType.COMMON_AREA,
 				"200",
-				"200 - Areas comunes piso 2",
+				"200 - Areas comuns piso 2",
 				"2",
-				"Pasillos y areas comunes del segundo piso."
+				"Corredores e areas comuns do segundo piso."
 		));
 		for (int room = 201; room <= 211; room++) {
 			seeds.add(roomSeed(room, 2));
@@ -582,9 +582,9 @@ public class MaintenanceSimulationService {
 		seeds.add(new LocationSeed(
 				MaintenanceLocationType.COMMON_AREA,
 				"300",
-				"300 - Areas comunes piso 3",
+				"300 - Areas comuns piso 3",
 				"3",
-				"Pasillos y areas comunes del tercer piso."
+				"Corredores e areas comuns do terceiro piso."
 		));
 		for (int room = 301; room <= 311; room++) {
 			seeds.add(roomSeed(room, 3));
@@ -592,51 +592,51 @@ public class MaintenanceSimulationService {
 		seeds.add(new LocationSeed(
 				MaintenanceLocationType.COMMON_AREA,
 				"400",
-				"400 - Areas comunes piso 4",
+				"400 - Areas comuns piso 4",
 				"4",
-				"Pasillos y areas comunes del cuarto piso."
+				"Corredores e areas comuns do quarto piso."
 		));
 		for (int room = 401; room <= 407; room++) {
 			seeds.add(roomSeed(room, 4));
 		}
 		seeds.addAll(List.of(
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "500", "500 - Recepcion", "PB", "Area de recepcion del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "500", "500 - Recepcao", "PB", "Area de recepcao do hotel."),
 				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "501", "501 - Reservas", "PB", "Area administrativa de reservas."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "502", "502 - Sala business", "PB", "Sala business del hotel."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "503", "503 - Elevador", "PB", "Elevador principal del hotel."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "504", "504 - Sala de TV", "PB", "Sala de TV para huespedes."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "505", "505 - Deposito eventos", "PB", "Deposito de eventos."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "506", "506 - Sala de juego", "PB", "Sala de juego y recreacion."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "507", "507 - Roperia central", "PB", "Roperia central del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "502", "502 - Sala business", "PB", "Sala business do hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "503", "503 - Elevador", "PB", "Elevador principal do hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "504", "504 - Sala de TV", "PB", "Sala de TV para hospedes."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "505", "505 - Deposito de eventos", "PB", "Deposito de eventos."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "506", "506 - Sala de jogos", "PB", "Sala de jogos e recreacao."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "507", "507 - Rouparia central", "PB", "Rouparia central do hotel."),
 				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "508", "508 - Governanca", "PB", "Area de governanca."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "509", "509 - Oficinas RRHH-Financiero", "PB", "Oficinas administrativas de RRHH y financiero."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "510", "510 - Elevador de servicio", "PB", "Elevador de servicio."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "511", "511 - Almoxarifado", "PB", "Almoxarifado y deposito general."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "512", "512 - Cocina", "PB", "Cocina principal."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "513", "513 - Restaurante", "PB", "Area de restaurante."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "514", "514 - Piscina", "PB", "Piscina exterior."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "509", "509 - Escritorios RH-Financeiro", "PB", "Escritorios administrativos de RH e financeiro."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "510", "510 - Elevador de servico", "PB", "Elevador de servico."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "511", "511 - Almoxarifado", "PB", "Almoxarifado e deposito geral."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "512", "512 - Cozinha", "PB", "Cozinha principal."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "513", "513 - Restaurante", "PB", "Area do restaurante."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "514", "514 - Piscina", "PB", "Piscina externa."),
 				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "515", "515 - Piscina aquecida", "PB", "Piscina aquecida."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "516", "516 - Academia", "PB", "Academia del hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "516", "516 - Academia", "PB", "Academia do hotel."),
 				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "517", "517 - Spa", "PB", "Area de spa."),
 				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "518", "518 - Sauna", "PB", "Area de sauna."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "519", "519 - Recreacion", "PB", "Area de recreacion."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "520", "520 - Estacionamiento", "PB", "Estacionamiento del hotel."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "521", "521 - Entrada hotel", "PB", "Entrada principal del hotel."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "522", "522 - Caldera", "PB", "Sala de caldera."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "523", "523 - Reservorio", "PB", "Reservorio del hotel."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "524", "524 - Central electrica", "PB", "Central electrica."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "525", "525 - Camaras", "PB", "Sistema de camaras."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "526", "526 - Playa", "PB", "Area de playa."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "527", "527 - Jakusi", "PB", "Area de jakusi."),
-				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "528", "528 - Refectorio", "PB", "Refectorio.")
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "519", "519 - Recreacao", "PB", "Area de recreacao."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "520", "520 - Estacionamento", "PB", "Estacionamento do hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "521", "521 - Entrada do hotel", "PB", "Entrada principal do hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "522", "522 - Caldeira", "PB", "Sala de caldeira."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "523", "523 - Reservatorio", "PB", "Reservatorio do hotel."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "524", "524 - Central eletrica", "PB", "Central eletrica."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "525", "525 - Cameras", "PB", "Sistema de cameras."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "526", "526 - Praia", "PB", "Area de praia."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "527", "527 - Jacuzzi", "PB", "Area de jacuzzi."),
+				new LocationSeed(MaintenanceLocationType.COMMON_AREA, "528", "528 - Refeitorio", "PB", "Refeitorio.")
 		));
 		for (int chalet = 1; chalet <= 12; chalet++) {
 			seeds.add(new LocationSeed(
 					MaintenanceLocationType.ROOM,
 					"%02d".formatted(chalet),
-					"Chalet %02d".formatted(chalet),
-					"Chalets",
-					"Unidad de alojamiento chalet %02d.".formatted(chalet)
+					"Chale %02d".formatted(chalet),
+					"Chales",
+					"Unidade de hospedagem chale %02d.".formatted(chalet)
 			));
 		}
 		return seeds;
@@ -646,9 +646,9 @@ public class MaintenanceSimulationService {
 		return new LocationSeed(
 				MaintenanceLocationType.ROOM,
 				String.valueOf(roomNumber),
-				"Habitacion %d".formatted(roomNumber),
+				"Quarto %d".formatted(roomNumber),
 				String.valueOf(floor),
-				"Habitacion del piso %d.".formatted(floor)
+				"Quarto do piso %d.".formatted(floor)
 		);
 	}
 
