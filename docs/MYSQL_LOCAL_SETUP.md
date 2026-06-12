@@ -17,6 +17,21 @@ $env:COSTANORTE_DB_USER = "root"
 $env:COSTANORTE_DB_PASSWORD = "sasa"
 ```
 
+Alternativas soportadas por el backend:
+
+- URL completa: `COSTANORTE_DB_URL` o `QUADRAS_DB_URL` o `DB_URL`
+- Usuario: `COSTANORTE_DB_USER` o `QUADRAS_DB_USER` o `DB_USERNAME`
+- Clave: `COSTANORTE_DB_PASSWORD` o `QUADRAS_DB_PASSWORD` o `DB_PASSWORD`
+- Host/puerto/base legacy: `QUADRAS_DB_HOST`, `QUADRAS_DB_PORT`, `QUADRAS_DB_NAME`
+
+Si no defines ninguna variable, el backend usa por defecto:
+
+- host `localhost`
+- puerto `3306`
+- base `db_quadras`
+- usuario `root`
+- clave `sasa`
+
 ## 3) Validar arranque local del backend
 ```powershell
 .\mvnw spring-boot:run "-Dspring-boot.run.arguments=--spring.profiles.active=local --server.port=0"
