@@ -1,5 +1,20 @@
 # DECISIONES TECNICAS - COSTANORTE
 
+## DT-026 - Manutencao con flujo operativo guiado por prestador y contrato minimo
+- Fecha: 2026-07-10
+- Estado: Activa
+- Contexto: La operacion real del hotel lanza ordens de manutencao primero por prestador y no por una combinacion libre de campos. El formulario anterior obligaba a recorrer `Prestador`, `Tipo de ordem`, `Prioridade operacional` y `Referencia do hospede`, aumentando friccion y ruido sobre un flujo que en la practica casi siempre es correctivo.
+- Decision: Simplificar el flujo de `Manutencao` para que los accesos principales nazcan desde prestadores fijos (`ELEVATORS`, `AIR_CONDITIONING`, `INTERNET`, `GENERAL_MAINTENANCE/INTERNAL`) y reducir el contrato operativo al minimo necesario. En consecuencia:
+  - el frontend puede abrir la orden con prestador predefinido y ocultar ese campo
+  - `orderKind` se fija como `CORRECTIVE` en el flujo guiado
+  - se elimina `MaintenanceBusinessPriority` del dominio y de la persistencia
+  - se elimina `guestReference` del dominio de mantenimiento y se conserva solo `guestName` para pedidos de huesped
+- Impacto:
+  - mejora la velocidad de carga de ordens para operacion diaria
+  - reduce ramas de validacion y tamaño de DTOs/proyecciones
+  - endurece el alineamiento entre UI y modelo de negocio real del hotel
+  - deja el catalogo preparado para sumar nuevos prestadores fijos en el futuro sin reabrir el diseño del flujo base
+
 ## DT-018 - Auditoria transversal append-only por eventos de negocio
 - Fecha: 2026-05-25
 - Estado: Activa
@@ -178,3 +193,13 @@
 - Contexto: El costo a optimizar para despliegue productivo recae sobre el backend Java ejecutado en Railway; la base de datos se desplegara fuera de Railway y no forma parte directa del presupuesto de RAM del servicio Java.
 - Decision: Mantener el backend como monolito funcional completo, pero introducir un perfil `railway` que desactive componentes no productivos (`demo user`, simulacion de mantencion) y fijar una JVM baseline de operacion con `-Xms256m -Xmx512m`. Adicionalmente, retirar infraestructura no usada en runtime (`Actuator`) y dependencias redundantes del classpath cuando no aporten funcionalidad visible al usuario.
 - Impacto: Se reduce el costo fijo de RAM y el tiempo de arranque sin apagar modulos de negocio; el despliegue queda mejor alineado a un presupuesto de memoria de Railway y mantiene intactos los endpoints funcionales requeridos por operacion.
+
+## DT-025 - Railway sobre MariaDB debe arrancar con repair de Flyway y dialecto explicito
+- Fecha: 2026-06-02
+- Estado: Activa
+- Contexto: En el deploy productivo sobre Railway + Hostinger MariaDB 11.8, el backend logro conectar a la base pero fallo en dos puntos distintos del arranque. Primero, Flyway Community se negaba a migrar porque existia una entrada fallida previa de `V23` en `flyway_schema_history`. Despues de corregir eso, Hibernate 7.2.4 fallo al autodetectar el dialecto consultando metadata de MariaDB que no coincide con lo esperado por esa version.
+- Decision: Ejecutar `flyway.repair()` antes de `flyway.migrate()` mediante una `FlywayMigrationStrategy` propia y fijar en el perfil `railway` el dialecto `org.hibernate.dialect.MariaDBDialect` en lugar de depender de autodeteccion.
+- Impacto:
+  - el backend puede recuperarse automaticamente de estados fallidos previos en `flyway_schema_history` durante el arranque en Railway
+  - se evita la caida de Hibernate por introspeccion de metadata en MariaDB 11.8
+  - el deploy queda mas deterministico para Hostinger/Railway, a costa de asumir MariaDB explicita en ese perfil

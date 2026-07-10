@@ -1,6 +1,5 @@
 package com.axioma.quadras.domain.dto;
 
-import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import com.axioma.quadras.domain.model.MaintenanceOrderKind;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
@@ -34,10 +33,8 @@ public record MaintenanceOrderDto(
 		MaintenanceRequestOrigin requestOrigin,
 		Boolean requestedForGuest,
 		String guestName,
-		String guestReference,
 		String requestedByUsername,
 		String requestedByRole,
-		MaintenanceBusinessPriority businessPriority,
 		Integer estimatedExecutionMinutes,
 		String assignedUsername,
 		OffsetDateTime assignedAt,
@@ -91,10 +88,8 @@ public record MaintenanceOrderDto(
 				order.getRequestOrigin(),
 				order.isRequestedForGuest(),
 				order.getGuestName(),
-				order.getGuestReference(),
 				order.getRequestedByUsername(),
 				order.getRequestedByRole(),
-				order.getBusinessPriority(),
 				order.getEstimatedExecutionMinutes(),
 				order.getAssignedUsername(),
 				order.getAssignedAt(),
@@ -148,10 +143,8 @@ public record MaintenanceOrderDto(
 				order.getRequestOrigin(),
 				Boolean.TRUE.equals(order.getRequestedForGuest()),
 				order.getGuestName(),
-				order.getGuestReference(),
 				order.getRequestedByUsername(),
 				order.getRequestedByRole(),
-				order.getBusinessPriority(),
 				order.getEstimatedExecutionMinutes(),
 				order.getAssignedUsername(),
 				order.getAssignedAt(),

@@ -41,7 +41,6 @@ public class MaintenanceOrder {
 	private static final int MAX_USERNAME_LENGTH = 120;
 	private static final int MAX_ROLE_LENGTH = 60;
 	private static final int MAX_GUEST_NAME_LENGTH = 160;
-	private static final int MAX_GUEST_REFERENCE_LENGTH = 80;
 	private static final int MAX_ESTIMATED_EXECUTION_MINUTES = 10080;
 
 	@Id
@@ -104,18 +103,11 @@ public class MaintenanceOrder {
 	@Column(name = "guest_name", length = MAX_GUEST_NAME_LENGTH)
 	private String guestName;
 
-	@Column(name = "guest_reference", length = MAX_GUEST_REFERENCE_LENGTH)
-	private String guestReference;
-
 	@Column(name = "requested_by_username", nullable = false, length = MAX_USERNAME_LENGTH)
 	private String requestedByUsername;
 
 	@Column(name = "requested_by_role", length = MAX_ROLE_LENGTH)
 	private String requestedByRole;
-
-	@Enumerated(EnumType.STRING)
-	@Column(name = "business_priority", nullable = false, length = 30)
-	private MaintenanceBusinessPriority businessPriority;
 
 	@Column(name = "estimated_execution_minutes")
 	private Integer estimatedExecutionMinutes;
@@ -197,8 +189,6 @@ public class MaintenanceOrder {
 			MaintenanceRequestOrigin requestOrigin,
 			boolean requestedForGuest,
 			String guestName,
-			String guestReference,
-			MaintenanceBusinessPriority businessPriority,
 			Integer estimatedExecutionMinutes,
 			String assignedUsername,
 			LocalDateTime scheduledStartAt,
@@ -215,8 +205,6 @@ public class MaintenanceOrder {
 				requestOrigin,
 				requestedForGuest,
 				guestName,
-				guestReference,
-				businessPriority,
 				estimatedExecutionMinutes,
 				assignedUsername,
 				scheduledStartAt,
@@ -237,8 +225,6 @@ public class MaintenanceOrder {
 			MaintenanceRequestOrigin requestOrigin,
 			boolean requestedForGuest,
 			String guestName,
-			String guestReference,
-			MaintenanceBusinessPriority businessPriority,
 			Integer estimatedExecutionMinutes,
 			String assignedUsername,
 			LocalDateTime scheduledStartAt,
@@ -263,8 +249,6 @@ public class MaintenanceOrder {
 				requestOrigin,
 				requestedForGuest,
 				guestName,
-				guestReference,
-				businessPriority,
 				estimatedExecutionMinutes,
 				assignedUsername,
 				scheduledStartAt,
@@ -288,8 +272,6 @@ public class MaintenanceOrder {
 			MaintenanceRequestOrigin requestOrigin,
 			boolean requestedForGuest,
 			String guestName,
-			String guestReference,
-			MaintenanceBusinessPriority businessPriority,
 			Integer estimatedExecutionMinutes,
 			String assignedUsername,
 			LocalDateTime scheduledStartAt,
@@ -315,8 +297,6 @@ public class MaintenanceOrder {
 				requestOrigin,
 				requestedForGuest,
 				guestName,
-				guestReference,
-				businessPriority,
 				estimatedExecutionMinutes,
 				assignedUsername,
 				scheduledStartAt,
@@ -472,20 +452,12 @@ public class MaintenanceOrder {
 		return guestName;
 	}
 
-	public String getGuestReference() {
-		return guestReference;
-	}
-
 	public String getRequestedByUsername() {
 		return requestedByUsername;
 	}
 
 	public String getRequestedByRole() {
 		return requestedByRole;
-	}
-
-	public MaintenanceBusinessPriority getBusinessPriority() {
-		return businessPriority;
 	}
 
 	public Integer getEstimatedExecutionMinutes() {
@@ -612,8 +584,6 @@ public class MaintenanceOrder {
 			MaintenanceRequestOrigin requestOrigin,
 			boolean requestedForGuest,
 			String guestName,
-			String guestReference,
-			MaintenanceBusinessPriority businessPriority,
 			Integer estimatedExecutionMinutes,
 			String assignedUsername,
 			LocalDateTime scheduledStartAt,
@@ -666,14 +636,10 @@ public class MaintenanceOrder {
 		if (requestOrigin == null) {
 			throw new IllegalArgumentException("requestOrigin is required");
 		}
-		if (businessPriority == null) {
-			throw new IllegalArgumentException("businessPriority is required");
-		}
 		this.priority = priority;
 		this.orderKind = orderKind;
 		this.requestOrigin = requestOrigin;
-		this.businessPriority = businessPriority;
-		applyGuestContext(requestOrigin, requestedForGuest, guestName, guestReference);
+		applyGuestContext(requestOrigin, requestedForGuest, guestName);
 		this.assignedUsername = normalizeOptionalActor(assignedUsername, "assignedUsername");
 		applySchedule(scheduledStartAt, scheduledEndAt);
 		this.estimatedExecutionMinutes = normalizeEstimatedMinutes(
@@ -692,25 +658,18 @@ public class MaintenanceOrder {
 	private void applyGuestContext(
 			MaintenanceRequestOrigin requestOrigin,
 			boolean requestedForGuest,
-			String guestName,
-			String guestReference
+			String guestName
 	) {
 		final boolean guestContext = requestOrigin == MaintenanceRequestOrigin.GUEST_REQUEST || requestedForGuest;
 		this.requestedForGuest = guestContext;
 		if (!guestContext) {
 			this.guestName = null;
-			this.guestReference = null;
 			return;
 		}
 		this.guestName = normalizeOptional(guestName, "guestName", MAX_GUEST_NAME_LENGTH);
-		this.guestReference = normalizeOptional(
-				guestReference,
-				"guestReference",
-				MAX_GUEST_REFERENCE_LENGTH
-		);
-		if (this.guestName == null && this.guestReference == null) {
+		if (this.guestName == null) {
 			throw new IllegalArgumentException(
-					"guestName or guestReference is required for guest maintenance requests"
+					"guestName is required for guest maintenance requests"
 			);
 		}
 	}

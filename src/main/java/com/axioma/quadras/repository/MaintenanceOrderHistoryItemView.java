@@ -1,6 +1,5 @@
 package com.axioma.quadras.repository;
 
-import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceOrderKind;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
@@ -47,13 +46,9 @@ public interface MaintenanceOrderHistoryItemView {
 
 	String getGuestName();
 
-	String getGuestReference();
-
 	String getRequestedByUsername();
 
 	String getRequestedByRole();
-
-	MaintenanceBusinessPriority getBusinessPriority();
 
 	Integer getEstimatedExecutionMinutes();
 

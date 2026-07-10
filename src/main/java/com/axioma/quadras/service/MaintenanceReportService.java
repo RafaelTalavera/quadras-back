@@ -83,7 +83,6 @@ public class MaintenanceReportService {
 				Math.toIntExact(aggregate.getRoomsCount()),
 				Math.toIntExact(aggregate.getCommonAreasCount()),
 				Math.toIntExact(aggregate.getUrgentCount()),
-				Math.toIntExact(aggregate.getGuestPriorityCount()),
 				toHours(aggregate.getAverageResolutionMinutes()),
 				maintenanceOrderRepository.findProviderSummaryBreakdown(
 						scheduledFrom,
@@ -300,8 +299,7 @@ public class MaintenanceReportService {
 
 	private int countUrgentOrders(List<MaintenanceOrderDto> orders) {
 		return (int) orders.stream()
-				.filter(order -> order.priority() == MaintenancePriority.URGENT
-						|| order.businessPriority() == com.axioma.quadras.domain.model.MaintenanceBusinessPriority.CRITICAL_OPERATION)
+				.filter(order -> order.priority() == MaintenancePriority.URGENT)
 				.count();
 	}
 
@@ -423,7 +421,6 @@ public class MaintenanceReportService {
 				order.getServiceLabelSnapshot(),
 				order.getTitle(),
 				order.getPriority(),
-				order.getBusinessPriority(),
 				order.getRequestOrigin(),
 				Boolean.TRUE.equals(order.getRequestedForGuest()),
 				order.getAssignedUsername(),

@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceLocation;
 import com.axioma.quadras.domain.model.MaintenanceLocationCategory;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
@@ -587,8 +586,6 @@ class MaintenanceControllerTest {
 				MaintenanceRequestOrigin.GUEST_REQUEST,
 				true,
 				"Huesped 301",
-				"301",
-				MaintenanceBusinessPriority.GUEST_PRIORITY,
 				null,
 				"equipo.interno",
 				LocalDateTime.of(2026, 4, 2, 10, 0),
@@ -610,8 +607,6 @@ class MaintenanceControllerTest {
 				false,
 				null,
 				null,
-				MaintenanceBusinessPriority.INTERNAL_STANDARD,
-				null,
 				"proveedor.elevadores",
 				LocalDateTime.of(2026, 4, 3, 9, 0),
 				LocalDateTime.of(2026, 4, 3, 10, 0),
@@ -629,8 +624,6 @@ class MaintenanceControllerTest {
 				MaintenanceRequestOrigin.INTERNAL_ROLE,
 				false,
 				null,
-				null,
-				MaintenanceBusinessPriority.CRITICAL_OPERATION,
 				null,
 				"proveedor.elevadores",
 				LocalDateTime.of(2026, 4, 4, 14, 0),
@@ -657,7 +650,6 @@ class MaintenanceControllerTest {
 				.andExpect(jsonPath("$.roomsCount").value(2))
 				.andExpect(jsonPath("$.commonAreasCount").value(1))
 				.andExpect(jsonPath("$.urgentCount").value(1))
-				.andExpect(jsonPath("$.guestPriorityCount").value(1))
 				.andExpect(jsonPath("$.averageResolutionHours").value(1.50))
 				.andExpect(jsonPath("$.providerBreakdown.length()").value(2))
 				.andExpect(jsonPath("$.providerTypeBreakdown[0].groupKey").value("INTERNAL"))
@@ -734,8 +726,6 @@ class MaintenanceControllerTest {
 				false,
 				null,
 				null,
-				MaintenanceBusinessPriority.CRITICAL_OPERATION,
-				null,
 				"operador.noite",
 				LocalDateTime.of(2026, 4, 2, 18, 0),
 				LocalDateTime.of(2026, 4, 2, 19, 0),
@@ -754,8 +744,6 @@ class MaintenanceControllerTest {
 				false,
 				null,
 				null,
-				MaintenanceBusinessPriority.INTERNAL_STANDARD,
-				null,
 				null,
 				LocalDateTime.of(2026, 4, 3, 9, 0),
 				LocalDateTime.of(2026, 4, 3, 10, 0),
@@ -773,8 +761,6 @@ class MaintenanceControllerTest {
 				MaintenanceRequestOrigin.INTERNAL_ROLE,
 				false,
 				null,
-				null,
-				MaintenanceBusinessPriority.INTERNAL_STANDARD,
 				null,
 				"operador.noite",
 				LocalDateTime.of(2026, 4, 1, 14, 0),
@@ -869,7 +855,7 @@ class MaintenanceControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(greaterThan(0)))
 				.andExpect(jsonPath("$[0].requestOrigin").exists())
-				.andExpect(jsonPath("$[0].businessPriority").exists());
+				.andExpect(jsonPath("$[0].requestOrigin").exists());
 	}
 
 	private long createLocation(
@@ -952,7 +938,6 @@ class MaintenanceControllerTest {
 								  "description": "%s",
 								  "requestOrigin": "INTERNAL_ROLE",
 								  "requestedForGuest": false,
-								  "businessPriority": "INTERNAL_STANDARD",
 								  "scheduledStartAt": "%s",
 								  "scheduledEndAt": "%s"
 								}

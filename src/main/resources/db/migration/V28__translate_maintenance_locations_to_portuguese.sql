@@ -94,11 +94,9 @@ WHERE location_type = 'ROOM'
 UPDATE maintenance_orders
 SET location_label_snapshot = CASE
         WHEN location_type_snapshot = 'ROOM'
-             AND location_category_snapshot = 'APARTMENT'
              AND TRIM(location_code_snapshot) REGEXP '^[0-9]{3}$'
             THEN CONCAT('Quarto ', TRIM(location_code_snapshot))
         WHEN location_type_snapshot = 'ROOM'
-             AND location_category_snapshot = 'CHALET'
              AND TRIM(location_code_snapshot) REGEXP '^[0-9]{2}$'
             THEN CONCAT('Chale ', LPAD(TRIM(location_code_snapshot), 2, '0'))
         WHEN location_type_snapshot = 'COMMON_AREA'

@@ -2,7 +2,6 @@ package com.axioma.quadras.service;
 
 import com.axioma.quadras.domain.dto.LoadMaintenanceSimulationDto;
 import com.axioma.quadras.domain.dto.MaintenanceSimulationResultDto;
-import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceLocation;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
@@ -74,6 +73,14 @@ public class MaintenanceSimulationService {
 					"Servico de ar-condicionado",
 					"Limpeza, manutencao preventiva e corretiva de ar-condicionado.",
 					"soporte@climasul.local"
+			),
+			new ProviderSeed(
+					MaintenanceProviderType.EXTERNAL,
+					MaintenanceProviderSpecialty.INTERNET,
+					"Conecta Hotel",
+					"Servico de internet",
+					"Conectividade, Wi-Fi, cabeamento e suporte de rede.",
+					"noc@conectahotel.local"
 			)
 	);
 	private static final List<RequesterSeed> GUEST_REQUESTERS = List.of(
@@ -120,6 +127,12 @@ public class MaintenanceSimulationService {
 			"Revisao preventiva de elevador",
 			"Porta do elevador nao fecha",
 			"Alarme do elevador acionado"
+	);
+	private static final List<String> INTERNET_TITLES = List.of(
+			"Internet sem conexao",
+			"Wi-Fi intermitente",
+			"Ponto de rede sem sinal",
+			"Lentidao na internet"
 	);
 	private static final List<String> COMPLETION_NOTES = List.of(
 			"Trabalho finalizado e validado pela manutencao.",
@@ -325,13 +338,7 @@ public class MaintenanceSimulationService {
 		final RequesterSeed requester = guestRequest
 				? randomItem(GUEST_REQUESTERS, random)
 				: randomItem(INTERNAL_REQUESTERS, random);
-		final String guestReference = guestRequest ? location.getCode() : null;
 		final String guestName = guestRequest ? randomItem(GUEST_NAMES, random) : null;
-		final MaintenanceBusinessPriority businessPriority = guestRequest
-				? MaintenanceBusinessPriority.GUEST_PRIORITY
-				: (random.nextDouble() < 0.18
-						? MaintenanceBusinessPriority.CRITICAL_OPERATION
-						: MaintenanceBusinessPriority.INTERNAL_STANDARD);
 		final MaintenanceProvider provider = providersBySpecialty.get(issue.specialty());
 		final String assignee = assigneeFor(issue.specialty(), random);
 		final LocalDateTime startAt = date.atTime(8 + (slotIndex % 10), random.nextInt(2) * 30);
@@ -348,8 +355,6 @@ public class MaintenanceSimulationService {
 				guestRequest ? MaintenanceRequestOrigin.GUEST_REQUEST : MaintenanceRequestOrigin.INTERNAL_ROLE,
 				guestRequest,
 				guestName,
-				guestReference,
-				businessPriority,
 				durationMinutes,
 				assignee,
 				startAt,
@@ -408,7 +413,6 @@ public class MaintenanceSimulationService {
 				? null
 				: providersBySpecialty.get(issue.specialty());
 		final String assignee = createOpenOrder ? null : assigneeFor(issue.specialty(), random);
-		final String guestReference = guestRequest ? location.getCode() : null;
 		final String guestName = guestRequest ? randomItem(GUEST_NAMES, random) : null;
 
 		return MaintenanceOrder.report(
@@ -420,10 +424,6 @@ public class MaintenanceSimulationService {
 				guestRequest ? MaintenanceRequestOrigin.GUEST_REQUEST : MaintenanceRequestOrigin.INTERNAL_ROLE,
 				guestRequest,
 				guestName,
-				guestReference,
-				guestRequest
-						? MaintenanceBusinessPriority.GUEST_PRIORITY
-						: MaintenanceBusinessPriority.INTERNAL_STANDARD,
 				issue.minMinutes() + random.nextInt(31),
 				assignee,
 				null,
@@ -482,6 +482,16 @@ public class MaintenanceSimulationService {
 					true
 			);
 		}
+		if (marker < 0.95) {
+			return new IssueSeed(
+					randomItem(INTERNET_TITLES, random),
+					MaintenanceProviderSpecialty.INTERNET,
+					randomPriority(random, true),
+					30,
+					120,
+					true
+			);
+		}
 		return new IssueSeed(
 				randomItem(ELEVATOR_TITLES, random),
 				MaintenanceProviderSpecialty.ELEVATORS,
@@ -500,6 +510,7 @@ public class MaintenanceSimulationService {
 		final Predicate<MaintenanceLocation> filter = switch (specialty) {
 			case ELEVATORS -> location -> location.getLocationType() == MaintenanceLocationType.COMMON_AREA;
 			case AIR_CONDITIONING -> location -> true;
+			case INTERNET -> location -> true;
 			case GENERAL_MAINTENANCE -> location -> true;
 		};
 		final List<MaintenanceLocation> filtered = locations.stream()
@@ -546,6 +557,7 @@ public class MaintenanceSimulationService {
 					: "sim.mantenimiento.2";
 			case AIR_CONDITIONING -> "sim.aires.ext";
 			case ELEVATORS -> "sim.elevadores.ext";
+			case INTERNET -> "sim.internet.ext";
 		};
 	}
 

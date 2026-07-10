@@ -1,6 +1,5 @@
 package com.axioma.quadras.repository;
 
-import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenancePriority;
@@ -21,8 +20,6 @@ public interface MaintenanceSummarySnapshotView {
 	MaintenanceOrderStatus getStatus();
 
 	MaintenancePriority getPriority();
-
-	MaintenanceBusinessPriority getBusinessPriority();
 
 	OffsetDateTime getReportedAt();
 

@@ -161,8 +161,6 @@ public class MaintenanceOrderService {
 						input.requestOrigin(),
 						input.requestedForGuest() != null && input.requestedForGuest(),
 						input.guestName(),
-						input.guestReference(),
-						input.businessPriority(),
 						null,
 						null,
 						input.scheduledStartAt(),
@@ -201,8 +199,6 @@ public class MaintenanceOrderService {
 				input.requestOrigin(),
 				input.requestedForGuest() != null && input.requestedForGuest(),
 				input.guestName(),
-				input.guestReference(),
-				input.businessPriority(),
 				order.getEstimatedExecutionMinutes(),
 				order.getAssignedUsername(),
 				input.scheduledStartAt(),
@@ -601,8 +597,6 @@ public class MaintenanceOrderService {
 		snapshot.put("requestOrigin", order.getRequestOrigin());
 		snapshot.put("requestedForGuest", order.isRequestedForGuest());
 		snapshot.put("guestName", order.getGuestName());
-		snapshot.put("guestReference", order.getGuestReference());
-		snapshot.put("businessPriority", order.getBusinessPriority());
 		snapshot.put("estimatedExecutionMinutes", order.getEstimatedExecutionMinutes());
 		snapshot.put("assignedUsername", order.getAssignedUsername());
 		snapshot.put("scheduledStartAt", toValue(order.getScheduledStartAt()));

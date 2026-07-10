@@ -16,7 +16,6 @@ public record MaintenanceSummaryReportDto(
 		Integer roomsCount,
 		Integer commonAreasCount,
 		Integer urgentCount,
-		Integer guestPriorityCount,
 		BigDecimal averageResolutionHours,
 		List<MaintenanceSummaryBreakdownDto> providerBreakdown,
 		List<MaintenanceSummaryBreakdownDto> providerTypeBreakdown,

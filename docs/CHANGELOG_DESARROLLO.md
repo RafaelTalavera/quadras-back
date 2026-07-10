@@ -1,5 +1,40 @@
 # CHANGELOG DE DESARROLLO - COSTANORTE
 
+## 2026-07-10 | Manutencao | Flujo guiado por prestador y simplificacion del contrato operativo
+- Componente afectado: Backend (`Quadras`) + frontend oficial (`quedras-front`)
+- Archivos tocados:
+  - Backend:
+    - `src/main/java/com/axioma/quadras/domain/dto/{CreateMaintenanceOrderDto,MaintenanceOrderDto,UpdateMaintenanceOrderDto}.java`
+    - `src/main/java/com/axioma/quadras/domain/model/{MaintenanceOrder,MaintenanceProviderSpecialty}.java`
+    - `src/main/java/com/axioma/quadras/repository/{MaintenanceOrderHistoryItemView,MaintenanceOrderRepository}.java`
+    - `src/main/java/com/axioma/quadras/service/{MaintenanceOrderService,MaintenancePlanService,MaintenanceReportService,MaintenanceSimulationService}.java`
+    - `src/main/resources/db/migration/{V29__drop_maintenance_business_priority.sql,V30__drop_maintenance_guest_reference.sql}`
+    - `src/test/java/com/axioma/quadras/controller/MaintenanceControllerTest.java`
+  - Frontend:
+    - `lib/features/maintenance/domain/maintenance_models.dart`
+    - `lib/features/maintenance/presentation/maintenance_page.dart`
+    - `test/features/maintenance/infrastructure/http_maintenance_app_service_test.dart`
+    - repositorio separado: `C:\Users\Public\Documents\Proyectos\quedras-front`
+- Motivo del cambio: el operador lanza ordens de manutencao principalmente por prestador, y el formulario estaba cargando campos redundantes que no agregaban valor operativo ni ayudaban a la velocidad de uso.
+- Impacto funcional:
+  - se agrega flujo rapido de lanzamiento por `Elevadores`, `Ar-condicionado`, `Internet` e `Interno`
+  - cuando la orden nace desde esos accesos, `Prestador` queda implícito y deja de mostrarse en el formulario
+  - `Tipo de ordem` deja de mostrarse en ese flujo y pasa a fijarse como `CORRECTIVE`
+  - se incorpora `INTERNET` como especialidad estable de mantenimiento
+  - se elimina `businessPriority / prioridade operacional` del backend, DTOs, reportes, simulacion y base de datos
+  - se elimina `guestReference / referencia do hospede` del contrato de mantenimiento, del dominio y de la tabla `maintenance_orders`
+  - para solicitudes de huesped, el backend pasa a requerir solo `guestName`
+- Validacion ejecutada:
+  - backend:
+    - `./mvnw -q -Dtest=MaintenanceControllerTest test`
+  - frontend:
+    - `dart analyze lib/features/maintenance/domain/maintenance_models.dart lib/features/maintenance/presentation/maintenance_page.dart test/features/maintenance/infrastructure/http_maintenance_app_service_test.dart`
+- Rollback manual:
+  - revertir migraciones `V29__drop_maintenance_business_priority.sql` y `V30__drop_maintenance_guest_reference.sql`
+  - restaurar `guestReference` y `businessPriority` en `MaintenanceOrder`, DTOs y repositorios
+  - revertir el flujo guiado del formulario en `quedras-front`
+  - efecto esperado del rollback: vuelve el formulario generalista de mantenimiento con mas campos manuales y se recupera el contrato anterior
+
 ## 2026-05-25 | Auditoria transversal | Historial de cambios por modulo y entidad
 - Componente afectado: Backend (`Quadras`) + frontend desktop (`quedras-front`)
 - Archivos tocados:
@@ -908,6 +943,17 @@
   - `docs/CHANGELOG_DESARROLLO.md`
 - Motivo del cambio: Dejar explicito que el agente debe trabajar solo sobre el entorno oficialmente documentado del proyecto y no asumir como oficial ningun frontend o componente no respaldado por la documentacion vigente.
 - Impacto funcional: Sin cambios funcionales en backend o frontend; se reduce el riesgo de desvio de implementacion y se refuerza la validacion previa del entorno antes de cualquier cambio.
+
+## 2026-06-02 | Railway | Estabilizacion de deploy sobre Hostinger MariaDB 11.8
+- Componente afectado: Deploy Railway + configuracion backend + documentacion
+- Archivos tocados:
+  - `src/main/resources/db/migration/V23__cleanup_legacy_maintenance_locations.sql`
+  - `src/test/java/com/axioma/quadras/infrastructure/FlywayReservationMigrationTest.java`
+  - `src/main/java/com/axioma/quadras/config/FlywayConfig.java`
+  - `src/main/resources/application-railway.properties`
+  - `docs/{RAILWAY_DEPLOY,DECISIONES_TECNICAS,CHANGELOG_DESARROLLO}.md`
+- Motivo del cambio: Resolver una cadena de fallas reales de deploy en Railway contra Hostinger MariaDB 11.8: `V23` dejaba historial roto en Flyway, Flyway Community no acepta `repair-on-migrate`, y Hibernate 7 no pudo autodetectar el dialecto MariaDB en ese entorno.
+- Impacto funcional: El backend en Railway ahora limpia automaticamente entradas fallidas de `flyway_schema_history`, aplica migraciones con un SQL mas conservador para `V23` y arranca con dialecto MariaDB explicito, eliminando la caida del healthcheck observada en produccion.
 
 ## 2026-03-20 | Post Hito 12 | Edicion, cancelacion y auditoria de massagens
 - Componente afectado: Backend (`Massagens` + seguridad + migraciones + pruebas)

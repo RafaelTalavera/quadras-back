@@ -26,7 +26,5 @@ public interface MaintenanceSummaryAggregateView {
 
 	long getUrgentCount();
 
-	long getGuestPriorityCount();
-
 	Double getAverageResolutionMinutes();
 }

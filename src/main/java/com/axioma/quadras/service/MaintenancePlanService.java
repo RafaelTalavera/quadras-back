@@ -6,7 +6,6 @@ import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.MaintenancePlanDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenancePlanDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
-import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenanceOrderKind;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
@@ -145,8 +144,6 @@ public class MaintenancePlanService {
 						com.axioma.quadras.domain.model.MaintenanceRequestOrigin.INTERNAL_ROLE,
 						false,
 						null,
-						null,
-						MaintenanceBusinessPriority.INTERNAL_STANDARD,
 						null,
 						null,
 						scheduledStartAt,

@@ -1,6 +1,5 @@
 package com.axioma.quadras.domain.dto;
 
-import com.axioma.quadras.domain.model.MaintenanceBusinessPriority;
 import com.axioma.quadras.domain.model.MaintenanceOrderKind;
 import com.axioma.quadras.domain.model.MaintenanceRequestOrigin;
 import jakarta.validation.constraints.NotBlank;
@@ -22,12 +21,8 @@ public record CreateMaintenanceOrderDto(
 		Boolean requestedForGuest,
 		@Size(max = 160, message = "guestName must be <= 160 chars")
 		String guestName,
-		@Size(max = 80, message = "guestReference must be <= 80 chars")
-		String guestReference,
 		MaintenanceOrderKind orderKind,
 		Long planId,
-		@NotNull(message = "businessPriority is required")
-		MaintenanceBusinessPriority businessPriority,
 		LocalDateTime scheduledStartAt,
 		LocalDateTime scheduledEndAt
 ) {
