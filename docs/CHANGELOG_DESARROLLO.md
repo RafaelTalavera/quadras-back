@@ -1,5 +1,22 @@
 # CHANGELOG DE DESARROLLO - COSTANORTE
 
+## 2026-07-10 | Manutencao | Alta por defecto del prestador de internet
+- Componente afectado: Backend (`Quadras`)
+- Archivos tocados:
+  - `src/main/resources/db/migration/V31__seed_default_maintenance_internet_provider.sql`
+  - `docs/CHANGELOG_DESARROLLO.md`
+- Motivo del cambio: el acceso rapido de `Internet` en `Manutencao` ya existia en frontend y la especialidad `INTERNET` ya estaba incorporada al dominio, pero no habia un prestador fijo persistido en base equivalente a los ya disponibles para `Elevadores` y `Ar-condicionado`.
+- Impacto funcional:
+  - se crea por migracion un prestador default de mantenimiento para `INTERNET`
+  - el launcher operativo de `Internet` pasa a poder resolver un prestador real en catalogo
+  - la siembra es idempotente: solo inserta el prestador si no existe ningun registro con especialidad `INTERNET`
+- Validacion ejecutada:
+  - `./mvnw -q -Dtest=MaintenanceControllerTest test`
+- Rollback manual:
+  - revertir la migracion `V31__seed_default_maintenance_internet_provider.sql`
+  - eliminar manualmente el prestador sembrado de `INTERNET` si ya hubiera sido aplicado
+  - efecto esperado del rollback: el acceso rapido de `Internet` vuelve a no encontrar un prestador fijo asociado
+
 ## 2026-07-10 | Manutencao | Flujo guiado por prestador y simplificacion del contrato operativo
 - Componente afectado: Backend (`Quadras`) + frontend oficial (`quedras-front`)
 - Archivos tocados:
