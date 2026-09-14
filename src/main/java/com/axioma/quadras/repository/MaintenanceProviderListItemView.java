@@ -18,6 +18,8 @@ public interface MaintenanceProviderListItemView {
 	String getScopeDescription();
 
 	String getContact();
+	String getWhatsappNumber();
+	Boolean getWhatsappEnabled();
 
 	Boolean getActive();
 

@@ -47,6 +47,12 @@ public class MaintenanceProvider {
 	@Column(name = "contact", length = MAX_CONTACT_LENGTH)
 	private String contact;
 
+	@Column(name = "whatsapp_number", length = 20)
+	private String whatsappNumber;
+
+	@Column(name = "whatsapp_enabled", nullable = false)
+	private boolean whatsappEnabled;
+
 	@Column(name = "active", nullable = false)
 	private boolean active;
 
@@ -144,6 +150,15 @@ public class MaintenanceProvider {
 		return contact;
 	}
 
+	public String getWhatsappNumber() { return whatsappNumber; }
+
+	public boolean isWhatsappEnabled() { return whatsappEnabled; }
+
+	public void configureWhatsapp(String number, boolean enabled) {
+		this.whatsappNumber = normalizeWhatsapp(number);
+		this.whatsappEnabled = enabled && this.whatsappNumber != null;
+	}
+
 	public boolean isActive() {
 		return active;
 	}
@@ -221,5 +236,12 @@ public class MaintenanceProvider {
 			throw new IllegalArgumentException(fieldName + " must be <= " + MAX_USERNAME_LENGTH + " chars");
 		}
 		return normalized;
+	}
+
+	private static String normalizeWhatsapp(String value) {
+		if (value == null || value.isBlank()) return null;
+		final String digits = value.replaceAll("[^0-9]", "");
+		if (digits.length() < 10 || digits.length() > 15) throw new IllegalArgumentException("whatsappNumber must contain 10 to 15 digits");
+		return digits;
 	}
 }

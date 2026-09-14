@@ -108,6 +108,33 @@ class FlywayReservationMigrationTest {
 	}
 
 	@Test
+	void shouldSeedDoorsAndWindowsWithoutReplacingInternetProvider() {
+		final Integer internetCount = jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM maintenance_providers WHERE specialty = 'INTERNET'",
+				Integer.class
+		);
+		final Integer doorsCount = jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM maintenance_providers WHERE specialty = 'DOORS_AND_WINDOWS'",
+				Integer.class
+		);
+
+		assertThat(internetCount).isGreaterThanOrEqualTo(1);
+		assertThat(doorsCount).isEqualTo(1);
+	}
+
+	@Test
+	void shouldSeedCamerasTelephonesAndItAsSeparateSpecialties() {
+		for (String specialty : List.of("CAMERAS", "TELEPHONES", "IT_SUPPORT")) {
+			final Integer count = jdbcTemplate.queryForObject(
+					"SELECT COUNT(*) FROM maintenance_providers WHERE specialty = ?",
+					Integer.class,
+					specialty
+			);
+			assertThat(count).isEqualTo(1);
+		}
+	}
+
+	@Test
 	void shouldCreateMaintenanceLocationCategoryColumnViaFlyway() {
 		final Integer count = jdbcTemplate.queryForObject(
 				"""
@@ -159,7 +186,8 @@ class FlywayReservationMigrationTest {
 				Integer.class
 		);
 
-		assertThat(count).isEqualTo(10);
+		// V29/V30 intentionally removed BUSINESS_PRIORITY and GUEST_REFERENCE.
+		assertThat(count).isEqualTo(8);
 	}
 
 	@Test

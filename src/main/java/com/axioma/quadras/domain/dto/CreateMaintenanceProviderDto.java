@@ -21,6 +21,8 @@ public record CreateMaintenanceProviderDto(
 		String scopeDescription,
 		@Size(max = 160, message = "contact must be <= 160 chars")
 		String contact,
-		Boolean active
+		Boolean active,
+		@Size(max = 20, message = "whatsappNumber must be <= 20 chars") String whatsappNumber,
+		Boolean whatsappEnabled
 ) {
 }

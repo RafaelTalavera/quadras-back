@@ -54,6 +54,7 @@ public class MaintenanceProviderService {
 						actorUsername
 				)
 		);
+		provider.configureWhatsapp(input.whatsappNumber(), Boolean.TRUE.equals(input.whatsappEnabled()));
 		auditTrailService.record(
 				"maintenance",
 				"maintenance-provider",
@@ -87,6 +88,7 @@ public class MaintenanceProviderService {
 				input.active(),
 				actorUsername
 		);
+		provider.configureWhatsapp(input.whatsappNumber(), Boolean.TRUE.equals(input.whatsappEnabled()));
 		recordAudit(provider.getId(), "UPDATED", "Proveedor de mantenimiento actualizado", beforeState, snapshot(provider));
 		publishCatalogEvent(provider.getId(), "provider-updated");
 		return MaintenanceProviderDto.from(provider);
@@ -163,6 +165,8 @@ public class MaintenanceProviderService {
 		snapshot.put("serviceLabel", provider.getServiceLabel());
 		snapshot.put("scopeDescription", provider.getScopeDescription());
 		snapshot.put("contact", provider.getContact());
+		snapshot.put("whatsappNumber", provider.getWhatsappNumber());
+		snapshot.put("whatsappEnabled", provider.isWhatsappEnabled());
 		snapshot.put("active", provider.isActive());
 		snapshot.put("createdAt", toValue(provider.getCreatedAt()));
 		snapshot.put("updatedAt", toValue(provider.getUpdatedAt()));

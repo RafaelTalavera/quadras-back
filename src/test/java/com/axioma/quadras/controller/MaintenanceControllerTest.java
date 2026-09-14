@@ -1,5 +1,6 @@
 package com.axioma.quadras.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -336,6 +337,55 @@ class MaintenanceControllerTest {
 				.andExpect(jsonPath("$[1].code").value("305"))
 				.andExpect(jsonPath("$[2].locationType").value("COMMON_AREA"))
 				.andExpect(jsonPath("$[2].code").value("514"));
+	}
+
+	@Test
+	void shouldKeepInternetAndDoorsOrdersWithDifferentProviders() throws Exception {
+		final long locationId = createLocation("ROOM", "212", "Quarto 212", "2", "Quarto de teste");
+		final long internetProviderId = createProvider(
+				"EXTERNAL", "INTERNET", "Rede Norte", "Servico de internet", "Wi-Fi e rede"
+		);
+		final long doorsProviderId = createProvider(
+				"EXTERNAL", "DOORS_AND_WINDOWS", "Portas Norte", "Portas e janelas", "Fechaduras e esquadrias"
+		);
+		final long internetOrderId = createOrder(
+				locationId, internetProviderId, "Revisar Wi-Fi", "Rede instavel",
+				"2026-09-15T09:00:00", "2026-09-15T10:00:00"
+		);
+		final long doorsOrderId = createOrder(
+				locationId, doorsProviderId, "Revisar fechadura", "Porta nao fecha",
+				"2026-09-15T11:00:00", "2026-09-15T12:00:00"
+		);
+
+		assertThat(maintenanceOrderRepository.findById(internetOrderId).orElseThrow()
+				.getProvider().getId()).isEqualTo(internetProviderId);
+		assertThat(maintenanceOrderRepository.findById(doorsOrderId).orElseThrow()
+				.getProvider().getId()).isEqualTo(doorsProviderId);
+		assertThat(maintenanceProviderRepository.findById(internetProviderId).orElseThrow()
+				.getSpecialty()).isEqualTo(MaintenanceProviderSpecialty.INTERNET);
+		assertThat(maintenanceProviderRepository.findById(doorsProviderId).orElseThrow()
+				.getSpecialty()).isEqualTo(MaintenanceProviderSpecialty.DOORS_AND_WINDOWS);
+	}
+
+	@Test
+	void shouldCreateSeparateCamerasTelephonesAndItOrders() throws Exception {
+		final long locationId = createLocation("ROOM", "213", "Quarto 213", "2", "Quarto de teste");
+		final String[] specialties = {"CAMERAS", "TELEPHONES", "IT_SUPPORT"};
+		final String[] titles = {"Revisar camera", "Revisar ramal", "Revisar computador"};
+		for (int index = 0; index < specialties.length; index++) {
+			final long providerId = createProvider(
+					"EXTERNAL", specialties[index], "Prestador " + specialties[index],
+					"Servico " + specialties[index], "Atendimento especifico"
+			);
+			final long orderId = createOrder(
+					locationId, providerId, titles[index], "Solicitacao de teste",
+					"2026-09-15T09:00:00", "2026-09-15T10:00:00"
+			);
+			assertThat(maintenanceOrderRepository.findById(orderId).orElseThrow()
+					.getProvider().getId()).isEqualTo(providerId);
+			assertThat(maintenanceProviderRepository.findById(providerId).orElseThrow()
+					.getSpecialty().name()).isEqualTo(specialties[index]);
+		}
 	}
 
 	@Test
