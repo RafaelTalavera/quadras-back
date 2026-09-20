@@ -20,6 +20,8 @@ public record CreateCourtBookingDto(
 		@NotBlank(message = "customerName is required")
 		@Size(max = 120, message = "customerName must be <= 120 chars")
 		String customerName,
+		@Size(max = 20, message = "customerWhatsappNumber must be <= 20 chars")
+		String customerWhatsappNumber,
 		@NotBlank(message = "customerReference is required")
 		@Size(max = 120, message = "customerReference must be <= 120 chars")
 		String customerReference,

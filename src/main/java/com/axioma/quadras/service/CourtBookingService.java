@@ -100,7 +100,7 @@ public class CourtBookingService {
 							input.customerType(),
 							input.materials()
 					);
-					return CourtBooking.schedule(
+					final CourtBooking booking = CourtBooking.schedule(
 							bookingDate,
 							input.startTime(),
 							input.endTime(),
@@ -123,6 +123,8 @@ public class CourtBookingService {
 							pricing.materials(),
 							actorUsername
 					);
+					booking.configureCustomerWhatsapp(input.customerWhatsappNumber());
+					return booking;
 				}).toList()
 		);
 		final CourtBooking saved = savedBookings.get(0);
@@ -183,6 +185,7 @@ public class CourtBookingService {
 				pricing.materials(),
 				actorUsername
 		);
+		booking.configureCustomerWhatsapp(input.customerWhatsappNumber());
 		final Map<String, Object> afterState = snapshot(booking);
 		auditTrailService.record(
 				"courts",
@@ -752,6 +755,7 @@ public class CourtBookingService {
 		snapshot.put("startTime", toValue(booking.getStartTime()));
 		snapshot.put("endTime", toValue(booking.getEndTime()));
 		snapshot.put("customerName", booking.getCustomerName());
+		snapshot.put("customerWhatsappNumber", booking.getCustomerWhatsappNumber());
 		snapshot.put("customerReference", booking.getCustomerReference());
 		snapshot.put("customerType", booking.getCustomerType() == null ? null : booking.getCustomerType().name());
 		snapshot.put("status", booking.getStatus() == null ? null : booking.getStatus().name());

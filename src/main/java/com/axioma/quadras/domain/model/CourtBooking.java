@@ -51,6 +51,9 @@ public class CourtBooking {
 	@Column(name = "customer_name", nullable = false, length = MAX_NAME_LENGTH)
 	private String customerName;
 
+	@Column(name = "customer_whatsapp_number", length = 20)
+	private String customerWhatsappNumber;
+
 	@Column(name = "customer_reference", nullable = false, length = MAX_REFERENCE_LENGTH)
 	private String customerReference;
 
@@ -269,6 +272,14 @@ public class CourtBooking {
 
 	public String getCustomerName() {
 		return customerName;
+	}
+
+	public String getCustomerWhatsappNumber() {
+		return customerWhatsappNumber;
+	}
+
+	public void configureCustomerWhatsapp(String number) {
+		this.customerWhatsappNumber = normalizeOptional(number, "customerWhatsappNumber", 20);
 	}
 
 	public String getCustomerReference() {

@@ -22,6 +22,8 @@ public interface CourtBookingListItemView {
 
 	String getCustomerName();
 
+	String getCustomerWhatsappNumber();
+
 	String getCustomerReference();
 
 	CourtCustomerType getCustomerType();

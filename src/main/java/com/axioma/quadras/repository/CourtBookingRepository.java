@@ -140,6 +140,7 @@ public interface CourtBookingRepository extends JpaRepository<CourtBooking, Long
 				b.endTime as endTime,
 				b.durationMinutes as durationMinutes,
 				b.customerName as customerName,
+				b.customerWhatsappNumber as customerWhatsappNumber,
 				b.customerReference as customerReference,
 				b.customerType as customerType,
 				b.pricingPeriod as pricingPeriod,
