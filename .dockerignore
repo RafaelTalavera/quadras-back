@@ -1,0 +1,32 @@
+# Solo se envian al builder los archivos que el Dockerfile necesita.
+# En particular, dist contiene artefactos locales grandes y no forma parte
+# del backend desplegable.
+.git/
+.gitignore
+.dockerignore
+
+target/
+dist/
+hist/
+installer/
+docs/
+scripts/
+
+.idea/
+.vscode/
+.settings/
+*.iml
+*.ipr
+*.iws
+
+*.log
+*.out
+*.err
+*.pid
+
+# El wrapper, el POM y el codigo fuente si deben permanecer en el contexto.
+!pom.xml
+!.mvn/
+!mvnw
+!mvnw.cmd
+!src/

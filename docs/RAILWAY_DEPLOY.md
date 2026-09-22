@@ -5,6 +5,30 @@
 - `SPRING_PROFILES_ACTIVE=railway`
 - `COSTANORTE_JWT_SECRET=<secreto-largo-y-unico>`
 
+## Consumo de RAM y almacenamiento
+
+El `Dockerfile` usa limites de JVM adecuados para una instancia pequena y el
+perfil `railway` limita el pool de base de datos a 3 conexiones y Tomcat a 8
+hilos. No definas `JAVA_OPTS` en Railway salvo que quieras reemplazar
+deliberadamente esos limites.
+
+Antes de desplegar, el archivo `.dockerignore` excluye `dist/`, `target/`,
+documentacion, instaladores e historial del contexto Docker. `dist/` es un
+artefacto local grande y no debe transferirse durante los builds ni incluirse
+en el flujo de despliegue.
+
+No montes un Volume de Railway para este backend: la aplicacion no persiste
+archivos en su filesystem. Los adjuntos de mantenimiento se almacenan hoy
+como BLOB en MySQL remoto. Cada adjunto tiene un maximo de 8 MiB decodificados;
+evita ampliarlo sin una prueba de carga. Para adjuntos frecuentes o de mayor
+tamano, migrarlos a almacenamiento de objetos y conservar en MySQL solo sus
+metadatos y URL.
+
+Despues del despliegue, en Railway abre el servicio y registra durante al
+menos una semana la RAM en reposo, la RAM pico, CPU y la linea `Disk` de Usage.
+Si aparece cobro de disco, confirma si existe un Volume adjunto: no corresponde
+al JAR ni al directorio temporal del contenedor.
+
 ## Base de datos Hostinger
 
 Puedes usar cualquiera de estos esquemas:

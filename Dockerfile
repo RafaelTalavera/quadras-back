@@ -16,7 +16,7 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 ENV PORT=8080
-ENV JAVA_OPTS="-XX:+UseSerialGC -XX:InitialRAMPercentage=10 -XX:MaxRAMPercentage=55 -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=64m -Xss256k -XX:+UseStringDeduplication -Djava.awt.headless=true"
+ENV JAVA_OPTS="-XX:+UseSerialGC -XX:InitialRAMPercentage=8 -XX:MaxRAMPercentage=45 -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -XX:-ShrinkHeapInSteps -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -XX:MaxDirectMemorySize=32m -Xss256k -Djava.awt.headless=true"
 
 COPY --from=build /app/target/*-SNAPSHOT.jar /app/app.jar
 
