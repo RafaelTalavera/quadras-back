@@ -12,10 +12,12 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Service
 public class ScheduleSyncService {
 
+	private static final long EMITTER_TIMEOUT_MILLIS = 30 * 60 * 1000L;
+
 	private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 
 	public SseEmitter subscribe() {
-		final SseEmitter emitter = new SseEmitter(0L);
+		final SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MILLIS);
 		emitters.add(emitter);
 		emitter.onCompletion(() -> emitters.remove(emitter));
 		emitter.onTimeout(() -> {

@@ -15,6 +15,8 @@ public record UpdateMassageProviderDto(
 		@Size(max = 120, message = "contact must be <= 120 chars")
 		String contact,
 		@NotNull(message = "active is required")
-		Boolean active
+		Boolean active,
+		@Size(max = 20, message = "whatsappNumber must be <= 20 chars") String whatsappNumber,
+		Boolean whatsappEnabled
 ) {
 }

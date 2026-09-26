@@ -1,5 +1,9 @@
 # CHANGELOG DE DESARROLLO - COSTANORTE
 
+> Registro historico: puede mencionar instaladores, scripts o documentos que
+> fueron retirados durante el acondicionamiento como API REST. Las instrucciones
+> vigentes se encuentran en `README.md` y `docs/API_REST_LOCAL.md`.
+
 ## 2026-07-10 | Manutencao | Alta por defecto del prestador de internet
 - Componente afectado: Backend (`Quadras`)
 - Archivos tocados:

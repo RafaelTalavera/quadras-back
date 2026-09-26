@@ -47,6 +47,7 @@ public class MassageProviderService {
 		final MassageProvider saved = massageProviderRepository.save(
 				MassageProvider.create(input.name(), input.specialty(), input.contact())
 		);
+		saved.configureWhatsapp(input.whatsappNumber(), Boolean.TRUE.equals(input.whatsappEnabled()));
 		auditTrailService.record(
 				"massages",
 				"massage-provider",
@@ -71,6 +72,7 @@ public class MassageProviderService {
 				input.contact(),
 				input.active()
 		);
+		provider.configureWhatsapp(input.whatsappNumber(), Boolean.TRUE.equals(input.whatsappEnabled()));
 		recordAudit(
 				"massage-provider",
 				provider.getId(),
@@ -237,6 +239,8 @@ public class MassageProviderService {
 		snapshot.put("name", provider.getName());
 		snapshot.put("specialty", provider.getSpecialty());
 		snapshot.put("contact", provider.getContact());
+		snapshot.put("whatsappNumber", provider.getWhatsappNumber());
+		snapshot.put("whatsappEnabled", provider.isWhatsappEnabled());
 		snapshot.put("active", provider.isActive());
 		snapshot.put("createdAt", toValue(provider.getCreatedAt()));
 		snapshot.put("updatedAt", toValue(provider.getUpdatedAt()));

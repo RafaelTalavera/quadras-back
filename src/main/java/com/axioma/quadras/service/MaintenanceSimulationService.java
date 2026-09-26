@@ -81,6 +81,38 @@ public class MaintenanceSimulationService {
 					"Servico de internet",
 					"Conectividade, Wi-Fi, cabeamento e suporte de rede.",
 					"noc@conectahotel.local"
+			),
+			new ProviderSeed(
+					MaintenanceProviderType.EXTERNAL,
+					MaintenanceProviderSpecialty.DOORS_AND_WINDOWS,
+					"Esquadrias Norte",
+					"Servico de portas e janelas",
+					"Fechaduras, portas, janelas e esquadrias.",
+					"suporte@esquadriasnorte.local"
+			),
+			new ProviderSeed(
+					MaintenanceProviderType.EXTERNAL,
+					MaintenanceProviderSpecialty.CAMERAS,
+					"Video Norte",
+					"Servico de cameras",
+					"Cameras, gravadores e monitoramento.",
+					"suporte@videonorte.local"
+			),
+			new ProviderSeed(
+					MaintenanceProviderType.EXTERNAL,
+					MaintenanceProviderSpecialty.TELEPHONES,
+					"Telefonia Norte",
+					"Servico de telefones",
+					"Aparelhos, ramais e linhas telefonicas.",
+					"suporte@telefonianorte.local"
+			),
+			new ProviderSeed(
+					MaintenanceProviderType.EXTERNAL,
+					MaintenanceProviderSpecialty.IT_SUPPORT,
+					"TI Norte",
+					"Suporte de TI",
+					"Computadores, sistemas e infraestrutura de TI.",
+					"suporte@tinorte.local"
 			)
 	);
 	private static final List<RequesterSeed> GUEST_REQUESTERS = List.of(
@@ -133,6 +165,27 @@ public class MaintenanceSimulationService {
 			"Wi-Fi intermitente",
 			"Ponto de rede sem sinal",
 			"Lentidao na internet"
+	);
+	private static final List<String> DOORS_AND_WINDOWS_TITLES = List.of(
+			"Porta nao fecha",
+			"Fechadura com defeito",
+			"Janela emperrada",
+			"Vedacao da janela danificada"
+	);
+	private static final List<String> CAMERA_TITLES = List.of(
+			"Camera sem imagem",
+			"Gravador de video indisponivel",
+			"Ajustar camera de seguranca"
+	);
+	private static final List<String> TELEPHONE_TITLES = List.of(
+			"Ramal sem sinal",
+			"Telefone nao completa chamada",
+			"Aparelho telefonico com defeito"
+	);
+	private static final List<String> IT_TITLES = List.of(
+			"Computador nao inicia",
+			"Sistema interno indisponivel",
+			"Impressora sem conexao"
 	);
 	private static final List<String> COMPLETION_NOTES = List.of(
 			"Trabalho finalizado e validado pela manutencao.",
@@ -462,7 +515,7 @@ public class MaintenanceSimulationService {
 
 	private IssueSeed chooseIssue(List<MaintenanceLocation> locations, Random random) {
 		final double marker = random.nextDouble();
-		if (marker < 0.62) {
+		if (marker < 0.52) {
 			return new IssueSeed(
 					randomItem(GENERAL_ROOM_TITLES, random),
 					MaintenanceProviderSpecialty.GENERAL_MAINTENANCE,
@@ -472,7 +525,7 @@ public class MaintenanceSimulationService {
 					true
 			);
 		}
-		if (marker < 0.87) {
+		if (marker < 0.74) {
 			return new IssueSeed(
 					randomItem(AIR_TITLES, random),
 					MaintenanceProviderSpecialty.AIR_CONDITIONING,
@@ -482,7 +535,7 @@ public class MaintenanceSimulationService {
 					true
 			);
 		}
-		if (marker < 0.95) {
+		if (marker < 0.82) {
 			return new IssueSeed(
 					randomItem(INTERNET_TITLES, random),
 					MaintenanceProviderSpecialty.INTERNET,
@@ -490,6 +543,40 @@ public class MaintenanceSimulationService {
 					30,
 					120,
 					true
+			);
+		}
+		if (marker < 0.87) {
+			return new IssueSeed(
+					randomItem(DOORS_AND_WINDOWS_TITLES, random),
+					MaintenanceProviderSpecialty.DOORS_AND_WINDOWS,
+					randomPriority(random, true),
+					30,
+					120,
+					true
+			);
+		}
+		if (marker < 0.91) {
+			return new IssueSeed(
+					randomItem(CAMERA_TITLES, random),
+					MaintenanceProviderSpecialty.CAMERAS,
+					randomPriority(random, true),
+					30, 120, true
+			);
+		}
+		if (marker < 0.95) {
+			return new IssueSeed(
+					randomItem(TELEPHONE_TITLES, random),
+					MaintenanceProviderSpecialty.TELEPHONES,
+					randomPriority(random, true),
+					25, 90, true
+			);
+		}
+		if (marker < 0.98) {
+			return new IssueSeed(
+					randomItem(IT_TITLES, random),
+					MaintenanceProviderSpecialty.IT_SUPPORT,
+					randomPriority(random, true),
+					30, 120, true
 			);
 		}
 		return new IssueSeed(
@@ -510,7 +597,7 @@ public class MaintenanceSimulationService {
 		final Predicate<MaintenanceLocation> filter = switch (specialty) {
 			case ELEVATORS -> location -> location.getLocationType() == MaintenanceLocationType.COMMON_AREA;
 			case AIR_CONDITIONING -> location -> true;
-			case INTERNET -> location -> true;
+			case INTERNET, DOORS_AND_WINDOWS, CAMERAS, TELEPHONES, IT_SUPPORT -> location -> true;
 			case GENERAL_MAINTENANCE -> location -> true;
 		};
 		final List<MaintenanceLocation> filtered = locations.stream()
@@ -558,6 +645,10 @@ public class MaintenanceSimulationService {
 			case AIR_CONDITIONING -> "sim.aires.ext";
 			case ELEVATORS -> "sim.elevadores.ext";
 			case INTERNET -> "sim.internet.ext";
+			case DOORS_AND_WINDOWS -> "sim.doors.ext";
+			case CAMERAS -> "sim.cameras.ext";
+			case TELEPHONES -> "sim.telephones.ext";
+			case IT_SUPPORT -> "sim.it.ext";
 		};
 	}
 

@@ -17,7 +17,7 @@ if ([string]::IsNullOrWhiteSpace($Username)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Password)) {
-    $Password = "Costanorte2026!"
+    $Password = "123456"
 }
 
 $jarPath = "target/costanorte-0.0.1-SNAPSHOT.jar"

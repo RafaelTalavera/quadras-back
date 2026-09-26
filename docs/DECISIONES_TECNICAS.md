@@ -1,5 +1,24 @@
 # DECISIONES TECNICAS - COSTANORTE
 
+## DT-028 - Avisos WhatsApp manuales por Web o Windows
+- Fecha: 2026-09-14
+- Estado: Activa; sustituye DT-027
+- Contexto: La Cloud API introduce costo y automatismos que la operación no desea asumir.
+- Decisión: COSTANORTE solo prepara destinatario y texto. El operador elige Web o aplicación Windows y confirma el envío en WhatsApp. No se infieren estados de envío o entrega por abrir el enlace.
+- Impacto: se retiran worker, webhook, credenciales y presupuestos API; se conservan números de proveedores. V32 permanece histórica hasta verificar cada base externa.
+
+## DT-027 - WhatsApp Cloud API desacoplada de la operacion local
+- Fecha: 2026-07-24
+- Estado: Sustituida por DT-028 el 2026-09-14
+- Contexto: El sistema necesita enviar notificaciones y recibir acciones de usuarios y prestadores por WhatsApp, pero la operacion local del hotel debe seguir funcionando sin Internet y el comportamiento actual solo abre WhatsApp desde Flutter sin confirmacion de envio ni recepcion.
+- Decision: Integrar la API oficial WhatsApp Cloud API exclusivamente desde Spring Boot, mantener secretos fuera de Flutter y Git, y desacoplar los envios de las transacciones de negocio mediante una bandeja persistente. Una indisponibilidad de Meta no debe impedir guardar ordenes ni otras operaciones locales. Los webhooks publicos deben verificar autenticidad, aplicar idempotencia y registrar estados de mensaje.
+- Impacto:
+  - permite envio y recepcion interactiva con trazabilidad backend
+  - conserva la arquitectura local-first definida por DT-001
+  - evita exponer credenciales de Meta en el cliente Flutter
+  - introduce persistencia, reintentos y operacion degradada como requisitos antes de activar notificaciones automaticas
+  - obliga a tratar la implementacion como cambio cross-repo cuando se expongan estados o acciones en Flutter
+
 ## DT-026 - Manutencao con flujo operativo guiado por prestador y contrato minimo
 - Fecha: 2026-07-10
 - Estado: Activa

@@ -41,7 +41,7 @@ if (Test-Path $pidPath) {
                 profile = $Profile
                 baseUrl = "http://127.0.0.1:$Port/api/v1"
                 username = ${env:COSTANORTE_DEMO_USER_USERNAME}
-                password = if ([string]::IsNullOrWhiteSpace($env:COSTANORTE_DEMO_USER_PASSWORD)) { "Costanorte2026!" } else { $env:COSTANORTE_DEMO_USER_PASSWORD }
+                password = if ([string]::IsNullOrWhiteSpace($env:COSTANORTE_DEMO_USER_PASSWORD)) { "123456" } else { $env:COSTANORTE_DEMO_USER_PASSWORD }
                 stdoutPath = $stdoutPath
                 stderrPath = $stderrPath
             } | ConvertTo-Json -Depth 4
@@ -86,7 +86,7 @@ else {
 }
 
 $password = if ([string]::IsNullOrWhiteSpace($env:COSTANORTE_DEMO_USER_PASSWORD)) {
-    "Costanorte2026!"
+    "123456"
 }
 else {
     $env:COSTANORTE_DEMO_USER_PASSWORD

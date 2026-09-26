@@ -10,6 +10,8 @@ public interface MassageProviderListItemView {
 	String getSpecialty();
 
 	String getContact();
+	String getWhatsappNumber();
+	Boolean getWhatsappEnabled();
 
 	Boolean getActive();
 

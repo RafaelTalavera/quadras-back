@@ -45,6 +45,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class MaintenanceOrderService {
 
 	private static final int MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+	private static final int MAX_ATTACHMENT_BASE64_CHARS =
+			4 * ((MAX_ATTACHMENT_BYTES + 2) / 3);
 	private static final int DEFAULT_COMPACT_PAGE_SIZE = 25;
 	private static final int MAX_COMPACT_PAGE_SIZE = 100;
 	private static final MaintenancePriority DEFAULT_FORM_PRIORITY = MaintenancePriority.MEDIUM;
@@ -476,6 +478,15 @@ public class MaintenanceOrderService {
 	}
 
 	private byte[] decodeBase64(String base64Content) {
+		if (base64Content == null || base64Content.isBlank()) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "Attachment content cannot be empty.");
+		}
+		if (base64Content.length() > MAX_ATTACHMENT_BASE64_CHARS) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"Attachment exceeds the maximum allowed size."
+			);
+		}
 		try {
 			final byte[] decoded = Base64.getDecoder().decode(base64Content);
 			if (decoded.length == 0) {

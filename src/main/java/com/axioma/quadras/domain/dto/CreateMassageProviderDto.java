@@ -12,6 +12,8 @@ public record CreateMassageProviderDto(
 		String specialty,
 		@NotBlank(message = "contact is required")
 		@Size(max = 120, message = "contact must be <= 120 chars")
-		String contact
+		String contact,
+		@Size(max = 20, message = "whatsappNumber must be <= 20 chars") String whatsappNumber,
+		Boolean whatsappEnabled
 ) {
 }

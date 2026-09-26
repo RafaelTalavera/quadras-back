@@ -1,5 +1,9 @@
 # RAILWAY BACKEND RAM - ANALISIS Y AJUSTES
 
+> Documento historico. Las referencias a scripts de arranque Windows describen
+> mediciones anteriores y no forman parte de la estructura REST local vigente.
+> Para la operacion actual consultar `README.md` y `docs/API_REST_LOCAL.md`.
+
 ## Objetivo
 Reducir el costo fijo de RAM del backend desplegable en Railway sin apagar modulos funcionales de negocio ni introducir degradacion evidente en el rendimiento operativo.
 
