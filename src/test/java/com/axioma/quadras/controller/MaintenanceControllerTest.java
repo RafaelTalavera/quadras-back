@@ -11,17 +11,26 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.axioma.quadras.domain.model.MaintenanceLocation;
 import com.axioma.quadras.domain.model.MaintenanceLocationCategory;
 import com.axioma.quadras.domain.model.MaintenanceLocationType;
+import com.axioma.quadras.domain.model.MaintenanceNotification;
+import com.axioma.quadras.domain.model.MaintenanceNotificationStatus;
+import com.axioma.quadras.domain.model.MaintenanceNotificationType;
 import com.axioma.quadras.domain.model.MaintenanceOrder;
 import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProvider;
 import com.axioma.quadras.domain.model.MaintenanceProviderSpecialty;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
 import com.axioma.quadras.domain.model.MaintenanceRequestOrigin;
+import com.axioma.quadras.domain.model.NotificationChannel;
+import com.axioma.quadras.domain.model.NotificationDeliveryStatus;
+import com.axioma.quadras.domain.model.NotificationOutbox;
 import com.axioma.quadras.repository.MaintenanceLocationRepository;
+import com.axioma.quadras.repository.MaintenanceNotificationRepository;
 import com.axioma.quadras.repository.MaintenanceOrderAttachmentRepository;
 import com.axioma.quadras.repository.MaintenanceOrderRepository;
 import com.axioma.quadras.repository.MaintenancePlanRepository;
 import com.axioma.quadras.repository.MaintenanceProviderRepository;
+import com.axioma.quadras.repository.NotificationOutboxRepository;
+import com.axioma.quadras.repository.PushSubscriptionRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
@@ -45,7 +54,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 @TestPropertySource(properties = {
 		"spring.flyway.enabled=true",
-		"spring.jpa.hibernate.ddl-auto=validate"
+		"spring.jpa.hibernate.ddl-auto=validate",
+		"costanorte.push-subscriptions.encryption-key=costanorte-test-push-encryption-key-2026"
 })
 class MaintenanceControllerTest {
 
@@ -57,6 +67,15 @@ class MaintenanceControllerTest {
 
 	@Autowired
 	private MaintenanceOrderRepository maintenanceOrderRepository;
+
+	@Autowired
+	private MaintenanceNotificationRepository maintenanceNotificationRepository;
+
+	@Autowired
+	private NotificationOutboxRepository notificationOutboxRepository;
+
+	@Autowired
+	private PushSubscriptionRepository pushSubscriptionRepository;
 
 	@Autowired
 	private MaintenanceProviderRepository maintenanceProviderRepository;
@@ -73,12 +92,118 @@ class MaintenanceControllerTest {
 
 	@BeforeEach
 	void cleanDb() throws Exception {
+		pushSubscriptionRepository.deleteAll();
+		notificationOutboxRepository.deleteAll();
+		maintenanceNotificationRepository.deleteAll();
 		maintenanceOrderAttachmentRepository.deleteAll();
 		maintenanceOrderRepository.deleteAll();
 		maintenancePlanRepository.deleteAll();
 		maintenanceProviderRepository.deleteAll();
 		maintenanceLocationRepository.deleteAll();
 		accessToken = authenticate();
+	}
+
+	@Test
+	void shouldRegisterRefreshHeartbeatAndUnregisterPushSubscription() throws Exception {
+		final String firstToken = "fcm-registration-token-value-000000000001";
+		mockMvc.perform(post("/api/v1/push/subscriptions")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "installationId": "web.installation-001",
+								  "platform": "WEB",
+								  "provider": "FIREBASE",
+								  "token": "%s"
+								}
+								""".formatted(firstToken)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.installationId").value("web.installation-001"))
+				.andExpect(jsonPath("$.platform").value("WEB"))
+				.andExpect(jsonPath("$.active").value(true))
+				.andExpect(jsonPath("$.token").doesNotExist());
+
+		final var stored = pushSubscriptionRepository.findAll().get(0);
+		assertThat(stored.getEncryptedToken()).doesNotContain(firstToken);
+		assertThat(stored.getTokenHash()).hasSize(64);
+
+		final String rotatedToken = "fcm-registration-token-value-000000000002";
+		mockMvc.perform(post("/api/v1/push/subscriptions")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "installationId": "web.installation-001",
+								  "platform": "WEB",
+								  "provider": "FIREBASE",
+								  "token": "%s"
+								}
+								""".formatted(rotatedToken)))
+				.andExpect(status().isOk());
+		assertThat(pushSubscriptionRepository.count()).isEqualTo(1);
+
+		mockMvc.perform(patch("/api/v1/push/subscriptions/web.installation-001/heartbeat")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isNoContent());
+
+		mockMvc.perform(delete("/api/v1/push/subscriptions/web.installation-001")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isNoContent());
+		mockMvc.perform(delete("/api/v1/push/subscriptions/web.installation-001")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isNoContent());
+
+		final var inactive = pushSubscriptionRepository.findAll().get(0);
+		assertThat(inactive.isActive()).isFalse();
+		assertThat(inactive.getEncryptedToken()).isNull();
+		assertThat(inactive.getTokenHash()).isNull();
+	}
+
+	@Test
+	void shouldRequireAuthenticationAndValidPushSubscriptionPayload() throws Exception {
+		mockMvc.perform(post("/api/v1/push/subscriptions")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{}"))
+				.andExpect(status().isUnauthorized());
+
+		mockMvc.perform(post("/api/v1/push/subscriptions")
+						.header(HttpHeaders.AUTHORIZATION, bearerToken())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "installationId": "bad id",
+								  "platform": "WEB",
+								  "provider": "FIREBASE",
+								  "token": "short"
+								}
+								"""))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void shouldIsolatePushSubscriptionOwnershipAndReassignInstallation() throws Exception {
+		final String installationId = "shared.installation-001";
+		final String token = "fcm-shared-registration-token-000000000001";
+		registerPushSubscription(accessToken, installationId, token);
+
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
+		registerPushSubscription(supervisorToken, installationId, token);
+
+		assertThat(pushSubscriptionRepository.findAll())
+				.filteredOn(subscription -> subscription.getUsername().equals("operador.demo"))
+				.singleElement()
+				.satisfies(subscription -> {
+					assertThat(subscription.isActive()).isFalse();
+					assertThat(subscription.getEncryptedToken()).isNull();
+				});
+		assertThat(pushSubscriptionRepository.findAll())
+				.filteredOn(subscription -> subscription.getUsername().equals("supervisor.demo"))
+				.singleElement()
+				.satisfies(subscription -> assertThat(subscription.isActive()).isTrue());
+
+		mockMvc.perform(patch("/api/v1/push/subscriptions/{installationId}/heartbeat", installationId)
+						.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isNotFound());
 	}
 
 	@Test
@@ -96,6 +221,257 @@ class MaintenanceControllerTest {
 								  "active": true
 								}
 								"""))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void shouldRescheduleWithOptimisticScheduleVersion() throws Exception {
+		final long locationId = createLocation("ROOM", "208", "Habitacion 208", "2", "Cuarto");
+		final long providerId = createProvider(
+				"INTERNAL",
+				"GENERAL_MAINTENANCE",
+				"Equipo interno",
+				"Mantenimiento general",
+				"Operacion del hotel"
+		);
+		final long orderId = createOrder(
+				locationId,
+				providerId,
+				"Revisar cerradura",
+				"Revision preventiva",
+				"2026-04-10T10:00:00",
+				"2026-04-10T11:00:00"
+		);
+
+		mockMvc.perform(patch("/api/v1/maintenance/orders/{orderId}/reschedule", orderId)
+					.header(HttpHeaders.AUTHORIZATION, bearerToken())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "scheduledStartAt": "2026-04-10T12:00:00",
+							  "scheduledEndAt": "2026-04-10T13:30:00",
+							  "reason": "Cambio de disponibilidad",
+							  "expectedScheduleVersion": 1
+							}
+							"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.scheduleVersion").value(2))
+				.andExpect(jsonPath("$.scheduledStartAt").value("2026-04-10T12:00:00"))
+				.andExpect(jsonPath("$.scheduledEndAt").value("2026-04-10T13:30:00"));
+
+		mockMvc.perform(patch("/api/v1/maintenance/orders/{orderId}/reschedule", orderId)
+					.header(HttpHeaders.AUTHORIZATION, bearerToken())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "scheduledStartAt": "2026-04-10T14:00:00",
+							  "scheduledEndAt": "2026-04-10T15:00:00",
+							  "reason": "Segundo cambio",
+							  "expectedScheduleVersion": 1
+							}
+							"""))
+				.andExpect(status().isConflict());
+	}
+
+	@Test
+	void shouldResolveActiveNotificationAndAbandonPendingPushWhenRescheduling() throws Exception {
+		final long locationId = createLocation("ROOM", "210", "Habitacion 210", "2", "Cuarto");
+		final long providerId = createProvider(
+				"INTERNAL",
+				"GENERAL_MAINTENANCE",
+				"Equipo preventivo",
+				"Mantenimiento general",
+				"Operacion del hotel"
+		);
+		final long orderId = createOrder(
+				locationId,
+				providerId,
+				"Revisar tablero",
+				"Control preventivo",
+				"2026-04-10T10:00:00",
+				"2026-04-10T11:00:00"
+		);
+		final MaintenanceOrder order = maintenanceOrderRepository.findById(orderId).orElseThrow();
+		final MaintenanceNotification notification = maintenanceNotificationRepository.save(
+				MaintenanceNotification.create(
+						order,
+						"operador.demo",
+						MaintenanceNotificationType.DUE_TO_START,
+						order.getScheduleVersion(),
+						"INITIAL",
+						"Manutencao pronta para iniciar",
+						"Habitacion 210 - Revisar tablero",
+						OffsetDateTime.parse("2026-04-10T13:00:00Z")
+				)
+		);
+		final NotificationOutbox outbox = notificationOutboxRepository.save(
+				NotificationOutbox.pending(
+						notification,
+						NotificationChannel.PUSH,
+						"operador.demo",
+						"maintenance:test:reschedule",
+						OffsetDateTime.parse("2026-04-10T13:00:00Z")
+				)
+		);
+
+		mockMvc.perform(patch("/api/v1/maintenance/orders/{orderId}/reschedule", orderId)
+					.header(HttpHeaders.AUTHORIZATION, bearerToken())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "scheduledStartAt": "2026-04-10T12:00:00",
+							  "scheduledEndAt": "2026-04-10T13:00:00",
+							  "reason": "Cambio operativo",
+							  "expectedScheduleVersion": 1
+							}
+							"""))
+				.andExpect(status().isOk());
+
+		assertThat(maintenanceNotificationRepository.findById(notification.getId()).orElseThrow().getStatus())
+				.isEqualTo(MaintenanceNotificationStatus.RESOLVED);
+		assertThat(notificationOutboxRepository.findById(outbox.getId()).orElseThrow().getDeliveryStatus())
+				.isEqualTo(NotificationDeliveryStatus.ABANDONED);
+	}
+
+	@Test
+	void shouldExposeOnlyOwnNotificationInboxAndSupportReadAndDismiss() throws Exception {
+		final long locationId = createLocation("ROOM", "211", "Habitacion 211", "2", "Cuarto");
+		final long providerId = createProvider(
+				"INTERNAL",
+				"GENERAL_MAINTENANCE",
+				"Equipo de avisos",
+				"Mantenimiento general",
+				"Operacion del hotel"
+		);
+		final long orderId = createOrder(
+				locationId,
+				providerId,
+				"Revisar sensor",
+				"Control de funcionamiento",
+				"2026-04-10T10:00:00",
+				"2026-04-10T11:00:00"
+		);
+		final MaintenanceOrder order = maintenanceOrderRepository.findById(orderId).orElseThrow();
+		final MaintenanceNotification ownNotification = maintenanceNotificationRepository.save(
+				MaintenanceNotification.create(
+						order,
+						"operador.demo",
+						MaintenanceNotificationType.DUE_TO_START,
+						order.getScheduleVersion(),
+						"INITIAL",
+						"Manutencao pronta para iniciar",
+						"Habitacion 211 - Revisar sensor",
+						OffsetDateTime.parse("2026-04-10T13:00:00Z")
+				)
+		);
+		final MaintenanceNotification foreignNotification = maintenanceNotificationRepository.save(
+				MaintenanceNotification.create(
+						order,
+						"supervisor.demo",
+						MaintenanceNotificationType.DUE_TO_START,
+						order.getScheduleVersion(),
+						"INITIAL",
+						"Manutencao pronta para iniciar",
+						"Habitacion 211 - Revisar sensor",
+						OffsetDateTime.parse("2026-04-10T13:00:00Z")
+				)
+		);
+
+		mockMvc.perform(get("/api/v1/notifications")
+					.header(HttpHeaders.AUTHORIZATION, bearerToken())
+					.param("module", "maintenance")
+					.param("status", "UNREAD")
+					.param("page", "0")
+					.param("size", "20"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.page").value(0))
+				.andExpect(jsonPath("$.size").value(20))
+				.andExpect(jsonPath("$.hasNext").value(false))
+				.andExpect(jsonPath("$.items.length()").value(1))
+				.andExpect(jsonPath("$.items[0].id").value(ownNotification.getId()))
+				.andExpect(jsonPath("$.items[0].orderId").value(orderId))
+				.andExpect(jsonPath("$.items[0].status").value("UNREAD"));
+
+		mockMvc.perform(get("/api/v1/notifications/unread-count")
+					.header(HttpHeaders.AUTHORIZATION, bearerToken())
+					.param("module", "maintenance"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.count").value(1));
+
+		mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", foreignNotification.getId())
+					.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isNotFound());
+
+		mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", ownNotification.getId())
+					.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isNoContent());
+		mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", ownNotification.getId())
+					.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isNoContent());
+
+		mockMvc.perform(patch("/api/v1/notifications/{notificationId}/dismiss", ownNotification.getId())
+					.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isNoContent());
+		assertThat(maintenanceNotificationRepository.findById(ownNotification.getId()).orElseThrow().getStatus())
+				.isEqualTo(MaintenanceNotificationStatus.DISMISSED);
+
+		mockMvc.perform(get("/api/v1/notifications/unread-count")
+					.header(HttpHeaders.AUTHORIZATION, bearerToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.count").value(0));
+	}
+
+	@Test
+	void shouldListOverlappingCalendarOrdersAndSeparateBacklog() throws Exception {
+		final long locationId = createLocation("ROOM", "209", "Habitacion 209", "2", "Cuarto");
+		final long providerId = createProvider(
+				"INTERNAL",
+				"GENERAL_MAINTENANCE",
+				"Equipo nocturno",
+				"Mantenimiento general",
+				"Operacion del hotel"
+		);
+		final long overlappingOrderId = createOrder(
+				locationId,
+				providerId,
+				"Revision nocturna",
+				"Cruza el inicio del rango",
+				"2026-04-30T23:00:00",
+				"2026-05-01T02:00:00"
+		);
+		final String backlogResponse = mockMvc.perform(post("/api/v1/maintenance/orders")
+					.header(HttpHeaders.AUTHORIZATION, bearerToken())
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{
+							  "locationId": %d,
+							  "providerId": %d,
+							  "title": "Reparacion pendiente",
+							  "description": "Sin horario asignado",
+							  "requestOrigin": "INTERNAL_ROLE",
+							  "requestedForGuest": false
+							}
+							""".formatted(locationId, providerId)))
+				.andExpect(status().isCreated())
+				.andReturn().getResponse().getContentAsString();
+		final long backlogOrderId = objectMapper.readTree(backlogResponse).get("id").asLong();
+
+		mockMvc.perform(get("/api/v1/maintenance/orders/calendar")
+					.header(HttpHeaders.AUTHORIZATION, bearerToken())
+					.param("rangeStart", "2026-05-01T00:00:00")
+					.param("rangeEndExclusive", "2026-05-02T00:00:00"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rangeStart").value("2026-05-01T00:00:00"))
+				.andExpect(jsonPath("$.scheduledOrders.length()").value(1))
+				.andExpect(jsonPath("$.scheduledOrders[0].id").value(overlappingOrderId))
+				.andExpect(jsonPath("$.backlogOrders.length()").value(1))
+				.andExpect(jsonPath("$.backlogOrders[0].id").value(backlogOrderId))
+				.andExpect(jsonPath("$.backlogHasMore").value(false));
+
+		mockMvc.perform(get("/api/v1/maintenance/orders/calendar")
+					.header(HttpHeaders.AUTHORIZATION, bearerToken())
+					.param("rangeStart", "2026-01-01T00:00:00")
+					.param("rangeEndExclusive", "2026-04-01T00:00:00"))
 				.andExpect(status().isBadRequest());
 	}
 
@@ -1015,12 +1391,31 @@ class MaintenanceControllerTest {
 	}
 
 	private String authenticate() throws Exception {
+		return authenticate("operador.demo", "123456");
+	}
+
+	private void registerPushSubscription(String token, String installationId, String pushToken) throws Exception {
+		mockMvc.perform(post("/api/v1/push/subscriptions")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "installationId": "%s",
+								  "platform": "WEB",
+								  "provider": "FIREBASE",
+								  "token": "%s"
+								}
+								""".formatted(installationId, pushToken)))
+				.andExpect(status().isOk());
+	}
+
+	private String authenticate(String username, String password) throws Exception {
 		final String payload = """
 				{
-				  "username": "operador.demo",
-				  "password": "123456"
+				  "username": "%s",
+				  "password": "%s"
 				}
-				""";
+				""".formatted(username, password);
 
 		final String responseBody = mockMvc.perform(post("/api/v1/auth/login")
 						.contentType(MediaType.APPLICATION_JSON)

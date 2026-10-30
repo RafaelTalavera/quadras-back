@@ -6,10 +6,12 @@ import com.axioma.quadras.domain.dto.CancelMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.CompleteMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.CreateMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.MaintenanceConflictDto;
+import com.axioma.quadras.domain.dto.MaintenanceCalendarDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderListDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderListPageDto;
+import com.axioma.quadras.domain.dto.RescheduleMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.StartMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenancePaymentDto;
@@ -27,6 +29,7 @@ import com.axioma.quadras.repository.MaintenanceOrderRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Comparator;
@@ -49,6 +52,9 @@ public class MaintenanceOrderService {
 			4 * ((MAX_ATTACHMENT_BYTES + 2) / 3);
 	private static final int DEFAULT_COMPACT_PAGE_SIZE = 25;
 	private static final int MAX_COMPACT_PAGE_SIZE = 100;
+	private static final int DEFAULT_CALENDAR_BACKLOG_SIZE = 50;
+	private static final int MAX_CALENDAR_BACKLOG_SIZE = 100;
+	private static final long MAX_CALENDAR_RANGE_DAYS = 62;
 	private static final MaintenancePriority DEFAULT_FORM_PRIORITY = MaintenancePriority.MEDIUM;
 	private static final EnumSet<MaintenanceOrderStatus> ACTIVE_CONFLICT_STATUSES = EnumSet.of(
 			MaintenanceOrderStatus.SCHEDULED,
@@ -62,6 +68,7 @@ public class MaintenanceOrderService {
 	private final MaintenancePlanService maintenancePlanService;
 	private final ScheduleSyncEventPublisher scheduleSyncEventPublisher;
 	private final AuditTrailService auditTrailService;
+	private final MaintenanceNotificationLifecycleService notificationLifecycleService;
 
 	public MaintenanceOrderService(
 			MaintenanceOrderRepository maintenanceOrderRepository,
@@ -70,7 +77,8 @@ public class MaintenanceOrderService {
 			MaintenanceProviderService maintenanceProviderService,
 			MaintenancePlanService maintenancePlanService,
 			ScheduleSyncEventPublisher scheduleSyncEventPublisher,
-			AuditTrailService auditTrailService
+			AuditTrailService auditTrailService,
+			MaintenanceNotificationLifecycleService notificationLifecycleService
 	) {
 		this.maintenanceOrderRepository = maintenanceOrderRepository;
 		this.maintenanceOrderAttachmentRepository = maintenanceOrderAttachmentRepository;
@@ -79,6 +87,7 @@ public class MaintenanceOrderService {
 		this.maintenancePlanService = maintenancePlanService;
 		this.scheduleSyncEventPublisher = scheduleSyncEventPublisher;
 		this.auditTrailService = auditTrailService;
+		this.notificationLifecycleService = notificationLifecycleService;
 	}
 
 	public List<MaintenanceOrderDto> list(
@@ -144,6 +153,65 @@ public class MaintenanceOrderService {
 				safeSize,
 				items.hasNext(),
 				items.getContent().stream().map(MaintenanceOrderListDto::from).toList()
+		);
+	}
+
+	public MaintenanceCalendarDto calendar(
+			LocalDateTime rangeStart,
+			LocalDateTime rangeEndExclusive,
+			Long locationId,
+			Long providerId,
+			com.axioma.quadras.domain.model.MaintenanceProviderType providerType,
+			MaintenanceOrderStatus status,
+			com.axioma.quadras.domain.model.MaintenancePriority priority,
+			Integer backlogSize
+	) {
+		validateCalendarRange(rangeStart, rangeEndExclusive);
+		final int safeBacklogSize = normalizeCalendarBacklogSize(backlogSize);
+		final List<MaintenanceOrder> scheduled = maintenanceOrderRepository.findCalendarScheduledOrders(
+				rangeStart,
+				rangeEndExclusive,
+				locationId,
+				providerId,
+				providerType,
+				status,
+				priority
+		);
+		final List<MaintenanceOrder> backlogCandidates = maintenanceOrderRepository.findCalendarBacklogOrders(
+				EnumSet.of(MaintenanceOrderStatus.OPEN, MaintenanceOrderStatus.ASSIGNED),
+				locationId,
+				providerId,
+				providerType,
+				status,
+				priority,
+				PageRequest.of(0, safeBacklogSize + 1)
+		);
+		final boolean backlogHasMore = backlogCandidates.size() > safeBacklogSize;
+		final List<MaintenanceOrder> backlog = backlogHasMore
+				? backlogCandidates.subList(0, safeBacklogSize)
+				: backlogCandidates;
+		final List<Long> orderIds = java.util.stream.Stream.concat(
+					scheduled.stream(),
+					backlog.stream()
+			).map(MaintenanceOrder::getId).toList();
+		final Map<Long, List<MaintenanceOrderAttachmentDto>> attachmentsByOrderId =
+				loadAttachmentMetadataByOrderId(orderIds);
+		return new MaintenanceCalendarDto(
+				rangeStart,
+				rangeEndExclusive,
+				scheduled.stream()
+						.map(order -> MaintenanceOrderDto.from(
+								order,
+								attachmentsByOrderId.getOrDefault(order.getId(), List.of())
+						))
+						.toList(),
+				backlog.stream()
+						.map(order -> MaintenanceOrderDto.from(
+								order,
+								attachmentsByOrderId.getOrDefault(order.getId(), List.of())
+						))
+						.toList(),
+				backlogHasMore
 		);
 	}
 
@@ -241,6 +309,33 @@ public class MaintenanceOrderService {
 	}
 
 	@Transactional
+	public MaintenanceOrderDto reschedule(
+			Long orderId,
+			RescheduleMaintenanceOrderDto input,
+			String actorUsername
+	) {
+		final MaintenanceOrder order = findOrThrow(orderId);
+		if (order.getScheduleVersion() != input.expectedScheduleVersion()) {
+			throw new ApplicationException(
+					HttpStatus.CONFLICT,
+					"Maintenance order schedule changed; reload it before rescheduling."
+			);
+		}
+		final Map<String, Object> beforeState = snapshot(order);
+		final LocalDate previousReferenceDate = referenceDate(order);
+		order.reschedule(input.scheduledStartAt(), input.scheduledEndAt(), actorUsername);
+		notificationLifecycleService.resolveActiveForOrder(order.getId());
+		recordAudit(
+				"RESCHEDULED",
+				"Orden de mantenimiento reagendada. Motivo: " + input.reason().trim(),
+				order,
+				beforeState
+		);
+		publishOrderEvent(order, "rescheduled", previousReferenceDate);
+		return toDto(order);
+	}
+
+	@Transactional
 	public MaintenanceOrderDto start(
 			Long orderId,
 			StartMaintenanceOrderDto input,
@@ -249,6 +344,7 @@ public class MaintenanceOrderService {
 		final MaintenanceOrder order = findOrThrow(orderId);
 		final Map<String, Object> beforeState = snapshot(order);
 		order.start(input == null ? null : input.startedAt(), actorUsername);
+		notificationLifecycleService.resolveActiveForOrder(order.getId());
 		recordAudit("STARTED", "Orden de mantenimiento iniciada", order, beforeState);
 		publishOrderEvent(order, "started");
 		return toDto(order);
@@ -282,6 +378,7 @@ public class MaintenanceOrderService {
 		final MaintenanceOrder order = findOrThrow(orderId);
 		final Map<String, Object> beforeState = snapshot(order);
 		order.complete(input.completedAt(), input.resolutionNotes(), actorUsername);
+		notificationLifecycleService.resolveActiveForOrder(order.getId());
 		recordAudit("COMPLETED", "Orden de mantenimiento completada", order, beforeState);
 		publishOrderEvent(order, "completed");
 		return toDto(order);
@@ -296,6 +393,7 @@ public class MaintenanceOrderService {
 		final MaintenanceOrder order = findOrThrow(orderId);
 		final Map<String, Object> beforeState = snapshot(order);
 		order.cancel(input.cancellationNotes(), actorUsername);
+		notificationLifecycleService.resolveActiveForOrder(order.getId());
 		recordAudit("CANCELLED", "Orden de mantenimiento cancelada", order, beforeState);
 		publishOrderEvent(order, "cancelled");
 		return toDto(order);
@@ -407,6 +505,43 @@ public class MaintenanceOrderService {
 					"dateFrom must be before or equal to dateTo"
 			);
 		}
+	}
+
+	private void validateCalendarRange(
+			LocalDateTime rangeStart,
+			LocalDateTime rangeEndExclusive
+	) {
+		if (rangeStart == null || rangeEndExclusive == null) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"rangeStart and rangeEndExclusive are required"
+			);
+		}
+		if (!rangeStart.isBefore(rangeEndExclusive)) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"rangeStart must be before rangeEndExclusive"
+			);
+		}
+		if (Duration.between(rangeStart, rangeEndExclusive).compareTo(Duration.ofDays(MAX_CALENDAR_RANGE_DAYS)) > 0) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"calendar range must not exceed " + MAX_CALENDAR_RANGE_DAYS + " days"
+			);
+		}
+	}
+
+	private int normalizeCalendarBacklogSize(Integer backlogSize) {
+		if (backlogSize == null) {
+			return DEFAULT_CALENDAR_BACKLOG_SIZE;
+		}
+		if (backlogSize < 1 || backlogSize > MAX_CALENDAR_BACKLOG_SIZE) {
+			throw new ApplicationException(
+					HttpStatus.BAD_REQUEST,
+					"backlogSize must be between 1 and " + MAX_CALENDAR_BACKLOG_SIZE
+			);
+		}
+		return backlogSize;
 	}
 
 	private int normalizePage(Integer page) {
@@ -612,6 +747,7 @@ public class MaintenanceOrderService {
 		snapshot.put("assignedUsername", order.getAssignedUsername());
 		snapshot.put("scheduledStartAt", toValue(order.getScheduledStartAt()));
 		snapshot.put("scheduledEndAt", toValue(order.getScheduledEndAt()));
+		snapshot.put("scheduleVersion", order.getScheduleVersion());
 		snapshot.put("reportedAt", toValue(order.getReportedAt()));
 		snapshot.put("startedAt", toValue(order.getStartedAt()));
 		snapshot.put("completedAt", toValue(order.getCompletedAt()));

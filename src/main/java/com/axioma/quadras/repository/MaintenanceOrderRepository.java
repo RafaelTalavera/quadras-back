@@ -5,6 +5,7 @@ import com.axioma.quadras.domain.model.MaintenanceLocationType;
 import com.axioma.quadras.domain.model.MaintenanceOrderStatus;
 import com.axioma.quadras.domain.model.MaintenancePriority;
 import com.axioma.quadras.domain.model.MaintenanceProviderType;
+import com.axioma.quadras.domain.model.MaintenanceNotificationType;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Collection;
@@ -18,6 +19,110 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface MaintenanceOrderRepository extends JpaRepository<MaintenanceOrder, Long> {
+
+	@Query("""
+			select o
+			from MaintenanceOrder o
+			where o.status = com.axioma.quadras.domain.model.MaintenanceOrderStatus.SCHEDULED
+			  and o.scheduledStartAt is not null
+			  and o.scheduledStartAt <= :now
+			  and not exists (
+			      select n.id from MaintenanceNotification n
+			      where n.order = o
+			        and n.notificationType = :notificationType
+			        and n.scheduleVersion = o.scheduleVersion
+			        and n.occurrenceKey = 'INITIAL'
+			  )
+			order by o.scheduledStartAt asc, o.id asc
+			""")
+	List<MaintenanceOrder> findDueToStartNotificationCandidates(
+			@Param("now") LocalDateTime now,
+			@Param("notificationType") MaintenanceNotificationType notificationType,
+			Pageable pageable
+	);
+
+	@Query("""
+			select o
+			from MaintenanceOrder o
+			where o.status in (
+			    com.axioma.quadras.domain.model.MaintenanceOrderStatus.SCHEDULED,
+			    com.axioma.quadras.domain.model.MaintenanceOrderStatus.IN_PROGRESS
+			  )
+			  and o.scheduledEndAt is not null
+			  and o.scheduledEndAt < :now
+			  and not exists (
+			      select n.id from MaintenanceNotification n
+			      where n.order = o
+			        and n.notificationType = :notificationType
+			        and n.scheduleVersion = o.scheduleVersion
+			        and n.createdAt > :createdAfter
+			  )
+			order by o.scheduledEndAt asc, o.id asc
+			""")
+	List<MaintenanceOrder> findOverdueNotificationCandidates(
+			@Param("now") LocalDateTime now,
+			@Param("createdAfter") OffsetDateTime createdAfter,
+			@Param("notificationType") MaintenanceNotificationType notificationType,
+			Pageable pageable
+	);
+
+	@Query("""
+			select o
+			from MaintenanceOrder o
+			join fetch o.location
+			left join fetch o.provider p
+			left join fetch o.plan
+			where o.scheduledStartAt is not null
+			  and o.scheduledEndAt is not null
+			  and o.scheduledStartAt < :rangeEndExclusive
+			  and o.scheduledEndAt > :rangeStart
+			  and (:locationId is null or o.location.id = :locationId)
+			  and (:providerId is null or p.id = :providerId)
+			  and (:providerType is null or o.providerTypeSnapshot = :providerType)
+			  and (:status is null or o.status = :status)
+			  and (:priority is null or o.priority = :priority)
+			order by o.scheduledStartAt asc, o.scheduledEndAt asc, o.id asc
+			""")
+	List<MaintenanceOrder> findCalendarScheduledOrders(
+			@Param("rangeStart") LocalDateTime rangeStart,
+			@Param("rangeEndExclusive") LocalDateTime rangeEndExclusive,
+			@Param("locationId") Long locationId,
+			@Param("providerId") Long providerId,
+			@Param("providerType") MaintenanceProviderType providerType,
+			@Param("status") MaintenanceOrderStatus status,
+			@Param("priority") MaintenancePriority priority
+	);
+
+	@Query("""
+			select o
+			from MaintenanceOrder o
+			join fetch o.location
+			left join fetch o.provider p
+			left join fetch o.plan
+			where o.scheduledStartAt is null
+			  and o.scheduledEndAt is null
+			  and o.status in :statuses
+			  and (:locationId is null or o.location.id = :locationId)
+			  and (:providerId is null or p.id = :providerId)
+			  and (:providerType is null or o.providerTypeSnapshot = :providerType)
+			  and (:status is null or o.status = :status)
+			  and (:priority is null or o.priority = :priority)
+			order by case o.priority
+				when com.axioma.quadras.domain.model.MaintenancePriority.URGENT then 0
+				when com.axioma.quadras.domain.model.MaintenancePriority.HIGH then 1
+				when com.axioma.quadras.domain.model.MaintenancePriority.MEDIUM then 2
+				else 3 end,
+				o.reportedAt asc, o.id asc
+			""")
+	List<MaintenanceOrder> findCalendarBacklogOrders(
+			@Param("statuses") Collection<MaintenanceOrderStatus> statuses,
+			@Param("locationId") Long locationId,
+			@Param("providerId") Long providerId,
+			@Param("providerType") MaintenanceProviderType providerType,
+			@Param("status") MaintenanceOrderStatus status,
+			@Param("priority") MaintenancePriority priority,
+			Pageable pageable
+	);
 
 	@Query("""
 			select o from MaintenanceOrder o
@@ -66,6 +171,7 @@ public interface MaintenanceOrderRepository extends JpaRepository<MaintenanceOrd
 				o.reportedAt as reportedAt,
 				o.scheduledStartAt as scheduledStartAt,
 				o.scheduledEndAt as scheduledEndAt,
+				o.scheduleVersion as scheduleVersion,
 				o.startedAt as startedAt,
 				o.completedAt as completedAt,
 				o.paid as paid,
@@ -134,6 +240,7 @@ public interface MaintenanceOrderRepository extends JpaRepository<MaintenanceOrd
 				o.reportedAt as reportedAt,
 				o.scheduledStartAt as scheduledStartAt,
 				o.scheduledEndAt as scheduledEndAt,
+				o.scheduleVersion as scheduleVersion,
 				o.startedAt as startedAt,
 				o.completedAt as completedAt,
 				o.paid as paid
@@ -240,6 +347,7 @@ public interface MaintenanceOrderRepository extends JpaRepository<MaintenanceOrd
 				o.reportedAt as reportedAt,
 				o.scheduledStartAt as scheduledStartAt,
 				o.scheduledEndAt as scheduledEndAt,
+				o.scheduleVersion as scheduleVersion,
 				o.startedAt as startedAt,
 				o.completedAt as completedAt,
 				o.paid as paid,
@@ -576,6 +684,7 @@ public interface MaintenanceOrderRepository extends JpaRepository<MaintenanceOrd
 				o.reportedAt as reportedAt,
 				o.scheduledStartAt as scheduledStartAt,
 				o.scheduledEndAt as scheduledEndAt,
+				o.scheduleVersion as scheduleVersion,
 				o.startedAt as startedAt,
 				o.completedAt as completedAt,
 				o.paid as paid,

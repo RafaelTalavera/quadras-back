@@ -164,6 +164,49 @@ class FlywayReservationMigrationTest {
 	}
 
 	@Test
+	void shouldCreateMaintenanceNotificationAndOutboxTablesViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.TABLES
+				WHERE TABLE_NAME IN ('MAINTENANCE_NOTIFICATIONS', 'NOTIFICATION_OUTBOX')
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(2);
+		final Integer occurrenceColumnCount = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'MAINTENANCE_NOTIFICATIONS'
+				  AND COLUMN_NAME = 'OCCURRENCE_KEY'
+				""",
+				Integer.class
+		);
+		assertThat(occurrenceColumnCount).isEqualTo(1);
+		final Integer claimedAtColumnCount = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'NOTIFICATION_OUTBOX'
+				  AND COLUMN_NAME = 'CLAIMED_AT'
+				""",
+				Integer.class
+		);
+		assertThat(claimedAtColumnCount).isEqualTo(1);
+		final Integer pushSubscriptionTableCount = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.TABLES
+				WHERE TABLE_NAME = 'PUSH_SUBSCRIPTIONS'
+				""",
+				Integer.class
+		);
+		assertThat(pushSubscriptionTableCount).isEqualTo(1);
+	}
+
+	@Test
 	void shouldCreateMaintenanceWorkflowColumnsViaFlyway() {
 		final Integer count = jdbcTemplate.queryForObject(
 				"""

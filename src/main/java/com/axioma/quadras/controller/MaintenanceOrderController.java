@@ -6,9 +6,11 @@ import com.axioma.quadras.domain.dto.CancelMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.CompleteMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.CreateMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.MaintenanceConflictDto;
+import com.axioma.quadras.domain.dto.MaintenanceCalendarDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderAttachmentDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.MaintenanceOrderListPageDto;
+import com.axioma.quadras.domain.dto.RescheduleMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.StartMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenanceOrderDto;
 import com.axioma.quadras.domain.dto.UpdateMaintenancePaymentDto;
@@ -105,6 +107,35 @@ public class MaintenanceOrderController {
 		);
 	}
 
+	@GetMapping("/calendar")
+	public ResponseEntity<MaintenanceCalendarDto> calendar(
+			@RequestParam
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+			LocalDateTime rangeStart,
+			@RequestParam
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+			LocalDateTime rangeEndExclusive,
+			@RequestParam(required = false) Long locationId,
+			@RequestParam(required = false) Long providerId,
+			@RequestParam(required = false) MaintenanceProviderType providerType,
+			@RequestParam(required = false) MaintenanceOrderStatus status,
+			@RequestParam(required = false) MaintenancePriority priority,
+			@RequestParam(required = false) Integer backlogSize
+	) {
+		return ResponseEntity.ok(
+				maintenanceOrderService.calendar(
+						rangeStart,
+						rangeEndExclusive,
+						locationId,
+						providerId,
+						providerType,
+						status,
+						priority,
+						backlogSize
+				)
+		);
+	}
+
 	@GetMapping("/conflicts")
 	public ResponseEntity<List<MaintenanceConflictDto>> conflicts(
 			@RequestParam Long locationId,
@@ -162,6 +193,17 @@ public class MaintenanceOrderController {
 	) {
 		return ResponseEntity.ok(
 				maintenanceOrderService.start(orderId, input, principal.getUsername())
+		);
+	}
+
+	@PatchMapping("/{orderId}/reschedule")
+	public ResponseEntity<MaintenanceOrderDto> reschedule(
+			@PathVariable Long orderId,
+			@Valid @RequestBody RescheduleMaintenanceOrderDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
+	) {
+		return ResponseEntity.ok(
+				maintenanceOrderService.reschedule(orderId, input, principal.getUsername())
 		);
 	}
 

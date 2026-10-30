@@ -65,6 +65,8 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/maintenance/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/tours/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/sync/**").hasRole(AppUserRole.OPERATOR.name())
+						.requestMatchers("/api/v1/notifications/**").authenticated()
+						.requestMatchers("/api/v1/push/subscriptions/**").authenticated()
 						.requestMatchers("/api/v1/users/me", "/api/v1/users/me/password").authenticated()
 						.requestMatchers("/api/v1/users/**").hasRole(AppUserRole.SUPERVISOR.name())
 						.anyRequest().authenticated()

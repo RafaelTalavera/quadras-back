@@ -131,6 +131,9 @@ public class MaintenanceOrder {
 	@Column(name = "scheduled_end_at")
 	private LocalDateTime scheduledEndAt;
 
+	@Column(name = "schedule_version", nullable = false)
+	private long scheduleVersion;
+
 	@Column(name = "started_at")
 	private OffsetDateTime startedAt;
 
@@ -488,6 +491,30 @@ public class MaintenanceOrder {
 		return scheduledEndAt;
 	}
 
+	public long getScheduleVersion() {
+		return scheduleVersion;
+	}
+
+	public void reschedule(
+			LocalDateTime scheduledStartAt,
+			LocalDateTime scheduledEndAt,
+			String actorUsername
+	) {
+		if (status == MaintenanceOrderStatus.IN_PROGRESS
+				|| status == MaintenanceOrderStatus.COMPLETED
+				|| status == MaintenanceOrderStatus.CANCELLED) {
+			throw new IllegalStateException("Only open, assigned or scheduled maintenance orders can be rescheduled.");
+		}
+		this.updatedBy = normalizeActor(actorUsername, "updatedBy");
+		applySchedule(scheduledStartAt, scheduledEndAt);
+		this.estimatedExecutionMinutes = normalizeEstimatedMinutes(
+				this.estimatedExecutionMinutes,
+				scheduledStartAt,
+				scheduledEndAt
+		);
+		this.status = deriveOperationalStatus();
+	}
+
 	public OffsetDateTime getStartedAt() {
 		return startedAt;
 	}
@@ -675,9 +702,12 @@ public class MaintenanceOrder {
 	}
 
 	private void applySchedule(LocalDateTime scheduledStartAt, LocalDateTime scheduledEndAt) {
+		final LocalDateTime previousStartAt = this.scheduledStartAt;
+		final LocalDateTime previousEndAt = this.scheduledEndAt;
 		if (scheduledStartAt == null && scheduledEndAt == null) {
 			this.scheduledStartAt = null;
 			this.scheduledEndAt = null;
+			incrementScheduleVersionWhenChanged(previousStartAt, previousEndAt);
 			return;
 		}
 		if (scheduledStartAt == null || scheduledEndAt == null) {
@@ -690,6 +720,17 @@ public class MaintenanceOrder {
 		}
 		this.scheduledStartAt = scheduledStartAt;
 		this.scheduledEndAt = scheduledEndAt;
+		incrementScheduleVersionWhenChanged(previousStartAt, previousEndAt);
+	}
+
+	private void incrementScheduleVersionWhenChanged(
+			LocalDateTime previousStartAt,
+			LocalDateTime previousEndAt
+	) {
+		if (!Objects.equals(previousStartAt, scheduledStartAt)
+				|| !Objects.equals(previousEndAt, scheduledEndAt)) {
+			this.scheduleVersion++;
+		}
 	}
 
 	private Integer normalizeEstimatedMinutes(

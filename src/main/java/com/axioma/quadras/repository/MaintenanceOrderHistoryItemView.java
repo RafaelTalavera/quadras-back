@@ -64,6 +64,8 @@ public interface MaintenanceOrderHistoryItemView {
 
 	LocalDateTime getScheduledEndAt();
 
+	long getScheduleVersion();
+
 	OffsetDateTime getStartedAt();
 
 	OffsetDateTime getCompletedAt();

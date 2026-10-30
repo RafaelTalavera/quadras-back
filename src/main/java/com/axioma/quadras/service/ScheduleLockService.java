@@ -46,6 +46,14 @@ public class ScheduleLockService {
 				.toList());
 	}
 
+	public void acquireMaintenanceNotificationDate(LocalDate operationalDate) {
+		acquireLocks(List.of(new ScheduleLockKey(
+				ScheduleLockType.MAINTENANCE_NOTIFICATIONS,
+				GLOBAL_SCOPE_KEY,
+				operationalDate
+		)));
+	}
+
 	private void acquireLocks(Collection<ScheduleLockKey> keys) {
 		if (keys == null || keys.isEmpty()) {
 			return;
