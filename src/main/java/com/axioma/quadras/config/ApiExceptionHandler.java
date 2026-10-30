@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
@@ -76,6 +77,22 @@ public class ApiExceptionHandler {
 				status.value(),
 				status.getReasonPhrase(),
 				ex.getMessage(),
+				request.getRequestURI()
+		);
+		return ResponseEntity.status(status).body(body);
+	}
+
+	@ExceptionHandler(OptimisticLockingFailureException.class)
+	public ResponseEntity<ApiError> handleOptimisticLockingFailureException(
+			OptimisticLockingFailureException ex,
+			HttpServletRequest request
+	) {
+		HttpStatus status = HttpStatus.CONFLICT;
+		ApiError body = new ApiError(
+				OffsetDateTime.now(),
+				status.value(),
+				status.getReasonPhrase(),
+				"Resource was modified by another operation. Reload it and try again.",
 				request.getRequestURI()
 		);
 		return ResponseEntity.status(status).body(body);

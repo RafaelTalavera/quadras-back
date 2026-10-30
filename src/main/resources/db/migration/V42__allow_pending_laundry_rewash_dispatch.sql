@@ -1,0 +1,1 @@
+ALTER TABLE laundry_shipments MODIFY COLUMN sent_at TIMESTAMP NULL;

@@ -68,7 +68,7 @@ public class AuditTrailService {
 		try {
 			return objectMapper.writeValueAsString(value);
 		} catch (JsonProcessingException ex) {
-			throw new IllegalStateException("Unable to serialize audit payload", ex);
+			throw new IllegalStateException("Unable to serialize audit payload: " + ex.getOriginalMessage(), ex);
 		}
 	}
 }
