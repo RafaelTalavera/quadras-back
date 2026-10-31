@@ -281,6 +281,65 @@ class LaundryControllerTest {
 	}
 
 	@Test
+	void shouldSummarizeDailyLaundryMovementsAndTotals() throws Exception {
+		String token = authenticate();
+		LaundryProvider provider = provider("Resumen");
+		LaundryItem item = item("Resumen");
+
+		mockMvc.perform(post("/api/v1/laundry/shipments")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+						{"providerId":%d,"kind":"STANDARD","sentAt":"2098-01-10T14:00:00Z",
+						 "lines":[{"itemId":%d,"quantity":2}]}
+						""".formatted(provider.getId(), item.getId())))
+				.andExpect(status().isCreated());
+		mockMvc.perform(post("/api/v1/laundry/shipments")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+						{"providerId":%d,"kind":"REWASH","sentAt":"2098-01-10T18:00:00Z",
+						 "lines":[{"itemId":%d,"quantity":3}]}
+						""".formatted(provider.getId(), item.getId())))
+				.andExpect(status().isCreated());
+		mockMvc.perform(post("/api/v1/laundry/shipments")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+						{"providerId":%d,"kind":"RECEIPT","sentAt":"2098-01-11T09:00:00Z",
+						 "lines":[{"itemId":%d,"quantity":4}]}
+						""".formatted(provider.getId(), item.getId())))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(get("/api/v1/laundry/summary")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+					.param("providerId", provider.getId().toString())
+					.param("dateFrom", "2098-01-10")
+					.param("dateTo", "2098-01-11"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rows.length()").value(2))
+				.andExpect(jsonPath("$.rows[0].date").value("2098-01-11"))
+				.andExpect(jsonPath("$.rows[0].receivedQuantity").value(4.0))
+				.andExpect(jsonPath("$.rows[0].sentQuantity").value(0))
+				.andExpect(jsonPath("$.rows[0].rewashedQuantity").value(0))
+				.andExpect(jsonPath("$.rows[1].date").value("2098-01-10"))
+				.andExpect(jsonPath("$.rows[1].sentQuantity").value(2.0))
+				.andExpect(jsonPath("$.rows[1].rewashedQuantity").value(3.0))
+				.andExpect(jsonPath("$.totalReceivedQuantity").value(4.0))
+				.andExpect(jsonPath("$.totalSentQuantity").value(2.0))
+				.andExpect(jsonPath("$.totalRewashedQuantity").value(3.0));
+	}
+
+	@Test
+	void shouldRejectInvalidLaundrySummaryDateRange() throws Exception {
+		mockMvc.perform(get("/api/v1/laundry/summary")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + authenticate())
+					.param("dateFrom", "2026-11-02")
+					.param("dateTo", "2026-11-01"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void shouldRejectDispatchForStandardShipmentAndInvalidPayload() throws Exception {
 		String token = authenticate();
 		LaundryProvider provider = provider("Dispatch standard");

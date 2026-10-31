@@ -54,6 +54,12 @@ public class LaundryController {
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo
 	) { return ResponseEntity.ok(laundryService.shipments(status, kind, providerId, dateFrom, dateTo)); }
+	@GetMapping("/summary")
+	public ResponseEntity<LaundrySummaryDto> summary(
+			@RequestParam(required = false) Long providerId,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo
+	) { return ResponseEntity.ok(laundryService.summary(providerId, dateFrom, dateTo)); }
 	@GetMapping("/shipments/{id}")
 	public ResponseEntity<LaundryShipmentDto> shipment(@PathVariable Long id) { return ResponseEntity.ok(laundryService.shipment(id)); }
 	@PostMapping("/shipments/{id}/receive")

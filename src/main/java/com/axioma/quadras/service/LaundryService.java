@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -121,6 +122,35 @@ public class LaundryService {
 		return shipmentRepository.search(status, kind, providerId, start, end).stream().map(LaundryShipmentDto::from).toList();
 	}
 
+	public LaundrySummaryDto summary(Long providerId, LocalDate from, LocalDate to) {
+		if (from != null && to != null && to.isBefore(from)) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "dateTo must be on or after dateFrom.");
+		}
+		OffsetDateTime start = from == null ? null : from.atStartOfDay().atOffset(ZoneOffset.UTC);
+		OffsetDateTime end = to == null ? null : to.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
+		Map<LocalDate, BigDecimal[]> daily = new TreeMap<>();
+		addSummary(daily, shipmentRepository.summarizeReceivedMovements(providerId, start, end), 0);
+		addSummary(daily, shipmentRepository.summarizeSentMovements(LaundryShipmentKind.STANDARD, providerId, start, end), 1);
+		addSummary(daily, shipmentRepository.summarizeSentMovements(LaundryShipmentKind.REWASH, providerId, start, end), 2);
+
+		List<LaundryDailySummaryRowDto> rows = daily.entrySet().stream()
+				.sorted(Map.Entry.<LocalDate, BigDecimal[]>comparingByKey().reversed())
+				.map(entry -> new LaundryDailySummaryRowDto(
+						entry.getKey(), entry.getValue()[0], entry.getValue()[1], entry.getValue()[2]))
+				.toList();
+		BigDecimal[] totals = rows.stream().reduce(
+				zeroQuantities(),
+				(total, row) -> new BigDecimal[] {
+						total[0].add(row.receivedQuantity()),
+						total[1].add(row.sentQuantity()),
+						total[2].add(row.rewashedQuantity())
+				},
+				(left, right) -> new BigDecimal[] {
+						left[0].add(right[0]), left[1].add(right[1]), left[2].add(right[2])
+				});
+		return new LaundrySummaryDto(rows, totals[0], totals[1], totals[2]);
+	}
+
 	public LaundryShipmentDto shipment(Long id) { return LaundryShipmentDto.from(requireShipment(id)); }
 
 	@Transactional
@@ -207,6 +237,21 @@ public class LaundryService {
 
 	private Map<String, Object> receiptChanges(ReceiveLaundryShipmentDto input) {
 		return Map.of("receivedAt", input.receivedAt().toString(), "version", input.version(), "lines", input.lines());
+	}
+
+	private void addSummary(
+			Map<LocalDate, BigDecimal[]> daily, List<LaundryMovementSummaryView> movements, int quantityIndex
+	) {
+		for (LaundryMovementSummaryView movement : movements) {
+			if (movement.getOccurredAt() == null || movement.getQuantity() == null) continue;
+			BigDecimal[] quantities = daily.computeIfAbsent(
+					movement.getOccurredAt().withOffsetSameInstant(ZoneOffset.UTC).toLocalDate(), ignored -> zeroQuantities());
+			quantities[quantityIndex] = quantities[quantityIndex].add(movement.getQuantity());
+		}
+	}
+
+	private BigDecimal[] zeroQuantities() {
+		return new BigDecimal[] {BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO};
 	}
 
 	private LaundryShipment requireShipment(Long id) {
