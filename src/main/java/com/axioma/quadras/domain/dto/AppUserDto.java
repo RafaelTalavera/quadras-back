@@ -7,6 +7,7 @@ public record AppUserDto(
 		Long id,
 		String username,
 		String role,
+		Long laundryProviderId,
 		boolean enabled,
 		OffsetDateTime createdAt,
 		OffsetDateTime updatedAt
@@ -16,6 +17,7 @@ public record AppUserDto(
 				appUser.getId(),
 				appUser.getUsername(),
 				appUser.getRole().name(),
+				appUser.getLaundryProvider() == null ? null : appUser.getLaundryProvider().getId(),
 				appUser.isEnabled(),
 				appUser.getCreatedAt(),
 				appUser.getUpdatedAt()

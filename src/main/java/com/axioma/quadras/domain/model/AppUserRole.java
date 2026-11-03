@@ -4,7 +4,8 @@ import java.util.Locale;
 
 public enum AppUserRole {
 	OPERATOR,
-	SUPERVISOR;
+	SUPERVISOR,
+	PROVIDER;
 
 	public String authority() {
 		return "ROLE_" + name();

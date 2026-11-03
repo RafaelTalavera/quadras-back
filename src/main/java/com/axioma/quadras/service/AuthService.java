@@ -40,7 +40,8 @@ public class AuthService {
 	}
 
 	public CurrentUserDto currentUser(AuthenticatedUserPrincipal principal) {
-		return new CurrentUserDto(principal.getUsername(), principal.getRole().name());
+		return new CurrentUserDto(principal.getUsername(), principal.getRole().name(),
+				principal.getLaundryProviderId());
 	}
 
 	private AuthenticatedUserPrincipal requirePrincipal(Object principal) {

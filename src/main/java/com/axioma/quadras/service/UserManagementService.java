@@ -8,7 +8,9 @@ import com.axioma.quadras.domain.dto.UpdateAppUserDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.AppUser;
 import com.axioma.quadras.domain.model.AppUserRole;
+import com.axioma.quadras.domain.model.LaundryProvider;
 import com.axioma.quadras.repository.AppUserRepository;
+import com.axioma.quadras.repository.LaundryProviderRepository;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,15 +26,18 @@ public class UserManagementService {
 	private final AppUserRepository appUserRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final AuditTrailService auditTrailService;
+	private final LaundryProviderRepository laundryProviderRepository;
 
 	public UserManagementService(
 			AppUserRepository appUserRepository,
 			PasswordEncoder passwordEncoder,
-			AuditTrailService auditTrailService
+			AuditTrailService auditTrailService,
+			LaundryProviderRepository laundryProviderRepository
 	) {
 		this.appUserRepository = appUserRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.auditTrailService = auditTrailService;
+		this.laundryProviderRepository = laundryProviderRepository;
 	}
 
 	public List<AppUserDto> listUsers() {
@@ -51,10 +56,12 @@ public class UserManagementService {
 		}
 
 		final boolean enabled = input.enabled() == null || input.enabled().booleanValue();
+		final LaundryProvider laundryProvider = resolveLaundryProvider(input.role(), input.laundryProviderId());
 		final AppUser appUser = AppUser.create(
 				normalizedUsername,
 				passwordEncoder.encode(input.password()),
 				input.role(),
+				laundryProvider,
 				enabled
 		);
 		final AppUser savedUser = appUserRepository.save(appUser);
@@ -84,8 +91,9 @@ public class UserManagementService {
 			throw new ApplicationException(HttpStatus.BAD_REQUEST, "You cannot change your own role.");
 		}
 		ensureSupervisorStillExists(appUser, input.role(), input.enabled().booleanValue());
+		final LaundryProvider laundryProvider = resolveLaundryProvider(input.role(), input.laundryProviderId());
 
-		appUser.updateRoleAndStatus(input.role(), input.enabled().booleanValue());
+		appUser.updateAccess(input.role(), laundryProvider, input.enabled().booleanValue());
 		final AppUser savedUser = appUserRepository.save(appUser);
 		auditTrailService.record(
 				"security",
@@ -175,11 +183,35 @@ public class UserManagementService {
 		}
 	}
 
+	private LaundryProvider resolveLaundryProvider(AppUserRole role, Long providerId) {
+		if (role == AppUserRole.PROVIDER) {
+			if (providerId == null) {
+				throw new ApplicationException(HttpStatus.BAD_REQUEST,
+						"laundryProviderId is required for PROVIDER role.");
+			}
+			LaundryProvider provider = laundryProviderRepository.findById(providerId)
+					.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND,
+							"Laundry provider not found."));
+			if (!provider.isActive()) {
+				throw new ApplicationException(HttpStatus.BAD_REQUEST,
+						"Inactive laundry provider cannot be assigned to a user.");
+			}
+			return provider;
+		}
+		if (providerId != null) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST,
+					"laundryProviderId is only allowed for PROVIDER role.");
+		}
+		return null;
+	}
+
 	private Map<String, Object> auditSnapshot(AppUser appUser) {
 		final Map<String, Object> snapshot = new LinkedHashMap<>();
 		snapshot.put("id", appUser.getId());
 		snapshot.put("username", appUser.getUsername());
 		snapshot.put("role", appUser.getRole().name());
+		snapshot.put("laundryProviderId", appUser.getLaundryProvider() == null
+				? null : appUser.getLaundryProvider().getId());
 		snapshot.put("enabled", appUser.isEnabled());
 		snapshot.put("createdAt", appUser.getCreatedAt() == null ? null : appUser.getCreatedAt().toString());
 		snapshot.put("updatedAt", appUser.getUpdatedAt() == null ? null : appUser.getUpdatedAt().toString());
@@ -191,6 +223,7 @@ public class UserManagementService {
 		snapshot.put("id", appUser.id());
 		snapshot.put("username", appUser.username());
 		snapshot.put("role", appUser.role());
+		snapshot.put("laundryProviderId", appUser.laundryProviderId());
 		snapshot.put("enabled", appUser.enabled());
 		snapshot.put("createdAt", appUser.createdAt() == null ? null : appUser.createdAt().toString());
 		snapshot.put("updatedAt", appUser.updatedAt() == null ? null : appUser.updatedAt().toString());

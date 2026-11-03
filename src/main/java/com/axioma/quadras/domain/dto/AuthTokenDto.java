@@ -5,6 +5,7 @@ public record AuthTokenDto(
 		String tokenType,
 		long expiresInSeconds,
 		String username,
-		String role
+		String role,
+		Long laundryProviderId
 ) {
 }

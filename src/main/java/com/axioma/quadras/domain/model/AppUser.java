@@ -7,6 +7,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -36,6 +39,10 @@ public class AppUser {
 	@Column(name = "role", nullable = false, length = 40)
 	private AppUserRole role;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "laundry_provider_id")
+	private LaundryProvider laundryProvider;
+
 	@Column(name = "enabled", nullable = false)
 	private boolean enabled;
 
@@ -51,16 +58,23 @@ public class AppUser {
 	protected AppUser() {
 	}
 
-	private AppUser(String username, String passwordHash, AppUserRole role, boolean enabled) {
+	private AppUser(String username, String passwordHash, AppUserRole role,
+			LaundryProvider laundryProvider, boolean enabled) {
 		this.username = normalizeUsername(username);
 		this.passwordHash = normalizePasswordHash(passwordHash);
 		this.role = requireRole(role);
+		this.laundryProvider = requireProviderAssociation(role, laundryProvider);
 		this.enabled = enabled;
 		this.securityVersion = 1L;
 	}
 
 	public static AppUser create(String username, String passwordHash, AppUserRole role, boolean enabled) {
-		return new AppUser(username, passwordHash, role, enabled);
+		return new AppUser(username, passwordHash, role, null, enabled);
+	}
+
+	public static AppUser create(String username, String passwordHash, AppUserRole role,
+			LaundryProvider laundryProvider, boolean enabled) {
+		return new AppUser(username, passwordHash, role, laundryProvider, enabled);
 	}
 
 	public static String normalizeUsername(String username) {
@@ -77,10 +91,19 @@ public class AppUser {
 	}
 
 	public boolean updateRoleAndStatus(AppUserRole role, boolean enabled) {
+		return updateAccess(role, null, enabled);
+	}
+
+	public boolean updateAccess(AppUserRole role, LaundryProvider laundryProvider, boolean enabled) {
 		final AppUserRole normalizedRole = requireRole(role);
+		final LaundryProvider normalizedProvider = requireProviderAssociation(normalizedRole, laundryProvider);
 		boolean changed = false;
 		if (this.role != normalizedRole) {
 			this.role = normalizedRole;
+			changed = true;
+		}
+		if (this.laundryProvider != normalizedProvider) {
+			this.laundryProvider = normalizedProvider;
 			changed = true;
 		}
 		if (this.enabled != enabled) {
@@ -117,6 +140,10 @@ public class AppUser {
 
 	public AppUserRole getRole() {
 		return role;
+	}
+
+	public LaundryProvider getLaundryProvider() {
+		return laundryProvider;
 	}
 
 	public boolean isEnabled() {
@@ -165,5 +192,16 @@ public class AppUser {
 			throw new IllegalArgumentException("role is required");
 		}
 		return role;
+	}
+
+	private static LaundryProvider requireProviderAssociation(AppUserRole role,
+			LaundryProvider laundryProvider) {
+		if (role == AppUserRole.PROVIDER && laundryProvider == null) {
+			throw new IllegalArgumentException("laundryProvider is required for PROVIDER role");
+		}
+		if (role != AppUserRole.PROVIDER && laundryProvider != null) {
+			throw new IllegalArgumentException("laundryProvider is only allowed for PROVIDER role");
+		}
+		return laundryProvider;
 	}
 }

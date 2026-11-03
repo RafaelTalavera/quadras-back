@@ -29,14 +29,17 @@ public class JwtService {
 	public AuthTokenDto issueToken(AuthenticatedUserPrincipal principal) {
 		final Instant issuedAt = Instant.now();
 		final Instant expiresAt = issuedAt.plusSeconds(jwtProperties.expirationSeconds());
-		final JwtClaimsSet claims = JwtClaimsSet.builder()
+		final JwtClaimsSet.Builder claimsBuilder = JwtClaimsSet.builder()
 				.issuer(jwtProperties.issuer())
 				.issuedAt(issuedAt)
 				.expiresAt(expiresAt)
 				.subject(principal.getUsername())
 				.claim("role", principal.getRole().name())
-				.claim("securityVersion", principal.getSecurityVersion())
-				.build();
+				.claim("securityVersion", principal.getSecurityVersion());
+		if (principal.getLaundryProviderId() != null) {
+			claimsBuilder.claim("laundryProviderId", principal.getLaundryProviderId());
+		}
+		final JwtClaimsSet claims = claimsBuilder.build();
 		final JwsHeader header = JwsHeader.with(MacAlgorithm.HS256)
 				.type("JWT")
 				.build();
@@ -46,7 +49,8 @@ public class JwtService {
 				"Bearer",
 				jwtProperties.expirationSeconds(),
 				principal.getUsername(),
-				principal.getRole().name()
+				principal.getRole().name(),
+				principal.getLaundryProviderId()
 		);
 	}
 

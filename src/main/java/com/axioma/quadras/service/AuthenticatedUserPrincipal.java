@@ -29,6 +29,10 @@ public class AuthenticatedUserPrincipal implements UserDetails {
 		return appUser.getSecurityVersion();
 	}
 
+	public Long getLaundryProviderId() {
+		return appUser.getLaundryProvider() == null ? null : appUser.getLaundryProvider().getId();
+	}
+
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
 		if (appUser.getRole() == AppUserRole.SUPERVISOR) {

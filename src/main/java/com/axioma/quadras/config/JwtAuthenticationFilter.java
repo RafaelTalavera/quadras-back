@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Objects;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -64,6 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			final String username = AppUser.normalizeUsername(jwt.getSubject());
 			final AppUserRole role = AppUserRole.fromClaim(jwt.getClaimAsString("role"));
 			final Long securityVersion = extractSecurityVersion(jwt.getClaim("securityVersion"));
+			final Long laundryProviderId = extractLong(jwt.getClaim("laundryProviderId"));
 			final AuthenticatedUserPrincipal principal =
 					(AuthenticatedUserPrincipal) userDetailsService.loadUserByUsername(username);
 
@@ -72,6 +74,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			}
 			if (securityVersion == null || principal.getSecurityVersion() != securityVersion.longValue()) {
 				throw new BadCredentialsException("JWT security version does not match persisted user state.");
+			}
+			if (!Objects.equals(principal.getLaundryProviderId(), laundryProviderId)) {
+				throw new BadCredentialsException("JWT laundry provider does not match persisted user state.");
 			}
 
 			if (SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -93,6 +98,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	}
 
 	private Long extractSecurityVersion(Object claimValue) {
+		return extractLong(claimValue);
+	}
+
+	private Long extractLong(Object claimValue) {
 		if (claimValue instanceof Number number) {
 			return number.longValue();
 		}

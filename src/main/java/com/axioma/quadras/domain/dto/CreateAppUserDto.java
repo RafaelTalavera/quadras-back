@@ -13,6 +13,7 @@ public record CreateAppUserDto(
 		String password,
 		@NotNull(message = "role is required")
 		AppUserRole role,
+		Long laundryProviderId,
 		Boolean enabled
 ) {
 }

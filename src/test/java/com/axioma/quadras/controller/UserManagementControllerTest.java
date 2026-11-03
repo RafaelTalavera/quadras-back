@@ -2,10 +2,13 @@ package com.axioma.quadras.controller;
 
 import com.axioma.quadras.domain.model.AppUser;
 import com.axioma.quadras.domain.model.AppUserRole;
+import com.axioma.quadras.domain.model.LaundryProvider;
 import com.axioma.quadras.repository.AppUserRepository;
+import com.axioma.quadras.repository.LaundryProviderRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +46,9 @@ class UserManagementControllerTest {
 
 	@Autowired
 	private PasswordEncoder passwordEncoder;
+
+	@Autowired
+	private LaundryProviderRepository laundryProviderRepository;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -109,6 +115,52 @@ class UserManagementControllerTest {
 				.andExpect(jsonPath("$.username").value("nuevo.operador"))
 				.andExpect(jsonPath("$.role").value("OPERATOR"))
 				.andExpect(jsonPath("$.enabled").value(true));
+	}
+
+	@Test
+	void supervisorShouldCreateProviderUserWithRequiredOwnership() throws Exception {
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
+		final LaundryProvider provider = laundryProviderRepository.save(LaundryProvider.create(
+				"Portal " + UUID.randomUUID().toString().substring(0, 8), null, true));
+
+		mockMvc.perform(post("/api/v1/users")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"username":"portal.proveedor","password":"111111","role":"PROVIDER","laundryProviderId":%d,"enabled":true}
+								""".formatted(provider.getId())))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.role").value("PROVIDER"))
+				.andExpect(jsonPath("$.laundryProviderId").value(provider.getId()));
+
+		final String providerToken = authenticate("portal.proveedor", "111111");
+		mockMvc.perform(get("/api/v1/users/me")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + providerToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.role").value("PROVIDER"))
+				.andExpect(jsonPath("$.laundryProviderId").value(provider.getId()));
+	}
+
+	@Test
+	void shouldRejectProviderWithoutOwnershipAndInternalUserWithProvider() throws Exception {
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
+		final LaundryProvider provider = laundryProviderRepository.save(LaundryProvider.create(
+				"Validacao " + UUID.randomUUID().toString().substring(0, 8), null, true));
+
+		mockMvc.perform(post("/api/v1/users")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"username":"sem.proveedor","password":"111111","role":"PROVIDER","enabled":true}
+								"""))
+				.andExpect(status().isBadRequest());
+		mockMvc.perform(post("/api/v1/users")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"username":"operador.vinculado","password":"111111","role":"OPERATOR","laundryProviderId":%d,"enabled":true}
+								""".formatted(provider.getId())))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test
