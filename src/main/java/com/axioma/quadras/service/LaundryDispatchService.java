@@ -18,7 +18,9 @@ import com.axioma.quadras.repository.LaundryItemRepository;
 import com.axioma.quadras.repository.LaundryObligationRepository;
 import com.axioma.quadras.repository.LaundryProviderRepository;
 import com.axioma.quadras.repository.LaundryRewashDispatchAllocationRepository;
+import com.axioma.quadras.repository.LaundryReturnAllocationRepository;
 import com.axioma.quadras.domain.model.LaundryRewashDispatchAllocation;
+import com.axioma.quadras.domain.model.LaundryReturnOutcome;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -44,13 +46,15 @@ public class LaundryDispatchService {
 	private final LaundryObligationRepository obligationRepository;
 	private final LaundryStockService stockService;
 	private final LaundryRewashDispatchAllocationRepository rewashAllocationRepository;
+	private final LaundryReturnAllocationRepository returnAllocationRepository;
 	private final LaundryIdempotencyService idempotencyService;
 
 	public LaundryDispatchService(LaundryDocumentRepository documentRepository,
 			LaundryProviderRepository providerRepository, LaundryItemRepository itemRepository,
 			LaundryObligationRepository obligationRepository, LaundryStockService stockService,
 			LaundryIdempotencyService idempotencyService,
-			LaundryRewashDispatchAllocationRepository rewashAllocationRepository) {
+			LaundryRewashDispatchAllocationRepository rewashAllocationRepository,
+			LaundryReturnAllocationRepository returnAllocationRepository) {
 		this.documentRepository = documentRepository;
 		this.providerRepository = providerRepository;
 		this.itemRepository = itemRepository;
@@ -58,6 +62,7 @@ public class LaundryDispatchService {
 		this.stockService = stockService;
 		this.idempotencyService = idempotencyService;
 		this.rewashAllocationRepository = rewashAllocationRepository;
+		this.returnAllocationRepository = returnAllocationRepository;
 	}
 
 	@Transactional
@@ -149,7 +154,11 @@ public class LaundryDispatchService {
 		for (LaundryObligation obligation : obligationRepository.findRewashForUpdate(
 				document.getProvider().getId(), line.getItem().getId())) {
 			BigDecimal allocated = rewashAllocationRepository.sumAllocated(obligation.getId());
-			BigDecimal available = obligation.getInRewashQuantity().subtract(allocated);
+			BigDecimal returnedDirty = returnAllocationRepository.sumQuantity(obligation.getId(),
+					LaundryReturnOutcome.RETURNED_DIRTY);
+			BigDecimal dispatchable = returnedDirty.signum() > 0
+					? returnedDirty : obligation.getInRewashQuantity();
+			BigDecimal available = dispatchable.subtract(allocated);
 			if (available.signum() <= 0) continue;
 			BigDecimal take = available.min(remaining);
 			rewashAllocationRepository.save(LaundryRewashDispatchAllocation.create(line, obligation, take));

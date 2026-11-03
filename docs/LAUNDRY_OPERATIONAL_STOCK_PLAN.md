@@ -569,3 +569,38 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
 - Commits asociados:
   - `feat(laundry-stock): add dispatch document schema`;
   - `feat(laundry-stock): implement dispatch and rewash flow`.
+
+### Fase 3 - devoluciones, conciliacion y elegibilidad (2026-11-03)
+
+- Persistencia:
+  - `V45__create_laundry_return_manifests.sql` agrega manifiestos y lineas de devolucion,
+    asignaciones FIFO por resultado y eventos facturables con estado de exportacion;
+  - las asignaciones conservan obligacion, origen, resultado, cantidad y precio historico.
+- Flujo V2 implementado:
+  - creacion, envio, consulta y confirmacion de manifiestos mediante
+    `/api/v2/laundry/returns`, con version e idempotencia;
+  - registro manual atomico del hotel mediante `/api/v2/laundry/returns/manual`;
+  - la confirmacion distribuye por FIFO y mueve cada cantidad a disponible, cola de relavado,
+    retenida en proveedor, faltante o danada;
+  - correcciones respecto de la declaracion requieren observacion y cualquier conflicto revierte
+    el manifiesto completo;
+  - `/api/v2/laundry/billable-events` expone al supervisor eventos paginados y filtrables por
+    proveedor, fecha y estado; los reportes de faltantes y danadas reutilizan el libro de stock
+    y su antiguedad FIFO.
+- Invariantes verificadas:
+  - solo una prenda limpia aceptada reduce la obligacion y genera evento facturable al precio
+    historico; retencion, suciedad, faltante y dano no generan cobro;
+  - una prenda puede volver varias veces por `HOTEL_REWASH_QUEUE -> PROVIDER_REWASH` sin perder
+    su obligacion original ni bloquearse por despachos historicos;
+  - un reintento idempotente no duplica stock, asignaciones ni facturacion;
+  - el escenario obligatorio abre 20, envia 10, acepta 7, retiene 3, acepta luego 2, relava la
+    restante dos veces y termina con stock total 20, obligacion cerrada y 10 unidades cobrables.
+- Pruebas:
+  - `LaundryStockMigrationTest`: 2 pruebas OK para V45;
+  - `LaundryReturnControllerTest`: 4 pruebas OK para circuito completo, rollback, registro manual,
+    paginacion, faltantes, danadas, relavado repetido e idempotencia;
+  - `LaundryDispatchControllerTest` conserva 3 pruebas OK;
+  - `.\mvnw.cmd -B test`: 191 pruebas OK, 0 fallos y 0 errores.
+- Commits asociados:
+  - `feat(laundry-stock): add return manifest schema`;
+  - `feat(laundry-stock): implement return reconciliation flow`.

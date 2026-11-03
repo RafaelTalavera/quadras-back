@@ -131,6 +131,31 @@ public class LaundryObligation {
 		updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
 	}
 
+	public BigDecimal processingQuantity() {
+		return openQuantity.subtract(inRewashQuantity);
+	}
+
+	public void applyReturn(LaundryReturnOutcome outcome, LaundryStockBucket sourceBucket,
+			BigDecimal quantity) {
+		BigDecimal normalized = LaundryStockBalance.normalize(quantity);
+		boolean fromRewash = sourceBucket == LaundryStockBucket.PROVIDER_REWASH;
+		BigDecimal available = fromRewash ? inRewashQuantity : processingQuantity();
+		if (normalized.signum() <= 0 || available.compareTo(normalized) < 0) {
+			throw new IllegalArgumentException("Return quantity exceeds obligation source balance");
+		}
+		switch (outcome) {
+			case ACCEPTED_CLEAN, MISSING, DAMAGED -> {
+				openQuantity = openQuantity.subtract(normalized);
+				if (fromRewash) inRewashQuantity = inRewashQuantity.subtract(normalized);
+			}
+			case RETURNED_DIRTY, RETAINED -> {
+				if (!fromRewash) inRewashQuantity = inRewashQuantity.add(normalized);
+			}
+		}
+		closeIfSettled();
+		updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
+	}
+
 	public Long getId() {
 		return id;
 	}

@@ -26,4 +26,15 @@ public interface LaundryObligationRepository extends JpaRepository<LaundryObliga
 			""")
 	List<LaundryObligation> findRewashForUpdate(@Param("providerId") Long providerId,
 			@Param("itemId") Long itemId);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("""
+			select obligation from LaundryObligation obligation
+			where obligation.provider.id = :providerId
+			  and obligation.item.id = :itemId
+			  and obligation.status = com.axioma.quadras.domain.model.LaundryObligationStatus.OPEN
+			order by obligation.effectiveAt asc, obligation.createdAt asc, obligation.id asc
+			""")
+	List<LaundryObligation> findOpenForUpdate(@Param("providerId") Long providerId,
+			@Param("itemId") Long itemId);
 }

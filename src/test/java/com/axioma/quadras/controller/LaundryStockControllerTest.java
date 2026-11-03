@@ -61,6 +61,10 @@ class LaundryStockControllerTest {
 
 	@BeforeEach
 	void cleanStockLedger() {
+		jdbcTemplate.update("DELETE FROM laundry_billable_events");
+		jdbcTemplate.update("DELETE FROM laundry_return_allocations");
+		jdbcTemplate.update("DELETE FROM laundry_return_manifest_lines");
+		jdbcTemplate.update("DELETE FROM laundry_return_manifests");
 		jdbcTemplate.update("DELETE FROM laundry_rewash_dispatch_allocations");
 		jdbcTemplate.update("DELETE FROM laundry_idempotency_keys");
 		jdbcTemplate.update("DELETE FROM laundry_stock_adjustments");
