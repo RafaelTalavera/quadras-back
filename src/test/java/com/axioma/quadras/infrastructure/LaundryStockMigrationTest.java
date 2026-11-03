@@ -34,13 +34,15 @@ class LaundryStockMigrationTest {
 	@Test
 	void shouldCreateLedgerTablesOnEmptySchema() throws Exception {
 		final String url = databaseUrl("empty");
-		migrate(url, "45");
+		migrate(url, "46");
 
 		assertTables(url);
 		assertVersion(url, "42");
 		assertVersion(url, "43");
 		assertVersion(url, "44");
 		assertVersion(url, "45");
+		assertVersion(url, "46");
+		assertThat(columnCount(url, "app_users", "laundry_provider_id")).isEqualTo(1);
 	}
 
 	@Test
@@ -52,11 +54,13 @@ class LaundryStockMigrationTest {
 		assertThat(tableCount(url, "laundry_shipments")).isEqualTo(1);
 		assertThat(tableCount(url, "laundry_stock_balances")).isZero();
 
-		migrate(url, "45");
+		migrate(url, "46");
 
 		assertVersion(url, "43");
 		assertVersion(url, "44");
 		assertVersion(url, "45");
+		assertVersion(url, "46");
+		assertThat(columnCount(url, "app_users", "laundry_provider_id")).isEqualTo(1);
 		assertThat(tableCount(url, "laundry_shipments")).isEqualTo(1);
 		assertTables(url);
 	}
@@ -86,6 +90,19 @@ class LaundryStockMigrationTest {
 			 PreparedStatement statement = connection.prepareStatement(
 					 "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE UPPER(TABLE_NAME) = ?")) {
 			statement.setString(1, table.toUpperCase());
+			try (ResultSet resultSet = statement.executeQuery()) {
+				resultSet.next();
+				return resultSet.getInt(1);
+			}
+		}
+	}
+
+	private int columnCount(String url, String table, String column) throws Exception {
+		try (Connection connection = DriverManager.getConnection(url, "sa", "");
+			 PreparedStatement statement = connection.prepareStatement(
+					 "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE UPPER(TABLE_NAME) = ? AND UPPER(COLUMN_NAME) = ?")) {
+			statement.setString(1, table.toUpperCase());
+			statement.setString(2, column.toUpperCase());
 			try (ResultSet resultSet = statement.executeQuery()) {
 				resultSet.next();
 				return resultSet.getInt(1);
