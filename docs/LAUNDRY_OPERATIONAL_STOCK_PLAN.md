@@ -615,13 +615,28 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
     `PROVIDER` y la prohibe para roles internos;
   - autenticacion, principal, JWT y `/api/v1/users/me` exponen `laundryProviderId`; el filtro
     invalida el token si rol, version de seguridad o proveedor ya no coinciden con el usuario;
-  - las rutas operativas del proveedor permanecen cerradas hasta incorporar ownership por
-    recurso, confirmaciones y observaciones en el siguiente incremento.
+  - las demas rutas operativas del proveedor permanecen cerradas hasta incorporar devoluciones
+    propias y bandejas paginadas en el siguiente incremento.
+- Doble confirmacion de despachos completada:
+  - `V47__create_laundry_document_confirmations.sql` agrega una bitacora inmutable de
+    confirmacion, observacion y resolucion;
+  - el proveedor puede consultar un despacho propio mediante `GET /documents/{id}`, confirmar
+    mediante `POST /dispatches/{id}/acknowledgements` u observar mediante
+    `POST /documents/{id}/observations`;
+  - `POST /discrepancies/{id}/resolve` permite al hotel cerrar una observacion sin revertir ni
+    repetir movimientos fisicos;
+  - el ownership se obtiene exclusivamente del principal; un documento ajeno responde `404` y
+    el DTO del proveedor omite precio, correlacion y usuarios internos;
+  - las decisiones validan version, estado e idempotencia bajo bloqueo pesimista.
 - Pruebas:
   - `LaundryStockMigrationTest`: 2 pruebas OK para V46 sobre esquema vacio y desde V42;
   - `AuthControllerTest` y `UserManagementControllerTest`: 18 pruebas OK, incluidas asociacion
     obligatoria, rechazo de combinaciones invalidas y sesion con proveedor;
-  - `.\mvnw.cmd -B test`: 193 pruebas OK, 0 fallos y 0 errores.
+  - `LaundryDispatchControllerTest`: 5 pruebas OK, incluidas visibilidad segura, ownership,
+    confirmacion, observacion, resolucion e idempotencia;
+  - `.\mvnw.cmd -B test`: 195 pruebas OK, 0 fallos y 0 errores.
 - Commits asociados:
   - `feat(laundry-provider): add provider user association schema`;
-  - `feat(laundry-provider): bind provider identity to users`.
+  - `feat(laundry-provider): bind provider identity to users`;
+  - `feat(laundry-provider): add document confirmation schema`;
+  - `feat(laundry-provider): implement dispatch decisions and ownership`.
