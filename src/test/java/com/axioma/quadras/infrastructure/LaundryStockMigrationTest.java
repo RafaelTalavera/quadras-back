@@ -28,13 +28,14 @@ class LaundryStockMigrationTest {
 			"laundry_return_manifests",
 			"laundry_return_manifest_lines",
 			"laundry_return_allocations",
-			"laundry_billable_events"
+			"laundry_billable_events",
+			"laundry_document_confirmations"
 	);
 
 	@Test
 	void shouldCreateLedgerTablesOnEmptySchema() throws Exception {
 		final String url = databaseUrl("empty");
-		migrate(url, "46");
+		migrate(url, "47");
 
 		assertTables(url);
 		assertVersion(url, "42");
@@ -42,6 +43,7 @@ class LaundryStockMigrationTest {
 		assertVersion(url, "44");
 		assertVersion(url, "45");
 		assertVersion(url, "46");
+		assertVersion(url, "47");
 		assertThat(columnCount(url, "app_users", "laundry_provider_id")).isEqualTo(1);
 	}
 
@@ -54,12 +56,13 @@ class LaundryStockMigrationTest {
 		assertThat(tableCount(url, "laundry_shipments")).isEqualTo(1);
 		assertThat(tableCount(url, "laundry_stock_balances")).isZero();
 
-		migrate(url, "46");
+		migrate(url, "47");
 
 		assertVersion(url, "43");
 		assertVersion(url, "44");
 		assertVersion(url, "45");
 		assertVersion(url, "46");
+		assertVersion(url, "47");
 		assertThat(columnCount(url, "app_users", "laundry_provider_id")).isEqualTo(1);
 		assertThat(tableCount(url, "laundry_shipments")).isEqualTo(1);
 		assertTables(url);
