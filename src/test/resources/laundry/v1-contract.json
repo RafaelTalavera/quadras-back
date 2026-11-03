@@ -1,0 +1,66 @@
+{
+  "provider": ["id", "name", "contact", "active"],
+  "item": ["id", "name", "unitType", "currentUnitPrice", "active"],
+  "shipment": [
+    "id",
+    "shipmentNumber",
+    "providerId",
+    "providerName",
+    "kind",
+    "status",
+    "sentAt",
+    "receivedAt",
+    "notes",
+    "cancellationNotes",
+    "version",
+    "totalQuantity",
+    "billableAmount",
+    "originShipmentId",
+    "lines",
+    "createdBy",
+    "updatedBy"
+  ],
+  "shipmentLine": [
+    "id",
+    "itemId",
+    "itemName",
+    "unitType",
+    "sentQuantity",
+    "acceptedQuantity",
+    "rewashQuantity",
+    "missingQuantity",
+    "damagedQuantity",
+    "pendingQuantity",
+    "unitPrice",
+    "billableAmount",
+    "originLineId",
+    "rewashReason"
+  ],
+  "summary": [
+    "rows",
+    "totalReceivedQuantity",
+    "totalSentQuantity",
+    "totalRewashedQuantity"
+  ],
+  "dailySummaryRow": [
+    "date",
+    "receivedQuantity",
+    "sentQuantity",
+    "rewashedQuantity"
+  ],
+  "auditEvent": [
+    "id",
+    "moduleName",
+    "entityType",
+    "entityId",
+    "actionName",
+    "occurredAt",
+    "actorUsername",
+    "actorRole",
+    "summaryText",
+    "changes",
+    "beforeState",
+    "afterState"
+  ],
+  "error": ["timestamp", "status", "error", "message", "path"]
+}

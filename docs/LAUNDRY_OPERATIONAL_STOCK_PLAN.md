@@ -474,7 +474,13 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - los errores conservan la estructura `ApiError` sin campos adicionales;
   - `422` queda reservado para conflictos no reconciliables de Fases 2 y 3;
   - V1 permanece intacto y consultable.
-- Pendiente de esta fase:
-  - prueba de compatibilidad V1 con snapshot de campos;
-  - validacion de que los ejemplos JSON sean parseables.
-- Commit asociado: `docs(laundry-stock): freeze V2 contract and examples`.
+- Evidencia de compatibilidad:
+  - `src/test/resources/laundry/v1-contract.json` congela los campos de proveedor, prenda,
+    envio, linea, resumen, auditoria y error;
+  - `LaundryV1CompatibilitySnapshotTest` valida esos campos contra respuestas reales V1,
+    incluida una lectura `RECEIPT`;
+  - `mvnw.cmd -B -Dtest=LaundryV1CompatibilitySnapshotTest test`: 1 prueba OK.
+- Validacion de ejemplos: `docs/laundry/v2-contract-examples.json` parsea como JSON valido.
+- Commits asociados:
+  - `docs(laundry-stock): freeze V2 contract and examples`;
+  - `test(laundry-stock): snapshot V1 compatibility contract`.
