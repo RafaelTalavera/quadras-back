@@ -65,6 +65,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/maintenance/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/tours/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/laundry/**").hasRole(AppUserRole.OPERATOR.name())
+						.requestMatchers("/api/v2/laundry/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/sync/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/notifications/**").authenticated()
 						.requestMatchers("/api/v1/push/subscriptions/**").authenticated()
@@ -91,13 +92,15 @@ public class SecurityConfig {
 		configuration.setAllowedHeaders(List.of(
 				HttpHeaders.AUTHORIZATION,
 				HttpHeaders.CONTENT_TYPE,
-				HttpHeaders.ACCEPT
+				HttpHeaders.ACCEPT,
+				"Idempotency-Key"
 		));
-		configuration.setExposedHeaders(List.of(HttpHeaders.LOCATION));
+		configuration.setExposedHeaders(List.of(HttpHeaders.LOCATION, "Idempotent-Replay"));
 		configuration.setMaxAge(3600L);
 
 		final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/api/v1/**", configuration);
+		source.registerCorsConfiguration("/api/v2/**", configuration);
 		return source;
 	}
 

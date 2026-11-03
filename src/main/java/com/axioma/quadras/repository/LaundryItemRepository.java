@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface LaundryItemRepository extends JpaRepository<LaundryItem, Long> {
 	List<LaundryItem> findAllByOrderByNameAsc();
+	List<LaundryItem> findAllByActiveTrueOrderByNameAsc();
 	boolean existsByNameIgnoreCase(String name);
 	boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 }

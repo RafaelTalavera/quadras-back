@@ -1,0 +1,15 @@
+package com.axioma.quadras.domain.model;
+
+public enum LaundryStockMovementType {
+	OPENING,
+	DISPATCH,
+	RETURN_CLEAN,
+	RETURN_REWASH_QUEUE,
+	RETENTION,
+	MISSING,
+	DAMAGED,
+	ADJUSTMENT_INCREASE,
+	ADJUSTMENT_DECREASE,
+	TRANSFER,
+	REGULARIZATION
+}

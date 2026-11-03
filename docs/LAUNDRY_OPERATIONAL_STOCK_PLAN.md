@@ -511,3 +511,30 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - Flyway aplico las 43 migraciones sobre una base temporal limpia;
   - no se modifico ninguna migracion existente.
 - Commit asociado: `feat(laundry-stock): create stock ledger schema`.
+
+### Fase 1 - apertura, ajustes y consultas de stock (2026-11-03)
+
+- Implementacion backend:
+  - entidades y repositorios JPA alineados con `V43` para saldos, lotes, movimientos,
+    obligaciones, apertura, ajustes e idempotencia;
+  - servicio transaccional para apertura unica, movimientos de entrada, salida y transferencia,
+    consumo FIFO de lotes y control optimista del saldo origen;
+  - `POST /api/v2/laundry/opening-stock` y
+    `POST /api/v2/laundry/stock-adjustments`, exclusivos de supervisor y con
+    `Idempotency-Key` obligatoria;
+  - `GET /api/v2/laundry/dashboard` y `GET /api/v2/laundry/stock`, con filtro por proveedor,
+    paginacion, saldos agregados y antiguedad del lote remanente mas antiguo;
+  - CORS habilitado para V2 y para las cabeceras de idempotencia, sin modificar V1.
+- Invariantes verificadas:
+  - saldo actual igual a la suma de lotes remanentes;
+  - entradas menos salidas del libro igual al stock total;
+  - transferencias conservan el total y aumentos/disminuciones lo modifican de forma auditada;
+  - reintentos con la misma clave no duplican movimientos y una clave reutilizada con otro body
+    responde `409 Conflict`;
+  - versiones obsoletas y saldo insuficiente responden `409` sin cambios parciales.
+- Pruebas:
+  - `LaundryStockControllerTest` cubre permisos, apertura, idempotencia, tablero, antiguedad,
+    ajustes, versiones y combinaciones proveedor/ubicacion;
+  - `.\mvnw.cmd -B -Dtest=LaundryStockControllerTest test`: 5 pruebas OK.
+  - `.\mvnw.cmd -B test`: 184 pruebas OK.
+- Commit asociado: `feat(laundry-stock): implement opening stock ledger`.
