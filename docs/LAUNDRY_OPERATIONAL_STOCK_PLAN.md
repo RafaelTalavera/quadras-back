@@ -484,3 +484,30 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
 - Commits asociados:
   - `docs(laundry-stock): freeze V2 contract and examples`;
   - `test(laundry-stock): snapshot V1 compatibility contract`.
+
+### Fase 1 - esquema del libro de stock (2026-11-03)
+
+- Migracion nueva: `V43__create_laundry_stock_ledger.sql`.
+- Tablas creadas:
+  - `laundry_stock_balances`, con saldo por item, ubicacion y proveedor;
+  - `laundry_stock_lots`, con lote FIFO por fecha efectiva;
+  - `laundry_stock_movements`, inmutable y con documento, actor y correlacion;
+  - `laundry_obligations`, con cantidad abierta, cantidad en relavado y precio congelado;
+  - `laundry_opening_stock` y `laundry_opening_stock_lines`;
+  - `laundry_stock_adjustments`;
+  - `laundry_idempotency_keys`.
+- Invariantes de esquema:
+  - `HOTEL_AVAILABLE` exige proveedor nulo y `provider_scope = 0`;
+  - toda otra ubicacion exige proveedor y `provider_scope = provider_id`;
+  - cantidades y saldos no negativos;
+  - movimientos con al menos un extremo y cantidad positiva;
+  - una sola obligacion por linea de documento de origen;
+  - una sola apertura por referencia y una sola linea por item.
+- Pruebas de migracion:
+  - `LaundryStockMigrationTest` aplica V1 a V43 sobre esquema vacio y V43 sobre un
+    esquema detenido en V42 sin eliminar `laundry_shipments`;
+  - `mvnw.cmd -B -Dtest=LaundryStockMigrationTest test`: 2 pruebas OK.
+- Validacion MySQL 8.0:
+  - Flyway aplico las 43 migraciones sobre una base temporal limpia;
+  - no se modifico ninguna migracion existente.
+- Commit asociado: `feat(laundry-stock): create stock ledger schema`.
