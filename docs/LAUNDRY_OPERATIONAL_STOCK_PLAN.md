@@ -638,6 +638,11 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
     proveedor no puede consultar `HOTEL_AVAILABLE` ni saldos de terceros;
   - todas las lecturas y mutaciones verifican ownership, version y estados permitidos; un
     recurso de otro proveedor se oculta con `404`.
+- Base de navegacion Flutter por rol completada:
+  - la sesion parsea y valida `laundryProviderId` para usuarios `PROVIDER`;
+  - el proveedor inicia en lavanderia y no puede navegar a modulos internos;
+  - roles desconocidos no reciben acceso por defecto y las aperturas desde notificaciones de
+    mantenimiento respetan las secciones autorizadas.
 - Pruebas:
   - `LaundryStockMigrationTest`: 2 pruebas OK para V46 sobre esquema vacio y desde V42;
   - `AuthControllerTest` y `UserManagementControllerTest`: 18 pruebas OK, incluidas asociacion
@@ -645,10 +650,17 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - `LaundryDispatchControllerTest` y `LaundryReturnControllerTest`: 11 pruebas OK para
     visibilidad segura, ownership, decisiones, bandejas y ciclo de devolucion propio;
   - `.\mvnw.cmd -B test`: 197 pruebas OK, 0 fallos y 0 errores.
+- Pruebas Flutter:
+  - pruebas focalizadas de rutas y autenticacion: 11 pruebas OK;
+  - `flutter test`: 124 pruebas OK;
+  - analisis estatico focalizado sobre los seis archivos modificados: sin problemas; el
+    `flutter analyze` completo no finalizo en un tiempo razonable y fue interrumpido.
 - Commits asociados:
   - `feat(laundry-provider): add provider user association schema`;
   - `feat(laundry-provider): bind provider identity to users`;
   - `feat(laundry-provider): add document confirmation schema`;
   - `feat(laundry-provider): implement dispatch decisions and ownership`;
-  - `feat(laundry-provider): add owned returns and inboxes`.
-- Pendiente para completar la fase: navegacion y experiencia Flutter restringidas por rol.
+  - `feat(laundry-provider): add owned returns and inboxes`;
+  - frontend `feat(laundry-provider): restrict Flutter navigation by role`.
+- Pendiente para completar la fase: bandejas, decisiones y devoluciones V2 en la experiencia
+  Flutter del proveedor.
