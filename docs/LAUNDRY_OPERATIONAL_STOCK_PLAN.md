@@ -604,3 +604,24 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
 - Commits asociados:
   - `feat(laundry-stock): add return manifest schema`;
   - `feat(laundry-stock): implement return reconciliation flow`.
+
+### Fase 4 - portal de proveedor y doble confirmacion (en progreso, 2026-11-03)
+
+- Base de identidad y ownership completada:
+  - `V46__associate_users_with_laundry_providers.sql` agrega el rol `PROVIDER`, la asociacion
+    opcional `app_users.laundry_provider_id`, clave foranea, indice y restricciones que exigen
+    proveedor solo para ese rol;
+  - administracion de usuarios valida proveedor existente y activo, exige asociacion para
+    `PROVIDER` y la prohibe para roles internos;
+  - autenticacion, principal, JWT y `/api/v1/users/me` exponen `laundryProviderId`; el filtro
+    invalida el token si rol, version de seguridad o proveedor ya no coinciden con el usuario;
+  - las rutas operativas del proveedor permanecen cerradas hasta incorporar ownership por
+    recurso, confirmaciones y observaciones en el siguiente incremento.
+- Pruebas:
+  - `LaundryStockMigrationTest`: 2 pruebas OK para V46 sobre esquema vacio y desde V42;
+  - `AuthControllerTest` y `UserManagementControllerTest`: 18 pruebas OK, incluidas asociacion
+    obligatoria, rechazo de combinaciones invalidas y sesion con proveedor;
+  - `.\mvnw.cmd -B test`: 193 pruebas OK, 0 fallos y 0 errores.
+- Commits asociados:
+  - `feat(laundry-provider): add provider user association schema`;
+  - `feat(laundry-provider): bind provider identity to users`.
