@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.axioma.quadras.domain.model.LaundryItem;
+import com.axioma.quadras.domain.model.AppUser;
+import com.axioma.quadras.domain.model.AppUserRole;
 import com.axioma.quadras.domain.model.LaundryProvider;
 import com.axioma.quadras.domain.model.LaundryUnitType;
 import com.axioma.quadras.repository.LaundryDocumentRepository;
@@ -16,6 +18,7 @@ import com.axioma.quadras.repository.LaundryObligationRepository;
 import com.axioma.quadras.repository.LaundryProviderRepository;
 import com.axioma.quadras.repository.LaundryStockMovementRepository;
 import com.axioma.quadras.repository.LaundryRewashDispatchAllocationRepository;
+import com.axioma.quadras.repository.AppUserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -28,6 +31,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
@@ -48,9 +52,12 @@ class LaundryDispatchControllerTest {
 	@Autowired LaundryObligationRepository obligationRepository;
 	@Autowired LaundryStockMovementRepository movementRepository;
 	@Autowired LaundryRewashDispatchAllocationRepository rewashAllocationRepository;
+	@Autowired AppUserRepository appUserRepository;
+	@Autowired PasswordEncoder passwordEncoder;
 
 	@BeforeEach
 	void clean() {
+		jdbcTemplate.update("DELETE FROM laundry_document_confirmations");
 		jdbcTemplate.update("DELETE FROM laundry_billable_events");
 		jdbcTemplate.update("DELETE FROM laundry_return_allocations");
 		jdbcTemplate.update("DELETE FROM laundry_return_manifest_lines");
@@ -199,6 +206,71 @@ class LaundryDispatchControllerTest {
 		assertThat(obligationRepository.count()).isEqualTo(2);
 	}
 
+	@Test
+	void providerShouldConfirmOwnedDispatchWithoutSeeingPricesAndReplaySafely() throws Exception {
+		Session supervisor = authenticate("supervisor.demo", "654321");
+		LaundryItem item = item("Roupao");
+		LaundryProvider provider = provider("Portal");
+		LaundryProvider otherProvider = provider("Outro");
+		Session providerSession = providerSession(provider);
+		Session otherSession = providerSession(otherProvider);
+		open(supervisor, item, "3.000");
+		long documentId = createAndSubmit(supervisor, provider, item, "3.000");
+		long movements = movementRepository.count();
+
+		mockMvc.perform(get("/api/v2/laundry/documents/" + documentId)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + providerSession.token()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.providerId").value(provider.getId()))
+				.andExpect(jsonPath("$.lines[0].quantity").value(3.0))
+				.andExpect(jsonPath("$.lines[0].unitPrice").doesNotExist())
+				.andExpect(jsonPath("$.correlationId").doesNotExist())
+				.andExpect(jsonPath("$.createdBy").doesNotExist());
+		mockMvc.perform(get("/api/v2/laundry/documents/" + documentId)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + otherSession.token()))
+				.andExpect(status().isNotFound());
+
+		String key = "ack-" + UUID.randomUUID();
+		String body = "{\"version\":1,\"notes\":\"Recebido\"}";
+		mockMvc.perform(command("/api/v2/laundry/dispatches/" + documentId + "/acknowledgements",
+				providerSession, key, body)).andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("CONFIRMED"))
+				.andExpect(jsonPath("$.confirmations[0].action").value("PROVIDER_CONFIRMED"));
+		mockMvc.perform(command("/api/v2/laundry/dispatches/" + documentId + "/acknowledgements",
+				providerSession, key, body)).andExpect(status().isOk())
+				.andExpect(header().string("Idempotent-Replay", "true"));
+		assertThat(movementRepository.count()).isEqualTo(movements);
+	}
+
+	@Test
+	void providerObservationShouldRequireOwnershipAndHotelResolutionShouldNotMoveStock() throws Exception {
+		Session supervisor = authenticate("supervisor.demo", "654321");
+		LaundryItem item = item("Lencol");
+		LaundryProvider provider = provider("Observacao");
+		LaundryProvider otherProvider = provider("Sem acesso");
+		Session providerSession = providerSession(provider);
+		Session otherSession = providerSession(otherProvider);
+		open(supervisor, item, "2.000");
+		long documentId = createAndSubmit(supervisor, provider, item, "2.000");
+		long movements = movementRepository.count();
+
+		mockMvc.perform(command("/api/v2/laundry/documents/" + documentId + "/observations",
+				otherSession, "obs-" + UUID.randomUUID(),
+				"{\"version\":1,\"notes\":\"Documento alheio\"}"))
+				.andExpect(status().isNotFound());
+		mockMvc.perform(command("/api/v2/laundry/documents/" + documentId + "/observations",
+				providerSession, "obs-" + UUID.randomUUID(),
+				"{\"version\":1,\"notes\":\"Quantidade divergente\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("OBSERVED"));
+		mockMvc.perform(command("/api/v2/laundry/discrepancies/" + documentId + "/resolve",
+				supervisor, "resolve-" + UUID.randomUUID(),
+				"{\"version\":2,\"notes\":\"Conferido fisicamente pelo hotel\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("RESOLVED"));
+		assertThat(movementRepository.count()).isEqualTo(movements);
+	}
+
 	private void assertStock(Session session, Long itemId, String bucket, Long providerId,
 			double quantity) throws Exception {
 		MockHttpServletRequestBuilder request = get("/api/v2/laundry/stock")
@@ -224,6 +296,25 @@ class LaundryDispatchControllerTest {
 				""".formatted(OffsetDateTime.now().minusDays(1).withNano(0), item.getId(), quantity);
 		mockMvc.perform(command("/api/v2/laundry/opening-stock", session,
 				"open-" + UUID.randomUUID(), body)).andExpect(status().isCreated());
+	}
+
+	private long createAndSubmit(Session supervisor, LaundryProvider provider,
+			LaundryItem item, String quantity) throws Exception {
+		String created = mockMvc.perform(command("/api/v2/laundry/dispatches", supervisor,
+				"create-" + UUID.randomUUID(), dispatchJson(provider.getId(), item.getId(), quantity)))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		long id = objectMapper.readTree(created).get("id").asLong();
+		mockMvc.perform(command("/api/v2/laundry/documents/" + id + "/submit", supervisor,
+				"submit-" + UUID.randomUUID(), "{\"version\":0}"))
+				.andExpect(status().isOk());
+		return id;
+	}
+
+	private Session providerSession(LaundryProvider provider) throws Exception {
+		String username = "provider." + UUID.randomUUID().toString().substring(0, 8);
+		appUserRepository.save(AppUser.create(username, passwordEncoder.encode("123456"),
+				AppUserRole.PROVIDER, provider, true));
+		return authenticate(username, "123456");
 	}
 
 	private String dispatchJson(Long providerId, Long itemId, String quantity) {

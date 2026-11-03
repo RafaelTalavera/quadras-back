@@ -3,17 +3,24 @@ package com.axioma.quadras.service;
 import com.axioma.quadras.domain.dto.CreateLaundryDispatchDto;
 import com.axioma.quadras.domain.dto.CreateLaundryDispatchLineDto;
 import com.axioma.quadras.domain.dto.LaundryDocumentDto;
+import com.axioma.quadras.domain.dto.AcknowledgeLaundryDocumentDto;
+import com.axioma.quadras.domain.dto.ObserveLaundryDocumentDto;
+import com.axioma.quadras.domain.dto.ProviderLaundryDocumentDto;
+import com.axioma.quadras.domain.dto.ResolveLaundryDiscrepancyDto;
 import com.axioma.quadras.domain.dto.SubmitLaundryDocumentDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.LaundryDocument;
 import com.axioma.quadras.domain.model.LaundryDocumentStatus;
 import com.axioma.quadras.domain.model.LaundryDocumentType;
+import com.axioma.quadras.domain.model.LaundryDocumentConfirmation;
+import com.axioma.quadras.domain.model.LaundryDocumentConfirmationAction;
 import com.axioma.quadras.domain.model.LaundryItem;
 import com.axioma.quadras.domain.model.LaundryObligation;
 import com.axioma.quadras.domain.model.LaundryProvider;
 import com.axioma.quadras.domain.model.LaundryStockBucket;
 import com.axioma.quadras.domain.model.LaundryStockDocumentType;
 import com.axioma.quadras.repository.LaundryDocumentRepository;
+import com.axioma.quadras.repository.LaundryDocumentConfirmationRepository;
 import com.axioma.quadras.repository.LaundryItemRepository;
 import com.axioma.quadras.repository.LaundryObligationRepository;
 import com.axioma.quadras.repository.LaundryProviderRepository;
@@ -48,13 +55,15 @@ public class LaundryDispatchService {
 	private final LaundryRewashDispatchAllocationRepository rewashAllocationRepository;
 	private final LaundryReturnAllocationRepository returnAllocationRepository;
 	private final LaundryIdempotencyService idempotencyService;
+	private final LaundryDocumentConfirmationRepository confirmationRepository;
 
 	public LaundryDispatchService(LaundryDocumentRepository documentRepository,
 			LaundryProviderRepository providerRepository, LaundryItemRepository itemRepository,
 			LaundryObligationRepository obligationRepository, LaundryStockService stockService,
 			LaundryIdempotencyService idempotencyService,
 			LaundryRewashDispatchAllocationRepository rewashAllocationRepository,
-			LaundryReturnAllocationRepository returnAllocationRepository) {
+			LaundryReturnAllocationRepository returnAllocationRepository,
+			LaundryDocumentConfirmationRepository confirmationRepository) {
 		this.documentRepository = documentRepository;
 		this.providerRepository = providerRepository;
 		this.itemRepository = itemRepository;
@@ -63,6 +72,7 @@ public class LaundryDispatchService {
 		this.idempotencyService = idempotencyService;
 		this.rewashAllocationRepository = rewashAllocationRepository;
 		this.returnAllocationRepository = returnAllocationRepository;
+		this.confirmationRepository = confirmationRepository;
 	}
 
 	@Transactional
@@ -87,6 +97,101 @@ public class LaundryDispatchService {
 	public LaundryDocumentDto get(Long id) {
 		return LaundryDocumentDto.from(documentRepository.findById(id)
 				.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND, "Laundry document not found")));
+	}
+
+	public ProviderLaundryDocumentDto getForProvider(Long id, Long providerId) {
+		LaundryDocument document = ownedDocument(id, providerId, false);
+		return providerDto(document);
+	}
+
+	@Transactional
+	public IdempotentResult<ProviderLaundryDocumentDto> acknowledge(Long id,
+			AcknowledgeLaundryDocumentDto input, Long providerId, String actor, String key) {
+		String path = "/api/v2/laundry/dispatches/" + id + "/acknowledgements";
+		String fingerprint = idempotencyService.fingerprint("POST", path, input);
+		return idempotencyService.execute(actor, key, fingerprint,
+				ProviderLaundryDocumentDto.class, 200,
+				() -> providerDecision(id, input.version(), input.notes(), providerId, actor, true));
+	}
+
+	@Transactional
+	public IdempotentResult<ProviderLaundryDocumentDto> observe(Long id,
+			ObserveLaundryDocumentDto input, Long providerId, String actor, String key) {
+		String path = "/api/v2/laundry/documents/" + id + "/observations";
+		String fingerprint = idempotencyService.fingerprint("POST", path, input);
+		return idempotencyService.execute(actor, key, fingerprint,
+				ProviderLaundryDocumentDto.class, 200,
+				() -> providerDecision(id, input.version(), input.notes(), providerId, actor, false));
+	}
+
+	@Transactional
+	public IdempotentResult<LaundryDocumentDto> resolve(Long id,
+			ResolveLaundryDiscrepancyDto input, String actor, String actorRole, String key) {
+		String path = "/api/v2/laundry/discrepancies/" + id + "/resolve";
+		String fingerprint = idempotencyService.fingerprint("POST", path, input);
+		return idempotencyService.execute(actor, key, fingerprint, LaundryDocumentDto.class, 200,
+				() -> resolveDocument(id, input, actor, actorRole));
+	}
+
+	private ProviderLaundryDocumentDto providerDecision(Long id, long version, String notes,
+			Long providerId, String actor, boolean confirmed) {
+		LaundryDocument document = ownedDocument(id, providerId, true);
+		checkVersion(document, version);
+		if (document.getStatus() != LaundryDocumentStatus.SUBMITTED) {
+			throw new ApplicationException(HttpStatus.CONFLICT,
+					"Only SUBMITTED documents can receive a provider decision");
+		}
+		LaundryDocumentConfirmationAction action = confirmed
+				? LaundryDocumentConfirmationAction.PROVIDER_CONFIRMED
+				: LaundryDocumentConfirmationAction.PROVIDER_OBSERVED;
+		confirmationRepository.save(LaundryDocumentConfirmation.create(document, action,
+				notes, actor, "PROVIDER"));
+		if (confirmed) document.confirmByProvider(); else document.observeByProvider();
+		documentRepository.saveAndFlush(document);
+		return providerDto(document);
+	}
+
+	private LaundryDocumentDto resolveDocument(Long id, ResolveLaundryDiscrepancyDto input,
+			String actor, String actorRole) {
+		LaundryDocument document = documentRepository.findForUpdate(id)
+				.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND,
+						"Laundry document not found"));
+		checkVersion(document, input.version());
+		if (document.getStatus() != LaundryDocumentStatus.OBSERVED) {
+			throw new ApplicationException(HttpStatus.CONFLICT,
+					"Only OBSERVED documents can be resolved");
+		}
+		confirmationRepository.save(LaundryDocumentConfirmation.create(document,
+				LaundryDocumentConfirmationAction.HOTEL_RESOLVED, input.notes(), actor, actorRole));
+		document.resolveByHotel();
+		return LaundryDocumentDto.from(documentRepository.saveAndFlush(document));
+	}
+
+	private LaundryDocument ownedDocument(Long id, Long providerId, boolean lock) {
+		if (providerId == null) {
+			throw new ApplicationException(HttpStatus.FORBIDDEN,
+					"Provider account is not associated with a laundry provider");
+		}
+		LaundryDocument document = (lock ? documentRepository.findForUpdate(id)
+				: documentRepository.findById(id)).orElseThrow(() ->
+				new ApplicationException(HttpStatus.NOT_FOUND, "Laundry document not found"));
+		if (!document.getProvider().getId().equals(providerId)) {
+			throw new ApplicationException(HttpStatus.NOT_FOUND, "Laundry document not found");
+		}
+		return document;
+	}
+
+	private ProviderLaundryDocumentDto providerDto(LaundryDocument document) {
+		return ProviderLaundryDocumentDto.from(document,
+				confirmationRepository.findByDocumentIdOrderByCreatedAtAscIdAsc(document.getId()));
+	}
+
+	private void checkVersion(LaundryDocument document, long expectedVersion) {
+		if (document.getVersion() != expectedVersion) {
+			throw new ApplicationException(HttpStatus.CONFLICT,
+					"Laundry document version mismatch: expected " + expectedVersion
+							+ ", current " + document.getVersion());
+		}
 	}
 
 	private LaundryDocumentDto createDraft(CreateLaundryDispatchDto input,

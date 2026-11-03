@@ -85,6 +85,27 @@ public class LaundryDocument {
 		updatedAt = submittedAt;
 	}
 
+	public void confirmByProvider() {
+		if (status != LaundryDocumentStatus.SUBMITTED)
+			throw new IllegalStateException("Only SUBMITTED documents can be confirmed");
+		status = LaundryDocumentStatus.CONFIRMED;
+		updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
+	}
+
+	public void observeByProvider() {
+		if (status != LaundryDocumentStatus.SUBMITTED)
+			throw new IllegalStateException("Only SUBMITTED documents can be observed");
+		status = LaundryDocumentStatus.OBSERVED;
+		updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
+	}
+
+	public void resolveByHotel() {
+		if (status != LaundryDocumentStatus.OBSERVED)
+			throw new IllegalStateException("Only OBSERVED documents can be resolved");
+		status = LaundryDocumentStatus.RESOLVED;
+		updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
+	}
+
 	public Long getId() { return id; }
 	public String getReference() { return reference; }
 	public LaundryDocumentType getDocumentType() { return documentType; }

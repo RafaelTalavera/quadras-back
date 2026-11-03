@@ -65,6 +65,11 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/maintenance/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/tours/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/laundry/**").hasRole(AppUserRole.OPERATOR.name())
+						.requestMatchers(HttpMethod.GET, "/api/v2/laundry/documents/*")
+								.hasAnyRole(AppUserRole.OPERATOR.name(), AppUserRole.PROVIDER.name())
+						.requestMatchers(HttpMethod.POST, "/api/v2/laundry/dispatches/*/acknowledgements",
+								"/api/v2/laundry/documents/*/observations")
+								.hasRole(AppUserRole.PROVIDER.name())
 						.requestMatchers("/api/v2/laundry/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/sync/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/notifications/**").authenticated()

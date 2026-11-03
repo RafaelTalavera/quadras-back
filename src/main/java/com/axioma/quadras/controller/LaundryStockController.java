@@ -9,6 +9,10 @@ import com.axioma.quadras.domain.dto.LaundryStockDashboardDto;
 import com.axioma.quadras.domain.dto.LaundryStockPageDto;
 import com.axioma.quadras.domain.dto.LaundryDocumentDto;
 import com.axioma.quadras.domain.dto.SubmitLaundryDocumentDto;
+import com.axioma.quadras.domain.dto.AcknowledgeLaundryDocumentDto;
+import com.axioma.quadras.domain.dto.ObserveLaundryDocumentDto;
+import com.axioma.quadras.domain.dto.ProviderLaundryDocumentDto;
+import com.axioma.quadras.domain.dto.ResolveLaundryDiscrepancyDto;
 import com.axioma.quadras.domain.dto.CreateLaundryReturnDto;
 import com.axioma.quadras.domain.dto.ConfirmLaundryReturnDto;
 import com.axioma.quadras.domain.dto.LaundryReturnDto;
@@ -19,6 +23,7 @@ import java.time.OffsetDateTime;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.LaundryStockBucket;
 import com.axioma.quadras.domain.model.LaundryDocumentType;
+import com.axioma.quadras.domain.model.AppUserRole;
 import com.axioma.quadras.service.AuthenticatedUserPrincipal;
 import com.axioma.quadras.service.IdempotentResult;
 import com.axioma.quadras.service.LaundryStockService;
@@ -157,8 +162,47 @@ public class LaundryStockController {
 				user.getRole().name(), key));
 	}
 
+	@PostMapping("/dispatches/{id}/acknowledgements")
+	public ResponseEntity<ProviderLaundryDocumentDto> acknowledgeDispatch(
+			@PathVariable Long id,
+			@RequestHeader(value = "Idempotency-Key", required = false) String key,
+			@Valid @RequestBody AcknowledgeLaundryDocumentDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		return response(laundryDispatchService.acknowledge(id, input,
+				user.getLaundryProviderId(), user.getUsername(), key));
+	}
+
+	@PostMapping("/documents/{id}/observations")
+	public ResponseEntity<ProviderLaundryDocumentDto> observeDocument(
+			@PathVariable Long id,
+			@RequestHeader(value = "Idempotency-Key", required = false) String key,
+			@Valid @RequestBody ObserveLaundryDocumentDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		return response(laundryDispatchService.observe(id, input,
+				user.getLaundryProviderId(), user.getUsername(), key));
+	}
+
+	@PostMapping("/discrepancies/{id}/resolve")
+	public ResponseEntity<LaundryDocumentDto> resolveDiscrepancy(
+			@PathVariable Long id,
+			@RequestHeader(value = "Idempotency-Key", required = false) String key,
+			@Valid @RequestBody ResolveLaundryDiscrepancyDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		return response(laundryDispatchService.resolve(id, input, user.getUsername(),
+				user.getRole().name(), key));
+	}
+
 	@GetMapping("/documents/{id}")
-	public ResponseEntity<LaundryDocumentDto> document(@PathVariable Long id) {
+	public ResponseEntity<?> document(@PathVariable Long id,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		if (user.getRole() == AppUserRole.PROVIDER) {
+			return ResponseEntity.ok(laundryDispatchService.getForProvider(id,
+					user.getLaundryProviderId()));
+		}
 		return ResponseEntity.ok(laundryDispatchService.get(id));
 	}
 
