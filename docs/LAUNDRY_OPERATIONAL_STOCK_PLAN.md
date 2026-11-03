@@ -650,6 +650,13 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
     `PROVIDER_PROCESSING` y `PROVIDER_REWASH`;
   - respuestas mal formadas se rechazan como error de contrato en lugar de producir datos
     parciales silenciosos.
+- Portal Flutter de consulta del proveedor completado:
+  - cliente autenticado independiente con base `/api/v2/laundry`, sin alterar los consumos V1
+    de la operacion interna;
+  - pantalla exclusiva con saldos en procesamiento y relavado, antiguedad, envios y
+    devoluciones;
+  - estados explicitos de carga, vacio, error, reintento y recarga por gesto;
+  - la campana de mantenimiento no se crea para `PROVIDER`, evitando consultas fuera de su rol.
 - Pruebas:
   - `LaundryStockMigrationTest`: 2 pruebas OK para V46 sobre esquema vacio y desde V42;
   - `AuthControllerTest` y `UserManagementControllerTest`: 18 pruebas OK, incluidas asociacion
@@ -663,6 +670,9 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - analisis estatico focalizado sobre los seis archivos modificados: sin problemas; el
     `flutter analyze` completo no finalizo en un tiempo razonable y fue interrumpido.
   - cliente V2 de lectura: 3 pruebas OK y analisis focalizado sin problemas.
+  - portal del proveedor: 2 pruebas de widget para contenido seguro, ausencia de precios,
+    error y reintento;
+  - `flutter test`: 129 pruebas OK; analisis estatico focalizado sin problemas.
 - Commits asociados:
   - `feat(laundry-provider): add provider user association schema`;
   - `feat(laundry-provider): bind provider identity to users`;
@@ -670,6 +680,7 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - `feat(laundry-provider): implement dispatch decisions and ownership`;
   - `feat(laundry-provider): add owned returns and inboxes`;
   - frontend `feat(laundry-provider): restrict Flutter navigation by role`;
-  - frontend `feat(laundry-provider): add Flutter V2 read contracts`.
-- Pendiente para completar la fase: bandejas, decisiones y devoluciones V2 en la experiencia
-  Flutter del proveedor.
+  - frontend `feat(laundry-provider): add Flutter V2 read contracts`;
+  - frontend `feat(laundry-provider): add Flutter provider portal`.
+- Pendiente para completar la fase: detalle y decisiones de despacho, y creacion/edicion/envio
+  de devoluciones V2 desde Flutter.
