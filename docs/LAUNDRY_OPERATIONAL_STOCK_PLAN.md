@@ -628,15 +628,27 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - el ownership se obtiene exclusivamente del principal; un documento ajeno responde `404` y
     el DTO del proveedor omite precio, correlacion y usuarios internos;
   - las decisiones validan version, estado e idempotencia bajo bloqueo pesimista.
+- Devoluciones propias y bandejas del proveedor completadas:
+  - el proveedor puede crear, editar mientras permanezca en `DRAFT`, enviar y consultar sus
+    devoluciones; el proveedor se obtiene del principal y no se acepta un `providerId` elegido
+    por el cliente;
+  - `GET /provider/returns` y `GET /provider/documents` exponen bandejas paginadas, filtrables y
+    con orden estable, mediante DTO especificos sin precios ni datos internos;
+  - `GET /provider/stock` limita la consulta a `PROVIDER_PROCESSING` y `PROVIDER_REWASH`; el
+    proveedor no puede consultar `HOTEL_AVAILABLE` ni saldos de terceros;
+  - todas las lecturas y mutaciones verifican ownership, version y estados permitidos; un
+    recurso de otro proveedor se oculta con `404`.
 - Pruebas:
   - `LaundryStockMigrationTest`: 2 pruebas OK para V46 sobre esquema vacio y desde V42;
   - `AuthControllerTest` y `UserManagementControllerTest`: 18 pruebas OK, incluidas asociacion
     obligatoria, rechazo de combinaciones invalidas y sesion con proveedor;
-  - `LaundryDispatchControllerTest`: 5 pruebas OK, incluidas visibilidad segura, ownership,
-    confirmacion, observacion, resolucion e idempotencia;
-  - `.\mvnw.cmd -B test`: 195 pruebas OK, 0 fallos y 0 errores.
+  - `LaundryDispatchControllerTest` y `LaundryReturnControllerTest`: 11 pruebas OK para
+    visibilidad segura, ownership, decisiones, bandejas y ciclo de devolucion propio;
+  - `.\mvnw.cmd -B test`: 197 pruebas OK, 0 fallos y 0 errores.
 - Commits asociados:
   - `feat(laundry-provider): add provider user association schema`;
   - `feat(laundry-provider): bind provider identity to users`;
   - `feat(laundry-provider): add document confirmation schema`;
-  - `feat(laundry-provider): implement dispatch decisions and ownership`.
+  - `feat(laundry-provider): implement dispatch decisions and ownership`;
+  - `feat(laundry-provider): add owned returns and inboxes`.
+- Pendiente para completar la fase: navegacion y experiencia Flutter restringidas por rol.
