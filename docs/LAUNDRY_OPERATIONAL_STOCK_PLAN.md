@@ -456,3 +456,25 @@ Entregar una fase por vez. En cada fase, el agente debe:
 
 No implementar todas las fases en un unico cambio. Las fases 1 a 3 forman el nucleo de
 control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las invariantes.
+
+## 15. Registro de avance
+
+### Fase 0 - contrato congelado (2026-11-03)
+
+- Evidencia funcional:
+  - contrato HTTP completo en `docs/LAUNDRY_OPERATIONAL_STOCK_CONTRACT_V2.md`;
+  - ejemplos JSON parseables en `docs/laundry/v2-contract-examples.json`;
+  - matriz de transiciones, errores, idempotencia, permisos y reglas FIFO congeladas.
+- Decisiones registradas:
+  - se usan tablas nuevas V2 y no se reutiliza `laundry_shipments` para el flujo nuevo;
+  - la cabecera comun de documentos sera `laundry_documents` en Fase 2;
+  - la apertura inicial es unica y exclusiva de supervisor;
+  - los ajustes requieren supervisor, motivo y version del saldo origen;
+  - `Idempotency-Key` es obligatoria en todo comando;
+  - los errores conservan la estructura `ApiError` sin campos adicionales;
+  - `422` queda reservado para conflictos no reconciliables de Fases 2 y 3;
+  - V1 permanece intacto y consultable.
+- Pendiente de esta fase:
+  - prueba de compatibilidad V1 con snapshot de campos;
+  - validacion de que los ejemplos JSON sean parseables.
+- Commit asociado: `docs(laundry-stock): freeze V2 contract and examples`.

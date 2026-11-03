@@ -1,0 +1,187 @@
+{
+  "dashboard": {
+    "generatedAt": "2026-11-03T09:15:00-03:00",
+    "providerId": null,
+    "totals": {
+      "hotelAvailable": 12.000,
+      "hotelRewashQueue": 1.000,
+      "providerProcessing": 10.000,
+      "providerRewash": 3.000,
+      "missing": 0.000,
+      "damaged": 1.000,
+      "total": 27.000
+    },
+    "items": [
+      {
+        "itemId": 4,
+        "itemName": "Toalha de banho",
+        "unitType": "PIECE",
+        "hotelAvailable": 12.000,
+        "hotelRewashQueue": 1.000,
+        "providerProcessing": 10.000,
+        "providerRewash": 3.000,
+        "missing": 0.000,
+        "damaged": 1.000,
+        "total": 27.000,
+        "oldestHotelRewashQueueAt": "2026-11-01T10:00:00-03:00",
+        "oldestProviderProcessingAt": "2026-10-28T08:00:00-03:00",
+        "oldestProviderRewashAt": "2026-10-30T08:00:00-03:00",
+        "oldestMissingAt": null,
+        "oldestDamagedAt": "2026-11-02T16:00:00-03:00"
+      }
+    ],
+    "providers": [
+      {
+        "providerId": 1,
+        "providerName": "Lavanderia Central",
+        "providerProcessing": 10.000,
+        "providerRewash": 3.000,
+        "missing": 0.000,
+        "damaged": 1.000,
+        "total": 14.000
+      }
+    ]
+  },
+  "stockPage": {
+    "page": 0,
+    "size": 20,
+    "hasNext": false,
+    "items": [
+      {
+        "balanceId": 12,
+        "itemId": 4,
+        "itemName": "Toalha de banho",
+        "unitType": "PIECE",
+        "bucket": "PROVIDER_PROCESSING",
+        "providerId": 1,
+        "providerName": "Lavanderia Central",
+        "quantity": 10.000,
+        "oldestEffectiveAt": "2026-10-28T08:00:00-03:00",
+        "ageDays": 6,
+        "version": 3
+      }
+    ]
+  },
+  "openingStockRequest": {
+    "version": 0,
+    "effectiveAt": "2026-11-03T08:00:00-03:00",
+    "notes": "Carga inicial aprobada por gobernanta",
+    "lines": [
+      {
+        "itemId": 4,
+        "quantity": 20.000
+      },
+      {
+        "itemId": 5,
+        "quantity": 0.000
+      }
+    ]
+  },
+  "openingStockResponse": {
+    "id": 1,
+    "reference": "OPEN-20261103-AB12CD",
+    "status": "APPROVED",
+    "approvedBy": "supervisor.demo",
+    "approvedAt": "2026-11-03T08:00:01-03:00",
+    "effectiveAt": "2026-11-03T08:00:00-03:00",
+    "notes": "Carga inicial aprobada por gobernanta",
+    "correlationId": "8a5b2f1e-6d0e-4a3b-a0f6-2b6f2f4f9d1a",
+    "lines": [
+      {
+        "itemId": 4,
+        "itemName": "Toalha de banho",
+        "unitType": "PIECE",
+        "quantity": 20.000
+      }
+    ]
+  },
+  "stockAdjustmentRequest": {
+    "version": 3,
+    "itemId": 4,
+    "operation": "TRANSFER",
+    "fromBucket": "MISSING",
+    "toBucket": "HOTEL_AVAILABLE",
+    "providerId": 1,
+    "quantity": 1.000,
+    "reason": "Prenda encontrada no enxoval",
+    "effectiveAt": "2026-11-03T09:30:00-03:00"
+  },
+  "stockAdjustmentResponse": {
+    "id": 7,
+    "itemId": 4,
+    "itemName": "Toalha de banho",
+    "operation": "TRANSFER",
+    "fromBucket": "MISSING",
+    "toBucket": "HOTEL_AVAILABLE",
+    "providerId": 1,
+    "quantity": 1.000,
+    "reason": "Prenda encontrada no enxoval",
+    "effectiveAt": "2026-11-03T09:30:00-03:00",
+    "actorUsername": "supervisor.demo",
+    "actorRole": "SUPERVISOR",
+    "correlationId": "4f0c1d7e-2a88-4b4d-9e47-0f4f1f2a6c31",
+    "createdAt": "2026-11-03T09:30:02-03:00"
+  },
+  "dispatchRequest": {
+    "version": 0,
+    "providerId": 1,
+    "effectiveAt": "2026-11-03T10:00:00-03:00",
+    "notes": "Envio semanal",
+    "lines": [
+      {
+        "itemId": 4,
+        "quantity": 10.000
+      }
+    ]
+  },
+  "rewashDispatchRequest": {
+    "version": 0,
+    "providerId": 1,
+    "effectiveAt": "2026-11-03T10:00:00-03:00",
+    "notes": "Reenvio de prenda retenida",
+    "lines": [
+      {
+        "itemId": 4,
+        "quantity": 1.000
+      }
+    ]
+  },
+  "returnRequest": {
+    "version": 0,
+    "providerId": 1,
+    "effectiveAt": "2026-11-04T09:00:00-03:00",
+    "notes": "Devolucion semanal",
+    "lines": [
+      {
+        "itemId": 4,
+        "declaredClean": 7.000,
+        "declaredDirty": 3.000,
+        "declaredRetained": 0.000,
+        "declaredMissing": 0.000,
+        "declaredDamaged": 0.000
+      }
+    ]
+  },
+  "returnResult": {
+    "itemId": 4,
+    "acceptedClean": 7.000,
+    "returnedDirty": 3.000,
+    "retained": 0.000,
+    "missing": 0.000,
+    "damaged": 0.000
+  },
+  "error": {
+    "timestamp": "2026-11-03T09:15:00-03:00",
+    "status": 409,
+    "error": "Conflict",
+    "message": "Insufficient HOTEL_AVAILABLE balance for item 4: available 2.000, requested 3.000",
+    "path": "/api/v2/laundry/stock-adjustments"
+  },
+  "idempotencyConflict": {
+    "timestamp": "2026-11-03T09:15:00-03:00",
+    "status": 409,
+    "error": "Conflict",
+    "message": "Idempotency-Key was already used with a different request",
+    "path": "/api/v2/laundry/opening-stock"
+  }
+}
