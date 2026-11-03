@@ -122,6 +122,15 @@ public class LaundryObligation {
 		}
 	}
 
+	public void markInRewash(BigDecimal quantity) {
+		BigDecimal normalized = LaundryStockBalance.normalize(quantity);
+		if (normalized.signum() <= 0 || inRewashQuantity.add(normalized).compareTo(openQuantity) > 0) {
+			throw new IllegalArgumentException("Rewash quantity exceeds open obligation quantity");
+		}
+		inRewashQuantity = inRewashQuantity.add(normalized);
+		updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
+	}
+
 	public Long getId() {
 		return id;
 	}

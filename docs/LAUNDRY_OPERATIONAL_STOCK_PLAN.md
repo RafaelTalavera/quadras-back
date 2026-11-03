@@ -538,3 +538,34 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - `.\mvnw.cmd -B -Dtest=LaundryStockControllerTest test`: 5 pruebas OK.
   - `.\mvnw.cmd -B test`: 184 pruebas OK.
 - Commit asociado: `feat(laundry-stock): implement opening stock ledger`.
+
+### Fase 2 - envios, obligaciones y relavado FIFO (2026-11-03)
+
+- Persistencia:
+  - `V44__create_laundry_dispatch_documents.sql` agrega `laundry_documents`,
+    `laundry_document_lines` y `laundry_rewash_dispatch_allocations`;
+  - la migracion aplica sobre esquema vacio y sobre esquema detenido en V42 sin modificar
+    V41, V42 ni V43.
+- Flujo V2 implementado:
+  - `POST /api/v2/laundry/dispatches` crea un borrador agregado sin mover stock;
+  - `POST /api/v2/laundry/rewash-dispatches` crea un borrador de relavado con precio cero;
+  - `POST /api/v2/laundry/documents/{id}/submit` bloquea el documento, valida su version y
+    ejecuta movimientos, obligaciones y asignaciones en una sola transaccion;
+  - `GET /api/v2/laundry/documents/{id}` devuelve el detalle congelado del documento.
+- Invariantes verificadas:
+  - un envio normal mueve exclusivamente `HOTEL_AVAILABLE -> PROVIDER_PROCESSING`;
+  - cada linea normal crea una unica obligacion con cantidad y precio historico congelados;
+  - un borrador no altera saldos y un documento enviado no puede enviarse nuevamente;
+  - saldo insuficiente o version obsoleta responde `409` sin movimientos parciales;
+  - el relavado mueve `HOTEL_REWASH_QUEUE -> PROVIDER_REWASH`, conserva las obligaciones
+    originales y registra asignaciones FIFO por fecha efectiva, creacion e identificador;
+  - reintentos con la misma `Idempotency-Key` no duplican movimientos, obligaciones ni
+    asignaciones.
+- Pruebas:
+  - `LaundryStockMigrationTest`: 2 pruebas OK para V44;
+  - `LaundryDispatchControllerTest`: 3 pruebas OK para borrador, envio atomico, rollback,
+    idempotencia, precio historico y relavado FIFO contra dos obligaciones;
+  - `.\mvnw.cmd -B test`: 187 pruebas OK.
+- Commits asociados:
+  - `feat(laundry-stock): add dispatch document schema`;
+  - `feat(laundry-stock): implement dispatch and rewash flow`.

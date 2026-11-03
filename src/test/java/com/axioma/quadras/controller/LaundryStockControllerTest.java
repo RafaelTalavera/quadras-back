@@ -61,11 +61,14 @@ class LaundryStockControllerTest {
 
 	@BeforeEach
 	void cleanStockLedger() {
+		jdbcTemplate.update("DELETE FROM laundry_rewash_dispatch_allocations");
 		jdbcTemplate.update("DELETE FROM laundry_idempotency_keys");
 		jdbcTemplate.update("DELETE FROM laundry_stock_adjustments");
 		jdbcTemplate.update("DELETE FROM laundry_opening_stock_lines");
 		jdbcTemplate.update("DELETE FROM laundry_opening_stock");
 		jdbcTemplate.update("DELETE FROM laundry_obligations");
+		jdbcTemplate.update("DELETE FROM laundry_document_lines");
+		jdbcTemplate.update("DELETE FROM laundry_documents");
 		jdbcTemplate.update("DELETE FROM laundry_stock_movements");
 		jdbcTemplate.update("DELETE FROM laundry_stock_lots");
 		jdbcTemplate.update("DELETE FROM laundry_stock_balances");

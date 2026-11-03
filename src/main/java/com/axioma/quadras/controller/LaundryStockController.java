@@ -1,21 +1,27 @@
 package com.axioma.quadras.controller;
 
 import com.axioma.quadras.domain.dto.CreateLaundryOpeningStockDto;
+import com.axioma.quadras.domain.dto.CreateLaundryDispatchDto;
 import com.axioma.quadras.domain.dto.CreateLaundryStockAdjustmentDto;
 import com.axioma.quadras.domain.dto.LaundryOpeningStockDto;
 import com.axioma.quadras.domain.dto.LaundryStockAdjustmentDto;
 import com.axioma.quadras.domain.dto.LaundryStockDashboardDto;
 import com.axioma.quadras.domain.dto.LaundryStockPageDto;
+import com.axioma.quadras.domain.dto.LaundryDocumentDto;
+import com.axioma.quadras.domain.dto.SubmitLaundryDocumentDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.LaundryStockBucket;
+import com.axioma.quadras.domain.model.LaundryDocumentType;
 import com.axioma.quadras.service.AuthenticatedUserPrincipal;
 import com.axioma.quadras.service.IdempotentResult;
 import com.axioma.quadras.service.LaundryStockService;
+import com.axioma.quadras.service.LaundryDispatchService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -28,9 +34,46 @@ import org.springframework.web.bind.annotation.RestController;
 public class LaundryStockController {
 
 	private final LaundryStockService laundryStockService;
+	private final LaundryDispatchService laundryDispatchService;
 
-	public LaundryStockController(LaundryStockService laundryStockService) {
+	public LaundryStockController(LaundryStockService laundryStockService,
+			LaundryDispatchService laundryDispatchService) {
 		this.laundryStockService = laundryStockService;
+		this.laundryDispatchService = laundryDispatchService;
+	}
+
+	@PostMapping("/dispatches")
+	public ResponseEntity<LaundryDocumentDto> createDispatch(
+			@RequestHeader(value = "Idempotency-Key", required = false) String key,
+			@Valid @RequestBody CreateLaundryDispatchDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		return response(laundryDispatchService.create(input, LaundryDocumentType.STANDARD_DISPATCH,
+				requirePrincipal(principal).getUsername(), key));
+	}
+
+	@PostMapping("/rewash-dispatches")
+	public ResponseEntity<LaundryDocumentDto> createRewashDispatch(
+			@RequestHeader(value = "Idempotency-Key", required = false) String key,
+			@Valid @RequestBody CreateLaundryDispatchDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		return response(laundryDispatchService.create(input, LaundryDocumentType.REWASH_DISPATCH,
+				requirePrincipal(principal).getUsername(), key));
+	}
+
+	@PostMapping("/documents/{id}/submit")
+	public ResponseEntity<LaundryDocumentDto> submitDocument(
+			@PathVariable Long id,
+			@RequestHeader(value = "Idempotency-Key", required = false) String key,
+			@Valid @RequestBody SubmitLaundryDocumentDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		return response(laundryDispatchService.submit(id, input, user.getUsername(),
+				user.getRole().name(), key));
+	}
+
+	@GetMapping("/documents/{id}")
+	public ResponseEntity<LaundryDocumentDto> document(@PathVariable Long id) {
+		return ResponseEntity.ok(laundryDispatchService.get(id));
 	}
 
 	@GetMapping("/dashboard")

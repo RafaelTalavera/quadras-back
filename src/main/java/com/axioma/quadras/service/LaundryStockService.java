@@ -231,6 +231,27 @@ public class LaundryStockService {
 		);
 	}
 
+	@Transactional
+	public void transferDocumentStock(
+			LaundryItem item,
+			LaundryStockBucket fromBucket,
+			LaundryProvider fromProvider,
+			LaundryStockBucket toBucket,
+			LaundryProvider toProvider,
+			BigDecimal quantity,
+			OffsetDateTime effectiveAt,
+			LaundryStockDocumentType documentType,
+			Long documentId,
+			Long documentLineId,
+			String actorUsername,
+			String actorRole,
+			String correlationId
+	) {
+		applyTransfer(item, fromBucket, fromProvider, toBucket, toProvider, quantity,
+				effectiveAt, documentType, documentId, documentLineId, actorUsername,
+				actorRole, "Laundry dispatch", correlationId);
+	}
+
 	private LaundryOpeningStockDto approveOpeningStock(
 			CreateLaundryOpeningStockDto input,
 			String actorUsername,
