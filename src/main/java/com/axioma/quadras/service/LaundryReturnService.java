@@ -9,6 +9,9 @@ import com.axioma.quadras.domain.dto.LaundryBillablePageDto;
 import com.axioma.quadras.domain.dto.LaundryReturnDto;
 import com.axioma.quadras.domain.dto.ManualLaundryReturnDto;
 import com.axioma.quadras.domain.dto.SubmitLaundryDocumentDto;
+import com.axioma.quadras.domain.dto.ProviderLaundryReturnDto;
+import com.axioma.quadras.domain.dto.ProviderLaundryReturnPageDto;
+import com.axioma.quadras.domain.dto.ProviderLaundryReturnSummaryDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.LaundryBillableEvent;
 import com.axioma.quadras.domain.model.LaundryBillableExportStatus;
@@ -86,12 +89,47 @@ public class LaundryReturnService {
 	}
 
 	@Transactional
+	public IdempotentResult<ProviderLaundryReturnDto> createProvider(CreateLaundryReturnDto input,
+			Long providerId, String actor, String key) {
+		if (input.providerId() != null)
+			throw bad("providerId must be omitted for provider requests");
+		String path = "/api/v2/laundry/returns";
+		String fingerprint = idempotencyService.fingerprint("POST", path, input);
+		return idempotencyService.execute(actor, key, fingerprint,
+				ProviderLaundryReturnDto.class, 201,
+				() -> ProviderLaundryReturnDto.from(createDraftEntity(input, actor,
+						requireProviderId(providerId))));
+	}
+
+	@Transactional
 	public IdempotentResult<LaundryReturnDto> submit(Long id, SubmitLaundryDocumentDto input,
 			String actor, String key) {
 		String path = "/api/v2/laundry/returns/" + id + "/submit";
 		String fingerprint = idempotencyService.fingerprint("POST", path, input);
 		return idempotencyService.execute(actor, key, fingerprint, LaundryReturnDto.class, 200,
 				() -> submitManifest(id, input.version(), actor));
+	}
+
+	@Transactional
+	public IdempotentResult<ProviderLaundryReturnDto> submitProvider(Long id,
+			SubmitLaundryDocumentDto input, Long providerId, String actor, String key) {
+		String path = "/api/v2/laundry/returns/" + id + "/submit";
+		String fingerprint = idempotencyService.fingerprint("POST", path, input);
+		return idempotencyService.execute(actor, key, fingerprint,
+				ProviderLaundryReturnDto.class, 200,
+				() -> submitProviderManifest(id, input.version(), providerId, actor));
+	}
+
+	@Transactional
+	public IdempotentResult<ProviderLaundryReturnDto> updateProvider(Long id,
+			CreateLaundryReturnDto input, Long providerId, String actor, String key) {
+		if (input.providerId() != null)
+			throw bad("providerId must be omitted for provider requests");
+		String path = "/api/v2/laundry/returns/" + id;
+		String fingerprint = idempotencyService.fingerprint("PUT", path, input);
+		return idempotencyService.execute(actor, key, fingerprint,
+				ProviderLaundryReturnDto.class, 200,
+				() -> updateProviderManifest(id, input, providerId));
 	}
 
 	@Transactional
@@ -117,6 +155,21 @@ public class LaundryReturnService {
 				.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND, "Laundry return not found")));
 	}
 
+	public ProviderLaundryReturnDto getForProvider(Long id, Long providerId) {
+		return ProviderLaundryReturnDto.from(ownedManifest(id, providerId, false));
+	}
+
+	public ProviderLaundryReturnPageDto providerPage(Long providerId, LaundryReturnStatus status,
+			Integer page, Integer size) {
+		Long ownedProviderId = requireProviderId(providerId);
+		int safePage = page == null ? 0 : Math.max(0, page);
+		int safeSize = size == null ? 20 : Math.max(1, Math.min(100, size));
+		Page<LaundryReturnManifest> result = manifestRepository.findProviderPage(ownedProviderId,
+				status, PageRequest.of(safePage, safeSize));
+		return new ProviderLaundryReturnPageDto(safePage, safeSize, result.hasNext(),
+				result.getContent().stream().map(ProviderLaundryReturnSummaryDto::from).toList());
+	}
+
 	public LaundryBillablePageDto billable(Long providerId, OffsetDateTime from, OffsetDateTime to,
 			LaundryBillableExportStatus status, Integer page, Integer size, String actorRole) {
 		if (!"SUPERVISOR".equals(actorRole))
@@ -133,27 +186,22 @@ public class LaundryReturnService {
 	}
 
 	private LaundryReturnDto createDraft(CreateLaundryReturnDto input, String actor) {
+		if (input.providerId() == null) throw bad("providerId is required for hotel requests");
+		return LaundryReturnDto.from(createDraftEntity(input, actor, input.providerId()));
+	}
+
+	private LaundryReturnManifest createDraftEntity(CreateLaundryReturnDto input, String actor,
+			Long providerId) {
 		if (input.version() != 0L) throw bad("version must be 0 for new returns");
-		if (input.effectiveAt().isAfter(OffsetDateTime.now().plus(MAX_FUTURE_SKEW)))
-			throw bad("effectiveAt cannot be more than 5 minutes in the future");
-		LaundryProvider provider = providerRepository.findById(input.providerId())
+		validateEffectiveAt(input.effectiveAt());
+		LaundryProvider provider = providerRepository.findById(providerId)
 				.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND, "Laundry provider not found"));
-		Set<Long> itemIds = new HashSet<>();
-		List<DeclaredLine> lines = new ArrayList<>();
-		for (CreateLaundryReturnLineDto line : input.lines()) {
-			if (!itemIds.add(line.itemId())) throw bad("Return cannot contain duplicate items");
-			LaundryItem item = itemRepository.findById(line.itemId())
-					.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND, "Laundry item not found: " + line.itemId()));
-			BigDecimal clean = line.declaredClean().setScale(3);
-			BigDecimal retained = line.declaredRetained().setScale(3);
-			if (clean.add(retained).signum() <= 0) throw bad("Each return line must declare a positive quantity");
-			lines.add(new DeclaredLine(item, clean, retained));
-		}
+		List<DeclaredLine> lines = validateLines(input.lines());
 		String correlationId = UUID.randomUUID().toString();
 		LaundryReturnManifest manifest = LaundryReturnManifest.draft(reference(), provider,
 				input.effectiveAt(), input.notes(), actor, correlationId);
 		lines.forEach(line -> manifest.addLine(line.item(), line.clean(), line.retained()));
-		return LaundryReturnDto.from(manifestRepository.saveAndFlush(manifest));
+		return manifestRepository.saveAndFlush(manifest);
 	}
 
 	private LaundryReturnDto createAndConfirmManual(ManualLaundryReturnDto input,
@@ -177,6 +225,30 @@ public class LaundryReturnService {
 			throw conflict("Only DRAFT returns can be submitted");
 		manifest.submit(actor);
 		return LaundryReturnDto.from(manifestRepository.saveAndFlush(manifest));
+	}
+
+	private ProviderLaundryReturnDto submitProviderManifest(Long id, long version,
+			Long providerId, String actor) {
+		LaundryReturnManifest manifest = ownedManifest(id, providerId, true);
+		checkVersion(manifest, version);
+		if (manifest.getStatus() != LaundryReturnStatus.DRAFT)
+			throw conflict("Only DRAFT returns can be submitted");
+		manifest.submit(actor);
+		return ProviderLaundryReturnDto.from(manifestRepository.saveAndFlush(manifest));
+	}
+
+	private ProviderLaundryReturnDto updateProviderManifest(Long id,
+			CreateLaundryReturnDto input, Long providerId) {
+		LaundryReturnManifest manifest = ownedManifest(id, providerId, true);
+		checkVersion(manifest, input.version());
+		if (manifest.getStatus() != LaundryReturnStatus.DRAFT)
+			throw conflict("Only DRAFT returns can be updated");
+		validateEffectiveAt(input.effectiveAt());
+		List<DeclaredLine> lines = validateLines(input.lines());
+		manifest.updateDraft(input.effectiveAt(), input.notes());
+		manifestRepository.saveAndFlush(manifest);
+		lines.forEach(line -> manifest.addLine(line.item(), line.clean(), line.retained()));
+		return ProviderLaundryReturnDto.from(manifestRepository.saveAndFlush(manifest));
 	}
 
 	private LaundryReturnDto confirmManifest(Long id, ConfirmLaundryReturnDto input,
@@ -289,6 +361,40 @@ public class LaundryReturnService {
 	private LaundryReturnManifest lock(Long id) {
 		return manifestRepository.findForUpdate(id)
 				.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND, "Laundry return not found"));
+	}
+	private LaundryReturnManifest ownedManifest(Long id, Long providerId, boolean lock) {
+		Long ownedProviderId = requireProviderId(providerId);
+		LaundryReturnManifest manifest = (lock ? manifestRepository.findForUpdate(id)
+				: manifestRepository.findById(id)).orElseThrow(() ->
+				new ApplicationException(HttpStatus.NOT_FOUND, "Laundry return not found"));
+		if (!manifest.getProvider().getId().equals(ownedProviderId))
+			throw new ApplicationException(HttpStatus.NOT_FOUND, "Laundry return not found");
+		return manifest;
+	}
+	private Long requireProviderId(Long providerId) {
+		if (providerId == null) throw new ApplicationException(HttpStatus.FORBIDDEN,
+				"Provider account is not associated with a laundry provider");
+		return providerId;
+	}
+	private void validateEffectiveAt(OffsetDateTime effectiveAt) {
+		if (effectiveAt.isAfter(OffsetDateTime.now().plus(MAX_FUTURE_SKEW)))
+			throw bad("effectiveAt cannot be more than 5 minutes in the future");
+	}
+	private List<DeclaredLine> validateLines(List<CreateLaundryReturnLineDto> inputLines) {
+		Set<Long> itemIds = new HashSet<>();
+		List<DeclaredLine> lines = new ArrayList<>();
+		for (CreateLaundryReturnLineDto line : inputLines) {
+			if (!itemIds.add(line.itemId())) throw bad("Return cannot contain duplicate items");
+			LaundryItem item = itemRepository.findById(line.itemId())
+					.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND,
+							"Laundry item not found: " + line.itemId()));
+			BigDecimal clean = line.declaredClean().setScale(3);
+			BigDecimal retained = line.declaredRetained().setScale(3);
+			if (clean.add(retained).signum() <= 0)
+				throw bad("Each return line must declare a positive quantity");
+			lines.add(new DeclaredLine(item, clean, retained));
+		}
+		return lines;
 	}
 	private void checkVersion(LaundryReturnManifest manifest, long version) {
 		if (manifest.getVersion() != version) throw conflict("Laundry return version mismatch: expected "

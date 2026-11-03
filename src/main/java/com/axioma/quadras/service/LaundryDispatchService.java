@@ -6,6 +6,8 @@ import com.axioma.quadras.domain.dto.LaundryDocumentDto;
 import com.axioma.quadras.domain.dto.AcknowledgeLaundryDocumentDto;
 import com.axioma.quadras.domain.dto.ObserveLaundryDocumentDto;
 import com.axioma.quadras.domain.dto.ProviderLaundryDocumentDto;
+import com.axioma.quadras.domain.dto.ProviderLaundryDocumentPageDto;
+import com.axioma.quadras.domain.dto.ProviderLaundryDocumentSummaryDto;
 import com.axioma.quadras.domain.dto.ResolveLaundryDiscrepancyDto;
 import com.axioma.quadras.domain.dto.SubmitLaundryDocumentDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
@@ -41,6 +43,8 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @Transactional(readOnly = true)
@@ -102,6 +106,18 @@ public class LaundryDispatchService {
 	public ProviderLaundryDocumentDto getForProvider(Long id, Long providerId) {
 		LaundryDocument document = ownedDocument(id, providerId, false);
 		return providerDto(document);
+	}
+
+	public ProviderLaundryDocumentPageDto providerPage(Long providerId,
+			LaundryDocumentStatus status, LaundryDocumentType type, Integer page, Integer size) {
+		if (providerId == null) throw new ApplicationException(HttpStatus.FORBIDDEN,
+				"Provider account is not associated with a laundry provider");
+		int safePage = page == null ? 0 : Math.max(0, page);
+		int safeSize = size == null ? 20 : Math.max(1, Math.min(100, size));
+		Page<LaundryDocument> result = documentRepository.findProviderPage(providerId, status,
+				type, PageRequest.of(safePage, safeSize));
+		return new ProviderLaundryDocumentPageDto(safePage, safeSize, result.hasNext(),
+				result.getContent().stream().map(ProviderLaundryDocumentSummaryDto::from).toList());
 	}
 
 	@Transactional

@@ -18,6 +18,8 @@ import com.axioma.quadras.domain.dto.ConfirmLaundryReturnDto;
 import com.axioma.quadras.domain.dto.LaundryReturnDto;
 import com.axioma.quadras.domain.dto.LaundryBillablePageDto;
 import com.axioma.quadras.domain.dto.ManualLaundryReturnDto;
+import com.axioma.quadras.domain.dto.ProviderLaundryReturnPageDto;
+import com.axioma.quadras.domain.dto.ProviderLaundryDocumentPageDto;
 import com.axioma.quadras.domain.model.LaundryBillableExportStatus;
 import java.time.OffsetDateTime;
 import com.axioma.quadras.domain.exception.ApplicationException;
@@ -40,6 +42,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -59,11 +62,16 @@ public class LaundryStockController {
 	}
 
 	@PostMapping("/returns")
-	public ResponseEntity<LaundryReturnDto> createReturn(
+	public ResponseEntity<?> createReturn(
 			@RequestHeader(value = "Idempotency-Key", required = false) String key,
 			@Valid @RequestBody CreateLaundryReturnDto input,
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-		return response(laundryReturnService.create(input, requirePrincipal(principal).getUsername(), key));
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		if (user.getRole() == AppUserRole.PROVIDER) {
+			return response(laundryReturnService.createProvider(input, user.getLaundryProviderId(),
+					user.getUsername(), key));
+		}
+		return response(laundryReturnService.create(input, user.getUsername(), key));
 	}
 
 	@PostMapping("/returns/manual")
@@ -77,12 +85,28 @@ public class LaundryStockController {
 	}
 
 	@PostMapping("/returns/{id}/submit")
-	public ResponseEntity<LaundryReturnDto> submitReturn(
+	public ResponseEntity<?> submitReturn(
 			@PathVariable Long id,
 			@RequestHeader(value = "Idempotency-Key", required = false) String key,
 			@Valid @RequestBody SubmitLaundryDocumentDto input,
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-		return response(laundryReturnService.submit(id, input, requirePrincipal(principal).getUsername(), key));
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		if (user.getRole() == AppUserRole.PROVIDER) {
+			return response(laundryReturnService.submitProvider(id, input,
+					user.getLaundryProviderId(), user.getUsername(), key));
+		}
+		return response(laundryReturnService.submit(id, input, user.getUsername(), key));
+	}
+
+	@PutMapping("/returns/{id}")
+	public ResponseEntity<?> updateProviderReturn(
+			@PathVariable Long id,
+			@RequestHeader(value = "Idempotency-Key", required = false) String key,
+			@Valid @RequestBody CreateLaundryReturnDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		return response(laundryReturnService.updateProvider(id, input,
+				user.getLaundryProviderId(), user.getUsername(), key));
 	}
 
 	@PostMapping("/returns/{id}/confirm")
@@ -96,8 +120,54 @@ public class LaundryStockController {
 	}
 
 	@GetMapping("/returns/{id}")
-	public ResponseEntity<LaundryReturnDto> returnManifest(@PathVariable Long id) {
+	public ResponseEntity<?> returnManifest(@PathVariable Long id,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		if (user.getRole() == AppUserRole.PROVIDER) {
+			return ResponseEntity.ok(laundryReturnService.getForProvider(id,
+					user.getLaundryProviderId()));
+		}
 		return ResponseEntity.ok(laundryReturnService.get(id));
+	}
+
+	@GetMapping("/provider/returns")
+	public ResponseEntity<ProviderLaundryReturnPageDto> providerReturns(
+			@RequestParam(required = false) com.axioma.quadras.domain.model.LaundryReturnStatus status,
+			@RequestParam(required = false) Integer page,
+			@RequestParam(required = false) Integer size,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		return ResponseEntity.ok(laundryReturnService.providerPage(user.getLaundryProviderId(),
+				status, page, size));
+	}
+
+	@GetMapping("/provider/documents")
+	public ResponseEntity<ProviderLaundryDocumentPageDto> providerDocuments(
+			@RequestParam(required = false) com.axioma.quadras.domain.model.LaundryDocumentStatus status,
+			@RequestParam(required = false) LaundryDocumentType type,
+			@RequestParam(required = false) Integer page,
+			@RequestParam(required = false) Integer size,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		return ResponseEntity.ok(laundryDispatchService.providerPage(user.getLaundryProviderId(),
+				status, type, page, size));
+	}
+
+	@GetMapping("/provider/stock")
+	public ResponseEntity<LaundryStockPageDto> providerStock(
+			@RequestParam(required = false) Long itemId,
+			@RequestParam LaundryStockBucket bucket,
+			@RequestParam(required = false) Integer page,
+			@RequestParam(required = false) Integer size,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		if (bucket != LaundryStockBucket.PROVIDER_PROCESSING
+				&& bucket != LaundryStockBucket.PROVIDER_REWASH) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST,
+					"Provider stock only exposes provider processing and rewash buckets");
+		}
+		AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		return ResponseEntity.ok(laundryStockService.stock(itemId, bucket,
+				user.getLaundryProviderId(), page, size));
 	}
 
 	@GetMapping("/billable-events")

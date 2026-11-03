@@ -68,6 +68,15 @@ public class LaundryReturnManifest {
 		lines.add(LaundryReturnManifestLine.create(this, item, clean, retained));
 	}
 
+	public void updateDraft(OffsetDateTime effectiveAt, String notes) {
+		if (status != LaundryReturnStatus.DRAFT)
+			throw new IllegalStateException("Only DRAFT returns can be updated");
+		this.effectiveAt = effectiveAt;
+		this.notes = optional(notes);
+		this.lines.clear();
+		this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
+	}
+
 	public void submit(String actor) {
 		if (status != LaundryReturnStatus.DRAFT) throw new IllegalStateException("Only DRAFT returns can be submitted");
 		status = LaundryReturnStatus.SUBMITTED;

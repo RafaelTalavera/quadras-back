@@ -3,15 +3,19 @@ package com.axioma.quadras.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.axioma.quadras.domain.model.LaundryItem;
+import com.axioma.quadras.domain.model.AppUser;
+import com.axioma.quadras.domain.model.AppUserRole;
 import com.axioma.quadras.domain.model.LaundryObligationStatus;
 import com.axioma.quadras.domain.model.LaundryProvider;
 import com.axioma.quadras.domain.model.LaundryUnitType;
 import com.axioma.quadras.repository.LaundryBillableEventRepository;
+import com.axioma.quadras.repository.AppUserRepository;
 import com.axioma.quadras.repository.LaundryItemRepository;
 import com.axioma.quadras.repository.LaundryObligationRepository;
 import com.axioma.quadras.repository.LaundryProviderRepository;
@@ -27,6 +31,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
@@ -45,6 +50,8 @@ class LaundryReturnControllerTest {
 	@Autowired LaundryProviderRepository providerRepository;
 	@Autowired LaundryObligationRepository obligationRepository;
 	@Autowired LaundryBillableEventRepository billableRepository;
+	@Autowired AppUserRepository appUserRepository;
+	@Autowired PasswordEncoder passwordEncoder;
 
 	@BeforeEach
 	void clean() {
@@ -197,6 +204,83 @@ class LaundryReturnControllerTest {
 				.andExpect(status().isOk()).andExpect(jsonPath("$.items[0].quantity").value(1.0));
 	}
 
+	@Test
+	void providerShouldCreateUpdateSubmitAndListOwnReturnWithoutInternalMetadata() throws Exception {
+		Session supervisor = authenticate();
+		LaundryItem item = item();
+		LaundryProvider provider = provider();
+		Session providerSession = providerSession(provider);
+		open(supervisor, item, "4.000");
+		dispatch(supervisor, provider, item, "4.000", false);
+		mockMvc.perform(get("/api/v2/laundry/provider/stock")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + providerSession.token())
+						.param("bucket", "PROVIDER_PROCESSING"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.items[0].quantity").value(4.0));
+		mockMvc.perform(get("/api/v2/laundry/provider/stock")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + providerSession.token())
+						.param("bucket", "HOTEL_AVAILABLE"))
+				.andExpect(status().isBadRequest());
+		String createBody = providerReturnBody(item.getId(), 0, "3.000", "1.000", "Declaracao");
+		String created = mockMvc.perform(command("/api/v2/laundry/returns", providerSession,
+				"provider-return-" + UUID.randomUUID(), createBody))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.providerId").value(provider.getId()))
+				.andExpect(jsonPath("$.createdBy").doesNotExist())
+				.andExpect(jsonPath("$.correlationId").doesNotExist())
+				.andReturn().getResponse().getContentAsString();
+		long id = objectMapper.readTree(created).get("id").asLong();
+
+		mockMvc.perform(put("/api/v2/laundry/returns/" + id)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + providerSession.token())
+						.header("Idempotency-Key", "update-" + UUID.randomUUID())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(providerReturnBody(item.getId(), 0, "2.000", "2.000", "Atualizada")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lines[0].declaredClean").value(2.0))
+				.andExpect(jsonPath("$.version").value(1));
+		mockMvc.perform(get("/api/v2/laundry/provider/returns")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + providerSession.token())
+						.param("status", "DRAFT").param("size", "1"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.items[0].id").value(id));
+		mockMvc.perform(command("/api/v2/laundry/returns/" + id + "/submit", providerSession,
+				"provider-submit-" + UUID.randomUUID(), "{\"version\":1}"))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SUBMITTED"));
+		mockMvc.perform(command("/api/v2/laundry/returns/" + id + "/confirm", supervisor,
+				"hotel-confirm-" + UUID.randomUUID(), confirmBody(item.getId(), 2, "2.000",
+						"0.000", "2.000", "0.000", "0.000", null)))
+				.andExpect(status().isOk());
+		assertBillable("2.000", "9.00", 1);
+	}
+
+	@Test
+	void providerReturnCommandsShouldRejectExplicitOrForeignProviderOwnership() throws Exception {
+		LaundryItem item = item();
+		LaundryProvider provider = provider();
+		LaundryProvider other = provider();
+		Session providerSession = providerSession(provider);
+		Session otherSession = providerSession(other);
+
+		String explicitProvider = """
+				{"version":0,"providerId":%d,"effectiveAt":"%s","lines":[{"itemId":%d,"declaredClean":1.000,"declaredRetained":0.000}]}
+				""".formatted(other.getId(), now(), item.getId());
+		mockMvc.perform(command("/api/v2/laundry/returns", providerSession,
+				"foreign-create-" + UUID.randomUUID(), explicitProvider))
+				.andExpect(status().isBadRequest());
+		String created = mockMvc.perform(command("/api/v2/laundry/returns", providerSession,
+				"own-create-" + UUID.randomUUID(),
+				providerReturnBody(item.getId(), 0, "1.000", "0.000", null)))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		long id = objectMapper.readTree(created).get("id").asLong();
+		mockMvc.perform(get("/api/v2/laundry/returns/" + id)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + otherSession.token()))
+				.andExpect(status().isNotFound());
+		mockMvc.perform(command("/api/v2/laundry/returns/" + id + "/submit", otherSession,
+				"foreign-submit-" + UUID.randomUUID(), "{\"version\":0}"))
+				.andExpect(status().isNotFound());
+	}
+
 	private void assertBillable(String quantity, String amount, long count) {
 		assertThat(billableRepository.count()).isEqualTo(count);
 		BigDecimal totalQuantity = billableRepository.findAll().stream().map(e -> e.getQuantity())
@@ -271,6 +355,22 @@ class LaundryReturnControllerTest {
 				.content("{\"username\":\"supervisor.demo\",\"password\":\"654321\"}"))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 		return new Session(objectMapper.readTree(response).get("accessToken").asText());
+	}
+	private Session providerSession(LaundryProvider provider) throws Exception {
+		String username = "return.provider." + UUID.randomUUID().toString().substring(0, 8);
+		appUserRepository.save(AppUser.create(username, passwordEncoder.encode("123456"),
+				AppUserRole.PROVIDER, provider, true));
+		String response = mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"username\":\"%s\",\"password\":\"123456\"}".formatted(username)))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		return new Session(objectMapper.readTree(response).get("accessToken").asText());
+	}
+	private String providerReturnBody(Long itemId, long version, String clean,
+			String retained, String notes) {
+		return """
+				{"version":%d,"effectiveAt":"%s","notes":%s,"lines":[{"itemId":%d,"declaredClean":%s,"declaredRetained":%s}]}
+				""".formatted(version, now(), notes == null ? "null" : "\"" + notes + "\"",
+				itemId, clean, retained);
 	}
 
 	private MockHttpServletRequestBuilder command(String path, Session session, String key, String body) {

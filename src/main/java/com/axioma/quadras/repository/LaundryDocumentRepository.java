@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface LaundryDocumentRepository extends JpaRepository<LaundryDocument, Long> {
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -17,4 +19,22 @@ public interface LaundryDocumentRepository extends JpaRepository<LaundryDocument
 
 	@EntityGraph(attributePaths = { "provider", "lines", "lines.item" })
 	Optional<LaundryDocument> findById(Long id);
+
+	@Query(value = """
+			select document from LaundryDocument document
+			join fetch document.provider provider
+			where provider.id = :providerId
+			  and (:status is null or document.status = :status)
+			  and (:type is null or document.documentType = :type)
+			order by document.effectiveAt desc, document.id desc
+			""", countQuery = """
+			select count(document) from LaundryDocument document
+			where document.provider.id = :providerId
+			  and (:status is null or document.status = :status)
+			  and (:type is null or document.documentType = :type)
+			""")
+	Page<LaundryDocument> findProviderPage(@Param("providerId") Long providerId,
+			@Param("status") com.axioma.quadras.domain.model.LaundryDocumentStatus status,
+			@Param("type") com.axioma.quadras.domain.model.LaundryDocumentType type,
+			Pageable pageable);
 }

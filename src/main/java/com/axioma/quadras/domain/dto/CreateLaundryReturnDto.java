@@ -10,7 +10,7 @@ import java.util.List;
 
 public record CreateLaundryReturnDto(
 		@NotNull @Min(0) Long version,
-		@NotNull Long providerId,
+		Long providerId,
 		@NotNull OffsetDateTime effectiveAt,
 		@Size(max = 500) String notes,
 		@NotEmpty @Valid List<CreateLaundryReturnLineDto> lines

@@ -226,6 +226,13 @@ class LaundryDispatchControllerTest {
 				.andExpect(jsonPath("$.lines[0].unitPrice").doesNotExist())
 				.andExpect(jsonPath("$.correlationId").doesNotExist())
 				.andExpect(jsonPath("$.createdBy").doesNotExist());
+		mockMvc.perform(get("/api/v2/laundry/provider/documents")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + providerSession.token())
+						.param("status", "SUBMITTED").param("type", "STANDARD_DISPATCH")
+						.param("page", "0").param("size", "1"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.items[0].id").value(documentId))
+				.andExpect(jsonPath("$.items[0].unitPrice").doesNotExist());
 		mockMvc.perform(get("/api/v2/laundry/documents/" + documentId)
 						.header(HttpHeaders.AUTHORIZATION, "Bearer " + otherSession.token()))
 				.andExpect(status().isNotFound());
