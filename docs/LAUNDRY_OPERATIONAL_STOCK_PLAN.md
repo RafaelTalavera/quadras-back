@@ -643,6 +643,13 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - el proveedor inicia en lavanderia y no puede navegar a modulos internos;
   - roles desconocidos no reciben acceso por defecto y las aperturas desde notificaciones de
     mantenimiento respetan las secciones autorizadas.
+- Contratos de lectura V2 para Flutter completados:
+  - modelos separados para documentos, devoluciones y stock del proveedor, sin campos de
+    precio, importe ni actores internos;
+  - servicio HTTP paginado para las dos bandejas y los buckets permitidos
+    `PROVIDER_PROCESSING` y `PROVIDER_REWASH`;
+  - respuestas mal formadas se rechazan como error de contrato en lugar de producir datos
+    parciales silenciosos.
 - Pruebas:
   - `LaundryStockMigrationTest`: 2 pruebas OK para V46 sobre esquema vacio y desde V42;
   - `AuthControllerTest` y `UserManagementControllerTest`: 18 pruebas OK, incluidas asociacion
@@ -655,12 +662,14 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - `flutter test`: 124 pruebas OK;
   - analisis estatico focalizado sobre los seis archivos modificados: sin problemas; el
     `flutter analyze` completo no finalizo en un tiempo razonable y fue interrumpido.
+  - cliente V2 de lectura: 3 pruebas OK y analisis focalizado sin problemas.
 - Commits asociados:
   - `feat(laundry-provider): add provider user association schema`;
   - `feat(laundry-provider): bind provider identity to users`;
   - `feat(laundry-provider): add document confirmation schema`;
   - `feat(laundry-provider): implement dispatch decisions and ownership`;
   - `feat(laundry-provider): add owned returns and inboxes`;
-  - frontend `feat(laundry-provider): restrict Flutter navigation by role`.
+  - frontend `feat(laundry-provider): restrict Flutter navigation by role`;
+  - frontend `feat(laundry-provider): add Flutter V2 read contracts`.
 - Pendiente para completar la fase: bandejas, decisiones y devoluciones V2 en la experiencia
   Flutter del proveedor.
