@@ -700,7 +700,7 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
 - Salida verificada: colaboracion bilateral con ownership en backend, DTO seguros, decisiones
   acotadas por estado y portal Flutter sin autoridad sobre stock, decisiones del hotel o cobro.
 
-### Fase 5 - corte y observabilidad (en progreso, 2026-11-04)
+### Fase 5 - corte y observabilidad (completada, 2026-11-04)
 
 - Correlacion HTTP completada:
   - `X-Correlation-ID` seguro se conserva o se genera como UUID cuando falta o es invalido;
@@ -710,8 +710,9 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
     sin usuarios, tokens ni datos operativos sensibles.
 - Compatibilidad y decisiones de corte:
   - no se agrego Actuator ni Micrometer porque el proyecto no posee esas dependencias;
-  - la escritura V1 permanece activa mientras la pantalla interna Flutter siga consumiendo V1;
-    su desactivacion requiere migrar primero ese consumidor para evitar un corte incompatible.
+  - las lecturas V1 permanecen disponibles para consulta historica;
+  - las escrituras V1 quedan desactivadas por defecto y responden `410 Gone`; solo pueden
+    reactivarse temporalmente con `COSTANORTE_LAUNDRY_V1_WRITE_ENABLED=true` durante un rollback.
 - Reconciliacion operativa completada:
   - `GET /api/v2/laundry/reconciliation`, exclusivo de supervisor, compara saldos actuales,
     remanentes de lotes FIFO y balance neto del libro de movimientos;
@@ -738,8 +739,14 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
     clasificacion final de devoluciones;
   - cliente HTTP autenticado preparado para `/api/v2/laundry`, con fechas UTC, version
     optimista e `Idempotency-Key` en cada comando;
-  - se mantiene separado del cliente V1 hasta sustituir la pantalla interna en el siguiente
-    incremento.
+  - la pantalla interna de operador/supervisor usa tablero, bandejas, catalogos y comandos V2;
+  - el cliente V1 ya no se instancia ni participa en la navegacion de produccion Flutter.
+- Validacion punta a punta completada:
+  - el escenario representativo abre 20 unidades, despacha 10, procesa devoluciones parciales,
+    retencion, suciedad, dos ciclos de relavado y aceptacion final;
+  - verifica conservacion total de stock, cierre de obligacion FIFO, idempotencia y cobro unico
+    por 10 unidades aceptadas, sin cobrar relavados repetidos;
+  - el corte confirma lectura V1, catalogos V2 y rechazo de escritura V1.
 - Pruebas:
   - `RequestCorrelationFilterTest`: 2 pruebas OK para propagacion, reemplazo seguro y limpieza
     de MDC;
@@ -747,14 +754,18 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - reconciliacion verifica permisos, estado consistente y deteccion de una diferencia inducida;
   - metricas verifica el contrato inicial, los totales de stock y el filtro de proveedor;
   - bandejas V2 del hotel verificadas dentro de los flujos de despacho y devolucion;
-  - Flutter: `flutter analyze` sin hallazgos y `flutter test` con 139 pruebas OK;
-  - `.\mvnw.cmd -B test`: 200 pruebas OK, 0 fallos y 0 errores.
+  - Flutter: `flutter analyze` sin hallazgos y `flutter test` con 141 pruebas OK;
+  - `.\mvnw.cmd -B test`: 201 pruebas OK, 0 fallos y 0 errores.
 - Commits asociados:
   - `feat(laundry-observability): add request correlation`;
   - `feat(laundry-reconciliation): add ledger consistency report`;
   - `feat(laundry-observability): add operational metrics`;
   - `feat(laundry-v2): add hotel operation inboxes`;
-  - frontend `feat(laundry-v2): add Flutter hotel client`.
-- Pendiente: conectar la experiencia del operador Flutter a las bandejas y comandos V2 y
-  desactivar de forma controlada la escritura V1;
-  validacion punta a punta con datos representativos y cierre de la fase.
+  - frontend `feat(laundry-v2): add Flutter hotel client`;
+  - frontend `feat(laundry-v2): switch hotel operations to V2`;
+  - `feat(laundry-cutover): disable V1 writes by default`;
+  - `feat(laundry-v2): expose read catalogs`;
+  - frontend `refactor(laundry-v2): remove Flutter V1 dependency`.
+- Pendiente operativo fuera del codigo: antes del despliegue productivo, realizar respaldo,
+  conciliacion con `GET /api/v2/laundry/reconciliation`, aprobacion del stock fisico por la
+  gobernanta y monitoreo de metricas durante la ventana de corte.
