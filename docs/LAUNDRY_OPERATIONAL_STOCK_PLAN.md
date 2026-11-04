@@ -657,6 +657,13 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
     devoluciones;
   - estados explicitos de carga, vacio, error, reintento y recarga por gesto;
   - la campana de mantenimiento no se crea para `PROVIDER`, evitando consultas fuera de su rol.
+- Decisiones de despacho en Flutter completadas:
+  - detalle seguro del documento con prendas, cantidades, notas e historial, sin precios ni
+    actores internos;
+  - confirmacion completa u observacion con motivo obligatorio, disponibles solo en estado
+    `SUBMITTED`;
+  - comandos con version optimista e `Idempotency-Key`, seguidos por recarga de bandejas;
+  - errores de contrato o concurrencia se muestran sin asumir que la decision fue aplicada.
 - Pruebas:
   - `LaundryStockMigrationTest`: 2 pruebas OK para V46 sobre esquema vacio y desde V42;
   - `AuthControllerTest` y `UserManagementControllerTest`: 18 pruebas OK, incluidas asociacion
@@ -672,7 +679,9 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - cliente V2 de lectura: 3 pruebas OK y analisis focalizado sin problemas.
   - portal del proveedor: 2 pruebas de widget para contenido seguro, ausencia de precios,
     error y reintento;
-  - `flutter test`: 129 pruebas OK; analisis estatico focalizado sin problemas.
+  - decisiones de despacho: pruebas de detalle, confirmacion, version, idempotencia y
+    validacion de observacion;
+  - `flutter test`: 132 pruebas OK; analisis estatico focalizado sin problemas.
 - Commits asociados:
   - `feat(laundry-provider): add provider user association schema`;
   - `feat(laundry-provider): bind provider identity to users`;
@@ -681,6 +690,6 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - `feat(laundry-provider): add owned returns and inboxes`;
   - frontend `feat(laundry-provider): restrict Flutter navigation by role`;
   - frontend `feat(laundry-provider): add Flutter V2 read contracts`;
-  - frontend `feat(laundry-provider): add Flutter provider portal`.
-- Pendiente para completar la fase: detalle y decisiones de despacho, y creacion/edicion/envio
-  de devoluciones V2 desde Flutter.
+  - frontend `feat(laundry-provider): add Flutter provider portal`;
+  - frontend `feat(laundry-provider): add Flutter dispatch decisions`.
+- Pendiente para completar la fase: creacion, edicion y envio de devoluciones V2 desde Flutter.
