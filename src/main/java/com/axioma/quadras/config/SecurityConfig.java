@@ -107,9 +107,11 @@ public class SecurityConfig {
 				HttpHeaders.AUTHORIZATION,
 				HttpHeaders.CONTENT_TYPE,
 				HttpHeaders.ACCEPT,
-				"Idempotency-Key"
+				"Idempotency-Key",
+				RequestCorrelationFilter.HEADER
 		));
-		configuration.setExposedHeaders(List.of(HttpHeaders.LOCATION, "Idempotent-Replay"));
+		configuration.setExposedHeaders(List.of(HttpHeaders.LOCATION, "Idempotent-Replay",
+				RequestCorrelationFilter.HEADER));
 		configuration.setMaxAge(3600L);
 
 		final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
