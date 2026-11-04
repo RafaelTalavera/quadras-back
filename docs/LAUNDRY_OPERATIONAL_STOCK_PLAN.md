@@ -605,7 +605,7 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - `feat(laundry-stock): add return manifest schema`;
   - `feat(laundry-stock): implement return reconciliation flow`.
 
-### Fase 4 - portal de proveedor y doble confirmacion (en progreso, 2026-11-03)
+### Fase 4 - portal de proveedor y doble confirmacion (completada, 2026-11-04)
 
 - Base de identidad y ownership completada:
   - `V46__associate_users_with_laundry_providers.sql` agrega el rol `PROVIDER`, la asociacion
@@ -614,9 +614,7 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - administracion de usuarios valida proveedor existente y activo, exige asociacion para
     `PROVIDER` y la prohibe para roles internos;
   - autenticacion, principal, JWT y `/api/v1/users/me` exponen `laundryProviderId`; el filtro
-    invalida el token si rol, version de seguridad o proveedor ya no coinciden con el usuario;
-  - las demas rutas operativas del proveedor permanecen cerradas hasta incorporar devoluciones
-    propias y bandejas paginadas en el siguiente incremento.
+    invalida el token si rol, version de seguridad o proveedor ya no coinciden con el usuario.
 - Doble confirmacion de despachos completada:
   - `V47__create_laundry_document_confirmations.sql` agrega una bitacora inmutable de
     confirmacion, observacion y resolucion;
@@ -664,6 +662,12 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
     `SUBMITTED`;
   - comandos con version optimista e `Idempotency-Key`, seguidos por recarga de bandejas;
   - errores de contrato o concurrencia se muestran sin asumir que la decision fue aplicada.
+- Devoluciones V2 en Flutter completadas:
+  - formulario agregado a partir de las prendas visibles en procesamiento y relavado;
+  - creacion sin `providerId`, consulta y edicion exclusiva de borradores propios, con fecha,
+    notas, cantidades limpias y retenidas;
+  - envio al hotel con version optimista e `Idempotency-Key` y recarga posterior de bandejas;
+  - validacion local de cantidades no negativas y al menos una linea positiva.
 - Pruebas:
   - `LaundryStockMigrationTest`: 2 pruebas OK para V46 sobre esquema vacio y desde V42;
   - `AuthControllerTest` y `UserManagementControllerTest`: 18 pruebas OK, incluidas asociacion
@@ -673,15 +677,15 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - `.\mvnw.cmd -B test`: 197 pruebas OK, 0 fallos y 0 errores.
 - Pruebas Flutter:
   - pruebas focalizadas de rutas y autenticacion: 11 pruebas OK;
-  - `flutter test`: 124 pruebas OK;
-  - analisis estatico focalizado sobre los seis archivos modificados: sin problemas; el
-    `flutter analyze` completo no finalizo en un tiempo razonable y fue interrumpido.
-  - cliente V2 de lectura: 3 pruebas OK y analisis focalizado sin problemas.
+  - cliente V2 de lectura: 3 pruebas OK y analisis focalizado sin problemas;
   - portal del proveedor: 2 pruebas de widget para contenido seguro, ausencia de precios,
     error y reintento;
   - decisiones de despacho: pruebas de detalle, confirmacion, version, idempotencia y
     validacion de observacion;
-  - `flutter test`: 132 pruebas OK; analisis estatico focalizado sin problemas.
+  - devoluciones: pruebas de contrato sin `providerId`, creacion agregada y envio de borrador
+    con version;
+  - `flutter test`: 135 pruebas OK;
+  - `flutter analyze`: sin problemas.
 - Commits asociados:
   - `feat(laundry-provider): add provider user association schema`;
   - `feat(laundry-provider): bind provider identity to users`;
@@ -691,5 +695,7 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - frontend `feat(laundry-provider): restrict Flutter navigation by role`;
   - frontend `feat(laundry-provider): add Flutter V2 read contracts`;
   - frontend `feat(laundry-provider): add Flutter provider portal`;
-  - frontend `feat(laundry-provider): add Flutter dispatch decisions`.
-- Pendiente para completar la fase: creacion, edicion y envio de devoluciones V2 desde Flutter.
+  - frontend `feat(laundry-provider): add Flutter dispatch decisions`;
+  - frontend `feat(laundry-provider): add Flutter return workflow`.
+- Salida verificada: colaboracion bilateral con ownership en backend, DTO seguros, decisiones
+  acotadas por estado y portal Flutter sin autoridad sobre stock, decisiones del hotel o cobro.
