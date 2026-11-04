@@ -3,6 +3,7 @@ package com.axioma.quadras.repository;
 import com.axioma.quadras.domain.model.LaundryStockBucket;
 import com.axioma.quadras.domain.model.LaundryStockLot;
 import com.axioma.quadras.repository.projection.LaundryStockAgingView;
+import com.axioma.quadras.repository.projection.LaundryStockLotTotalView;
 import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
 import java.util.List;
@@ -38,6 +39,16 @@ public interface LaundryStockLotRepository extends JpaRepository<LaundryStockLot
 			group by lot.item.id, lot.bucket, lot.providerScope
 			""")
 	List<LaundryStockAgingView> findAging();
+
+	@Query("""
+			select lot.item.id as itemId,
+			       lot.bucket as bucket,
+			       lot.providerScope as providerScope,
+			       sum(lot.remainingQuantity) as quantity
+			from LaundryStockLot lot
+			group by lot.item.id, lot.bucket, lot.providerScope
+			""")
+	List<LaundryStockLotTotalView> findTotals();
 
 	@Query("""
 			select coalesce(sum(lot.remainingQuantity), 0)

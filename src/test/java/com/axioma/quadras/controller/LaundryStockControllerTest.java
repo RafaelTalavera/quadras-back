@@ -48,6 +48,7 @@ class LaundryStockControllerTest {
 	private static final String ADJUSTMENTS = "/api/v2/laundry/stock-adjustments";
 	private static final String DASHBOARD = "/api/v2/laundry/dashboard";
 	private static final String STOCK = "/api/v2/laundry/stock";
+	private static final String RECONCILIATION = "/api/v2/laundry/reconciliation";
 
 	@Autowired private MockMvc mockMvc;
 	@Autowired private ObjectMapper objectMapper;
@@ -180,6 +181,41 @@ class LaundryStockControllerTest {
 						.param("providerId", "999999")
 						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token()))
 				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void shouldReconcileBalancesLotsAndLedgerForSupervisor() throws Exception {
+		final UserSession supervisor = authenticate("supervisor.demo", "654321");
+		final UserSession operator = authenticate("operador.demo", "123456");
+		final LaundryItem item = item("Conciliacion");
+		final String effectiveAt = OffsetDateTime.now().minusDays(1).withNano(0).toString();
+
+		mockMvc.perform(command(OPENING, supervisor, "reconcile-" + UUID.randomUUID(),
+				openingJson(item.getId(), "8.000", effectiveAt)))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(get(RECONCILIATION)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + operator.token()))
+				.andExpect(status().isForbidden());
+
+		mockMvc.perform(get(RECONCILIATION)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.consistent").value(true))
+				.andExpect(jsonPath("$.balanceTotal").value(8.0))
+				.andExpect(jsonPath("$.lotTotal").value(8.0))
+				.andExpect(jsonPath("$.ledgerTotal").value(8.0))
+				.andExpect(jsonPath("$.mismatches").isEmpty());
+
+		jdbcTemplate.update("UPDATE laundry_stock_lots SET remaining_quantity = 7.000 WHERE item_id = ?",
+				item.getId());
+
+		mockMvc.perform(get(RECONCILIATION)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.consistent").value(false))
+				.andExpect(jsonPath("$.mismatches[0].itemId").value(item.getId()))
+				.andExpect(jsonPath("$.mismatches[0].difference").value(1.0));
 	}
 
 	@Test

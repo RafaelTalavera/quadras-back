@@ -79,6 +79,8 @@ public class SecurityConfig {
 								.hasRole(AppUserRole.PROVIDER.name())
 						.requestMatchers(HttpMethod.GET, "/api/v2/laundry/provider/**")
 								.hasRole(AppUserRole.PROVIDER.name())
+						.requestMatchers(HttpMethod.GET, "/api/v2/laundry/reconciliation")
+								.hasRole(AppUserRole.SUPERVISOR.name())
 						.requestMatchers("/api/v2/laundry/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/sync/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/notifications/**").authenticated()

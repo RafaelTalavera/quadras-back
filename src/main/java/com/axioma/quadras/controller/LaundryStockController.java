@@ -7,6 +7,7 @@ import com.axioma.quadras.domain.dto.LaundryOpeningStockDto;
 import com.axioma.quadras.domain.dto.LaundryStockAdjustmentDto;
 import com.axioma.quadras.domain.dto.LaundryStockDashboardDto;
 import com.axioma.quadras.domain.dto.LaundryStockPageDto;
+import com.axioma.quadras.domain.dto.LaundryReconciliationDto;
 import com.axioma.quadras.domain.dto.LaundryDocumentDto;
 import com.axioma.quadras.domain.dto.SubmitLaundryDocumentDto;
 import com.axioma.quadras.domain.dto.AcknowledgeLaundryDocumentDto;
@@ -281,6 +282,11 @@ public class LaundryStockController {
 			@RequestParam(required = false) Long providerId
 	) {
 		return ResponseEntity.ok(laundryStockService.dashboard(providerId));
+	}
+
+	@GetMapping("/reconciliation")
+	public ResponseEntity<LaundryReconciliationDto> reconciliation() {
+		return ResponseEntity.ok(laundryStockService.reconciliation());
 	}
 
 	@GetMapping("/stock")

@@ -3,6 +3,8 @@ package com.axioma.quadras.service;
 import com.axioma.quadras.domain.dto.CreateLaundryOpeningStockDto;
 import com.axioma.quadras.domain.dto.CreateLaundryStockAdjustmentDto;
 import com.axioma.quadras.domain.dto.LaundryOpeningStockDto;
+import com.axioma.quadras.domain.dto.LaundryReconciliationDto;
+import com.axioma.quadras.domain.dto.LaundryReconciliationMismatchDto;
 import com.axioma.quadras.domain.dto.LaundryOpeningStockLineInputDto;
 import com.axioma.quadras.domain.dto.LaundryStockAdjustmentDto;
 import com.axioma.quadras.domain.dto.LaundryStockDashboardDto;
@@ -33,6 +35,7 @@ import com.axioma.quadras.repository.LaundryStockBalanceRepository;
 import com.axioma.quadras.repository.LaundryStockLotRepository;
 import com.axioma.quadras.repository.LaundryStockMovementRepository;
 import com.axioma.quadras.repository.projection.LaundryStockAgingView;
+import com.axioma.quadras.repository.projection.LaundryStockLotTotalView;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
@@ -155,6 +158,39 @@ public class LaundryStockService {
 				itemDtos,
 				providerDtos
 		);
+	}
+
+	public LaundryReconciliationDto reconciliation() {
+		Map<ReconciliationKey, BigDecimal> lotTotals = new HashMap<>();
+		for (LaundryStockLotTotalView total : lotRepository.findTotals()) {
+			lotTotals.put(new ReconciliationKey(total.getItemId(), total.getBucket(),
+					total.getProviderScope()), LaundryStockBalance.normalize(total.getQuantity()));
+		}
+		List<LaundryReconciliationMismatchDto> mismatches = new ArrayList<>();
+		BigDecimal balanceTotal = zero();
+		BigDecimal lotTotal = lotTotals.values().stream().reduce(zero(), BigDecimal::add);
+		for (LaundryStockBalance balance : balanceRepository.findAllWithItemAndProvider()) {
+			BigDecimal balanceQuantity = LaundryStockBalance.normalize(balance.getQuantity());
+			balanceTotal = balanceTotal.add(balanceQuantity);
+			BigDecimal lotQuantity = lotTotals.getOrDefault(new ReconciliationKey(
+					balance.getItem().getId(), balance.getBucket(), balance.getProviderScope()), zero());
+			BigDecimal difference = balanceQuantity.subtract(lotQuantity).setScale(3);
+			if (difference.signum() != 0) {
+				mismatches.add(new LaundryReconciliationMismatchDto(balance.getItem().getId(),
+						balance.getItem().getName(), balance.getBucket(),
+						balance.getProvider() == null ? null : balance.getProvider().getId(),
+						balanceQuantity, lotQuantity, difference));
+			}
+		}
+		BigDecimal ledgerTotal = LaundryStockBalance.normalize(movementRepository.sumAllIncoming())
+				.subtract(LaundryStockBalance.normalize(movementRepository.sumAllOutgoing())).setScale(3);
+		balanceTotal = balanceTotal.setScale(3);
+		lotTotal = lotTotal.setScale(3);
+		boolean consistent = mismatches.isEmpty()
+				&& balanceTotal.compareTo(lotTotal) == 0
+				&& balanceTotal.compareTo(ledgerTotal) == 0;
+		return new LaundryReconciliationDto(OffsetDateTime.now(ZoneOffset.UTC), consistent,
+				balanceTotal, lotTotal, ledgerTotal, List.copyOf(mismatches));
 	}
 
 	public LaundryStockPageDto stock(
@@ -946,6 +982,9 @@ public class LaundryStockService {
 	}
 
 	private record LotChunk(OffsetDateTime effectiveAt, BigDecimal quantity) {
+	}
+
+	private record ReconciliationKey(Long itemId, LaundryStockBucket bucket, long providerScope) {
 	}
 
 	private static final class BucketTotals {
