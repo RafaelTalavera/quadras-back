@@ -699,3 +699,24 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - frontend `feat(laundry-provider): add Flutter return workflow`.
 - Salida verificada: colaboracion bilateral con ownership en backend, DTO seguros, decisiones
   acotadas por estado y portal Flutter sin autoridad sobre stock, decisiones del hotel o cobro.
+
+### Fase 5 - corte y observabilidad (en progreso, 2026-11-04)
+
+- Correlacion HTTP completada:
+  - `X-Correlation-ID` seguro se conserva o se genera como UUID cuando falta o es invalido;
+  - el identificador se expone en la respuesta y queda disponible por CORS;
+  - MDC incorpora `correlationId` durante toda la peticion y se limpia siempre al finalizar;
+  - las peticiones de lavanderia registran metodo, ruta sin query ni body, estado y duracion,
+    sin usuarios, tokens ni datos operativos sensibles.
+- Compatibilidad y decisiones de corte:
+  - no se agrego Actuator ni Micrometer porque el proyecto no posee esas dependencias;
+  - la escritura V1 permanece activa mientras la pantalla interna Flutter siga consumiendo V1;
+    su desactivacion requiere migrar primero ese consumidor para evitar un corte incompatible.
+- Pruebas:
+  - `RequestCorrelationFilterTest`: 2 pruebas OK para propagacion, reemplazo seguro y limpieza
+    de MDC;
+  - pruebas dirigidas con controladores de lavanderia: 13 pruebas OK;
+  - `.\mvnw.cmd -B test`: 199 pruebas OK, 0 fallos y 0 errores.
+- Commit asociado: `feat(laundry-observability): add request correlation`.
+- Pendiente: reconciliacion controlada, metricas operativas, migracion del operador Flutter a V2,
+  desactivacion de escritura V1 y validacion punta a punta con datos representativos.
