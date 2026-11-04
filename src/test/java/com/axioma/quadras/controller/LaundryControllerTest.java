@@ -45,6 +45,32 @@ class LaundryControllerTest {
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Test
+	void shouldCreateAndDeactivateLaundryProvider() throws Exception {
+		String token = authenticate();
+		String name = unique("Proveedor administrable");
+		String createdBody = mockMvc.perform(post("/api/v2/laundry/providers")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+						{"name":"%s","contact":"+55 11 99999-0000","active":true}
+						""".formatted(name)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.active").value(true))
+				.andReturn().getResponse().getContentAsString();
+		long id = objectMapper.readTree(createdBody).get("id").asLong();
+
+		mockMvc.perform(put("/api/v2/laundry/providers/{id}", id)
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+						{"name":"%s","contact":"contato atualizado","active":false}
+						""".formatted(name)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contact").value("contato atualizado"))
+				.andExpect(jsonPath("$.active").value(false));
+	}
+
+	@Test
 	void shouldAcceptPastSentAtAndPreserveItsInstantAndOffset() throws Exception {
 		String token = authenticate();
 		LaundryProvider provider = provider("Pasado");

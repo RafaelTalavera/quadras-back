@@ -53,6 +53,22 @@ public class LaundryService {
 		return LaundryProviderDto.from(saved);
 	}
 
+	@Transactional
+	public LaundryProviderDto updateProvider(Long id, UpdateLaundryProviderDto input) {
+		LaundryProvider provider = providerRepository.findById(id)
+				.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND, "Laundry provider not found."));
+		String normalizedName = input.name().trim();
+		if (providerRepository.existsByNameIgnoreCaseAndIdNot(normalizedName, id)) {
+			throw new ApplicationException(HttpStatus.CONFLICT, "Laundry provider name already exists.");
+		}
+		LaundryProviderDto before = LaundryProviderDto.from(provider);
+		provider.update(normalizedName, input.contact(), input.active());
+		LaundryProviderDto result = LaundryProviderDto.from(providerRepository.save(provider));
+		auditTrailService.record("LAUNDRY", "LAUNDRY_PROVIDER", id, "UPDATE",
+				"Laundry provider updated", input, before, result);
+		return result;
+	}
+
 	public List<LaundryItemDto> items() {
 		return itemRepository.findAllByOrderByNameAsc().stream().map(LaundryItemDto::from).toList();
 	}

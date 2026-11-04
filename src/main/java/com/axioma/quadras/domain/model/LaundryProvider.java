@@ -37,6 +37,12 @@ public class LaundryProvider {
 		return value;
 	}
 
+	public void update(String name, String contact, boolean active) {
+		this.name = required(name, "name", 120);
+		this.contact = optional(contact, 160);
+		this.active = active;
+	}
+
 	public Long getId() { return id; }
 	public String getName() { return name; }
 	public String getContact() { return contact; }

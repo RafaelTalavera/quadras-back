@@ -11,6 +11,8 @@ import com.axioma.quadras.domain.dto.LaundryReconciliationDto;
 import com.axioma.quadras.domain.dto.LaundryOperationalMetricsDto;
 import com.axioma.quadras.domain.dto.LaundryItemDto;
 import com.axioma.quadras.domain.dto.LaundryProviderDto;
+import com.axioma.quadras.domain.dto.CreateLaundryProviderDto;
+import com.axioma.quadras.domain.dto.UpdateLaundryProviderDto;
 import com.axioma.quadras.domain.dto.LaundryDocumentDto;
 import com.axioma.quadras.domain.dto.LaundryDocumentPageDto;
 import com.axioma.quadras.domain.dto.LaundryReturnPageDto;
@@ -79,6 +81,19 @@ public class LaundryStockController {
 	@GetMapping("/providers")
 	public ResponseEntity<List<LaundryProviderDto>> providers() {
 		return ResponseEntity.ok(laundryService.providers());
+	}
+
+	@PostMapping("/providers")
+	public ResponseEntity<LaundryProviderDto> createProvider(
+			@Valid @RequestBody CreateLaundryProviderDto input) {
+		return ResponseEntity.status(HttpStatus.CREATED)
+				.body(laundryService.createProvider(input));
+	}
+
+	@PutMapping("/providers/{id}")
+	public ResponseEntity<LaundryProviderDto> updateProvider(
+			@PathVariable Long id, @Valid @RequestBody UpdateLaundryProviderDto input) {
+		return ResponseEntity.ok(laundryService.updateProvider(id, input));
 	}
 
 	@GetMapping("/items")

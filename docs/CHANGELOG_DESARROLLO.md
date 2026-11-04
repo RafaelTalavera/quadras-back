@@ -4,6 +4,22 @@
 > fueron retirados durante el acondicionamiento como API REST. Las instrucciones
 > vigentes se encuentran en `README.md` y `docs/API_REST_LOCAL.md`.
 
+## 2026-11-04 | Lavanderia V2 | Administracion de proveedores
+- Componentes afectados: API REST V2, dominio de proveedores, persistencia, auditoria y cliente Flutter oficial.
+- Contrato agregado:
+  - `POST /api/v2/laundry/providers` para crear una lavanderia;
+  - `PUT /api/v2/laundry/providers/{id}` para actualizar nombre, contacto y estado.
+- Reglas:
+  - nombre obligatorio, normalizado y unico sin distinguir mayusculas;
+  - contacto opcional;
+  - los proveedores inactivos no pueden recibir nuevos envios;
+  - la desactivacion no altera documentos ni historicos existentes.
+- Persistencia: se reutiliza `laundry_providers`; no requiere migracion.
+- Auditoria: altas y actualizaciones se registran como `LAUNDRY_PROVIDER`.
+- Validacion ejecutada:
+  - `./mvnw.cmd test`: 202 pruebas OK;
+  - contrato Flutter: 50 pruebas de lavanderia OK y `flutter analyze` sin issues.
+
 ## 2026-07-10 | Manutencao | Alta por defecto del prestador de internet
 - Componente afectado: Backend (`Quadras`)
 - Archivos tocados:

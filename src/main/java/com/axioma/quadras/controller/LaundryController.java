@@ -27,6 +27,10 @@ public class LaundryController {
 	public ResponseEntity<LaundryProviderDto> createProvider(@Valid @RequestBody CreateLaundryProviderDto input) {
 		return ResponseEntity.status(201).body(laundryService.createProvider(input));
 	}
+	@PutMapping("/providers/{id}")
+	public ResponseEntity<LaundryProviderDto> updateProvider(
+			@PathVariable Long id, @Valid @RequestBody UpdateLaundryProviderDto input
+	) { return ResponseEntity.ok(laundryService.updateProvider(id, input)); }
 	@GetMapping("/items")
 	public ResponseEntity<List<LaundryItemDto>> items() { return ResponseEntity.ok(laundryService.items()); }
 	@PostMapping("/items")

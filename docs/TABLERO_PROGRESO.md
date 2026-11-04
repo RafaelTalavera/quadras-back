@@ -4,10 +4,16 @@
 - Proyecto: COSTANORTE
 - Backend: En progreso controlado (fase posterior a Hito 12, `Massagens` en evolucion)
 - Frontend: En progreso (fase posterior a Hito 12)
-- Ultimo hito trabajado: Fase posterior a Hito 12 - Prestadores y masajistas de `Massagens`
-- Ultima actualizacion: 2026-03-24
+- Ultimo hito trabajado: Administracion de proveedores de lavanderia V2
+- Ultima actualizacion: 2026-11-04
 - Riesgos abiertos: Ejecutar regresion completa de agenda/edit de `Massagens`; definir contratos backend para `Tours e Viagens`; mantener consistencia `pt-BR` extremo a extremo entre UI y API; definir estrategia de persistencia/renovacion de sesion si el producto evoluciona mas alla del uso local; pendiente fase 2 para migrar nombres internos legacy (`com.axioma.quadras`, rutas de repositorio).
 - Proximo paso recomendado: cerrar regresion funcional de `Massagens` con historico e inactivos y luego definir el siguiente paquete funcional de `Tours e Viagens`.
+
+## Actualizacion 2026-11-04 - Proveedores de lavanderia
+- Backend y frontend permiten crear y editar proveedores mediante el contrato V2.
+- El estado activo/inactivo gobierna su disponibilidad en nuevas operaciones sin afectar historicos.
+- No se agregaron migraciones ni dependencias.
+- Validacion cerrada con 202 pruebas backend, 50 pruebas Flutter de lavanderia y analisis estatico sin issues.
 
 ## Hitos
 | Hito | Nombre | Backend | Frontend | Estado general | Tests | Documentacion | Commit backend | Commit frontend | Observaciones |

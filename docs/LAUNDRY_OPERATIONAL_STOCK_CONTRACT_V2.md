@@ -142,6 +142,32 @@ trazabilidad y FIFO. La ubicacion fisica se registra en el movimiento y en el do
 
 ## 4. Fase 1 - endpoints implementables
 
+### 4.0 Catalogo de proveedores
+
+`GET /api/v2/laundry/providers`
+
+- Devuelve proveedores activos e inactivos, ordenados por nombre, para permitir administracion e historicos.
+
+`POST /api/v2/laundry/providers`
+
+`PUT /api/v2/laundry/providers/{id}`
+
+Payload comun:
+
+```json
+{
+  "name": "Lavanderia Central",
+  "contact": "+55 11 99999-0000",
+  "active": true
+}
+```
+
+- `name`: obligatorio, maximo 120 caracteres y unico sin distinguir mayusculas.
+- `contact`: opcional, maximo 160 caracteres.
+- `active`: controla la disponibilidad para nuevas operaciones.
+- Un proveedor inactivo permanece disponible para administracion e historicos, pero no puede recibir nuevos envios.
+- Respuestas: `201` al crear, `200` al actualizar, `404` si el identificador no existe y `409` si el nombre ya esta en uso.
+
 ### 4.1 Tablero
 
 `GET /api/v2/laundry/dashboard?providerId=`
