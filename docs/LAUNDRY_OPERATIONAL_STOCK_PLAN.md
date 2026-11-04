@@ -733,6 +733,13 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
     proveedor y estado;
   - ambas consultas mantienen orden estable, DTO resumidos y validacion del proveedor, sin
     modificar las bandejas acotadas por ownership del rol `PROVIDER`.
+- Cliente Flutter V2 del hotel completado:
+  - contratos tipados para tablero, bandejas de documentos/devoluciones, despachos y
+    clasificacion final de devoluciones;
+  - cliente HTTP autenticado preparado para `/api/v2/laundry`, con fechas UTC, version
+    optimista e `Idempotency-Key` en cada comando;
+  - se mantiene separado del cliente V1 hasta sustituir la pantalla interna en el siguiente
+    incremento.
 - Pruebas:
   - `RequestCorrelationFilterTest`: 2 pruebas OK para propagacion, reemplazo seguro y limpieza
     de MDC;
@@ -740,12 +747,14 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - reconciliacion verifica permisos, estado consistente y deteccion de una diferencia inducida;
   - metricas verifica el contrato inicial, los totales de stock y el filtro de proveedor;
   - bandejas V2 del hotel verificadas dentro de los flujos de despacho y devolucion;
+  - Flutter: `flutter analyze` sin hallazgos y `flutter test` con 139 pruebas OK;
   - `.\mvnw.cmd -B test`: 200 pruebas OK, 0 fallos y 0 errores.
 - Commits asociados:
   - `feat(laundry-observability): add request correlation`;
   - `feat(laundry-reconciliation): add ledger consistency report`;
   - `feat(laundry-observability): add operational metrics`;
-  - `feat(laundry-v2): add hotel operation inboxes`.
+  - `feat(laundry-v2): add hotel operation inboxes`;
+  - frontend `feat(laundry-v2): add Flutter hotel client`.
 - Pendiente: conectar la experiencia del operador Flutter a las bandejas y comandos V2 y
   desactivar de forma controlada la escritura V1;
   validacion punta a punta con datos representativos y cierre de la fase.
