@@ -168,10 +168,20 @@ class LaundryReturnControllerTest {
 				{"version":0,"providerId":%d,"effectiveAt":"%s","notes":"Registro hotel","correctionNotes":null,"lines":[{"itemId":%d,"declaredClean":3.000,"declaredRetained":0.000,"acceptedClean":3.000,"returnedDirty":0.000,"retained":0.000,"missing":0.000,"damaged":0.000}]}
 				""".formatted(provider.getId(), now(), item.getId());
 		String key = "manual-" + UUID.randomUUID();
-		mockMvc.perform(command("/api/v2/laundry/returns/manual", supervisor, key, body))
+		String created = mockMvc.perform(command("/api/v2/laundry/returns/manual", supervisor, key, body))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.status").value("CONFIRMED_BY_HOTEL"))
-				.andExpect(jsonPath("$.confirmedBy").value("supervisor.demo"));
+				.andExpect(jsonPath("$.confirmedBy").value("supervisor.demo"))
+				.andReturn().getResponse().getContentAsString();
+		long returnId = objectMapper.readTree(created).get("id").asLong();
+		mockMvc.perform(get("/api/v2/laundry/returns")
+						.param("providerId", provider.getId().toString())
+						.param("status", "CONFIRMED_BY_HOTEL")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.items[0].id").value(returnId))
+				.andExpect(jsonPath("$.items[0].providerId").value(provider.getId()))
+				.andExpect(jsonPath("$.items[0].providerName").value(provider.getName()));
 		mockMvc.perform(command("/api/v2/laundry/returns/manual", supervisor, key, body))
 				.andExpect(status().isCreated())
 				.andExpect(header().string("Idempotent-Replay", "true"));

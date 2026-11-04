@@ -3,6 +3,8 @@ package com.axioma.quadras.service;
 import com.axioma.quadras.domain.dto.CreateLaundryDispatchDto;
 import com.axioma.quadras.domain.dto.CreateLaundryDispatchLineDto;
 import com.axioma.quadras.domain.dto.LaundryDocumentDto;
+import com.axioma.quadras.domain.dto.LaundryDocumentPageDto;
+import com.axioma.quadras.domain.dto.LaundryDocumentSummaryDto;
 import com.axioma.quadras.domain.dto.AcknowledgeLaundryDocumentDto;
 import com.axioma.quadras.domain.dto.ObserveLaundryDocumentDto;
 import com.axioma.quadras.domain.dto.ProviderLaundryDocumentDto;
@@ -118,6 +120,18 @@ public class LaundryDispatchService {
 				type, PageRequest.of(safePage, safeSize));
 		return new ProviderLaundryDocumentPageDto(safePage, safeSize, result.hasNext(),
 				result.getContent().stream().map(ProviderLaundryDocumentSummaryDto::from).toList());
+	}
+
+	public LaundryDocumentPageDto page(Long providerId, LaundryDocumentStatus status,
+			LaundryDocumentType type, Integer page, Integer size) {
+		if (providerId != null && !providerRepository.existsById(providerId))
+			throw new ApplicationException(HttpStatus.NOT_FOUND, "Laundry provider not found");
+		int safePage = page == null ? 0 : Math.max(0, page);
+		int safeSize = size == null ? 20 : Math.max(1, Math.min(100, size));
+		Page<LaundryDocument> result = documentRepository.search(providerId, status, type,
+				PageRequest.of(safePage, safeSize));
+		return new LaundryDocumentPageDto(safePage, safeSize, result.hasNext(),
+				result.getContent().stream().map(LaundryDocumentSummaryDto::from).toList());
 	}
 
 	@Transactional

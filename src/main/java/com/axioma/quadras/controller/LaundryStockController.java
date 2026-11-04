@@ -10,6 +10,8 @@ import com.axioma.quadras.domain.dto.LaundryStockPageDto;
 import com.axioma.quadras.domain.dto.LaundryReconciliationDto;
 import com.axioma.quadras.domain.dto.LaundryOperationalMetricsDto;
 import com.axioma.quadras.domain.dto.LaundryDocumentDto;
+import com.axioma.quadras.domain.dto.LaundryDocumentPageDto;
+import com.axioma.quadras.domain.dto.LaundryReturnPageDto;
 import com.axioma.quadras.domain.dto.SubmitLaundryDocumentDto;
 import com.axioma.quadras.domain.dto.AcknowledgeLaundryDocumentDto;
 import com.axioma.quadras.domain.dto.ObserveLaundryDocumentDto;
@@ -134,6 +136,15 @@ public class LaundryStockController {
 					user.getLaundryProviderId()));
 		}
 		return ResponseEntity.ok(laundryReturnService.get(id));
+	}
+
+	@GetMapping("/returns")
+	public ResponseEntity<LaundryReturnPageDto> returns(
+			@RequestParam(required = false) Long providerId,
+			@RequestParam(required = false) com.axioma.quadras.domain.model.LaundryReturnStatus status,
+			@RequestParam(required = false) Integer page,
+			@RequestParam(required = false) Integer size) {
+		return ResponseEntity.ok(laundryReturnService.page(providerId, status, page, size));
 	}
 
 	@GetMapping("/provider/returns")
@@ -280,6 +291,16 @@ public class LaundryStockController {
 					user.getLaundryProviderId()));
 		}
 		return ResponseEntity.ok(laundryDispatchService.get(id));
+	}
+
+	@GetMapping("/documents")
+	public ResponseEntity<LaundryDocumentPageDto> documents(
+			@RequestParam(required = false) Long providerId,
+			@RequestParam(required = false) com.axioma.quadras.domain.model.LaundryDocumentStatus status,
+			@RequestParam(required = false) LaundryDocumentType type,
+			@RequestParam(required = false) Integer page,
+			@RequestParam(required = false) Integer size) {
+		return ResponseEntity.ok(laundryDispatchService.page(providerId, status, type, page, size));
 	}
 
 	@GetMapping("/dashboard")

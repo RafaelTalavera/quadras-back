@@ -111,6 +111,16 @@ class LaundryDispatchControllerTest {
 		assertStock(supervisor, item.getId(), "HOTEL_AVAILABLE", null, 10.0);
 		assertStock(supervisor, item.getId(), "PROVIDER_PROCESSING", provider.getId(), 10.0);
 
+		mockMvc.perform(get("/api/v2/laundry/documents")
+						.param("providerId", provider.getId().toString())
+						.param("status", "SUBMITTED")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.items[0].id").value(id))
+				.andExpect(jsonPath("$.items[0].providerId").value(provider.getId()))
+				.andExpect(jsonPath("$.items[0].providerName").value(provider.getName()))
+				.andExpect(jsonPath("$.items[0].status").value("SUBMITTED"));
+
 		mockMvc.perform(command("/api/v2/laundry/documents/" + id + "/submit", supervisor,
 				submitKey, "{\"version\":0}"))
 				.andExpect(status().isOk())

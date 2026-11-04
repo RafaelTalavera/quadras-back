@@ -7,6 +7,8 @@ import com.axioma.quadras.domain.dto.CreateLaundryReturnLineDto;
 import com.axioma.quadras.domain.dto.LaundryBillableEventDto;
 import com.axioma.quadras.domain.dto.LaundryBillablePageDto;
 import com.axioma.quadras.domain.dto.LaundryReturnDto;
+import com.axioma.quadras.domain.dto.LaundryReturnPageDto;
+import com.axioma.quadras.domain.dto.LaundryReturnSummaryDto;
 import com.axioma.quadras.domain.dto.ManualLaundryReturnDto;
 import com.axioma.quadras.domain.dto.SubmitLaundryDocumentDto;
 import com.axioma.quadras.domain.dto.ProviderLaundryReturnDto;
@@ -168,6 +170,18 @@ public class LaundryReturnService {
 				status, PageRequest.of(safePage, safeSize));
 		return new ProviderLaundryReturnPageDto(safePage, safeSize, result.hasNext(),
 				result.getContent().stream().map(ProviderLaundryReturnSummaryDto::from).toList());
+	}
+
+	public LaundryReturnPageDto page(Long providerId, LaundryReturnStatus status,
+			Integer page, Integer size) {
+		if (providerId != null && !providerRepository.existsById(providerId))
+			throw new ApplicationException(HttpStatus.NOT_FOUND, "Laundry provider not found");
+		int safePage = page == null ? 0 : Math.max(0, page);
+		int safeSize = size == null ? 20 : Math.max(1, Math.min(100, size));
+		Page<LaundryReturnManifest> result = manifestRepository.search(providerId, status,
+				PageRequest.of(safePage, safeSize));
+		return new LaundryReturnPageDto(safePage, safeSize, result.hasNext(),
+				result.getContent().stream().map(LaundryReturnSummaryDto::from).toList());
 	}
 
 	public LaundryBillablePageDto billable(Long providerId, OffsetDateTime from, OffsetDateTime to,

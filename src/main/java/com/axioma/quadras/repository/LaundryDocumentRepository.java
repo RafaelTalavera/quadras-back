@@ -44,4 +44,22 @@ public interface LaundryDocumentRepository extends JpaRepository<LaundryDocument
 			@Param("status") com.axioma.quadras.domain.model.LaundryDocumentStatus status,
 			@Param("type") com.axioma.quadras.domain.model.LaundryDocumentType type,
 			Pageable pageable);
+
+	@Query(value = """
+			select document from LaundryDocument document
+			join fetch document.provider provider
+			where (:providerId is null or provider.id = :providerId)
+			  and (:status is null or document.status = :status)
+			  and (:type is null or document.documentType = :type)
+			order by document.effectiveAt desc, document.id desc
+			""", countQuery = """
+			select count(document) from LaundryDocument document
+			where (:providerId is null or document.provider.id = :providerId)
+			  and (:status is null or document.status = :status)
+			  and (:type is null or document.documentType = :type)
+			""")
+	Page<LaundryDocument> search(@Param("providerId") Long providerId,
+			@Param("status") com.axioma.quadras.domain.model.LaundryDocumentStatus status,
+			@Param("type") com.axioma.quadras.domain.model.LaundryDocumentType type,
+			Pageable pageable);
 }

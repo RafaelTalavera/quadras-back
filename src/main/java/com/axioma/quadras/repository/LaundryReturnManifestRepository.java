@@ -57,4 +57,19 @@ public interface LaundryReturnManifestRepository extends JpaRepository<LaundryRe
 	Page<LaundryReturnManifest> findProviderPage(@Param("providerId") Long providerId,
 			@Param("status") com.axioma.quadras.domain.model.LaundryReturnStatus status,
 			Pageable pageable);
+
+	@Query(value = """
+			select manifest from LaundryReturnManifest manifest
+			join fetch manifest.provider provider
+			where (:providerId is null or provider.id = :providerId)
+			  and (:status is null or manifest.status = :status)
+			order by manifest.effectiveAt desc, manifest.id desc
+			""", countQuery = """
+			select count(manifest) from LaundryReturnManifest manifest
+			where (:providerId is null or manifest.provider.id = :providerId)
+			  and (:status is null or manifest.status = :status)
+			""")
+	Page<LaundryReturnManifest> search(@Param("providerId") Long providerId,
+			@Param("status") com.axioma.quadras.domain.model.LaundryReturnStatus status,
+			Pageable pageable);
 }
