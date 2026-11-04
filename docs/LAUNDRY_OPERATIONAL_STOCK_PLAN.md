@@ -712,11 +712,20 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - no se agrego Actuator ni Micrometer porque el proyecto no posee esas dependencias;
   - la escritura V1 permanece activa mientras la pantalla interna Flutter siga consumiendo V1;
     su desactivacion requiere migrar primero ese consumidor para evitar un corte incompatible.
+- Reconciliacion operativa completada:
+  - `GET /api/v2/laundry/reconciliation`, exclusivo de supervisor, compara saldos actuales,
+    remanentes de lotes FIFO y balance neto del libro de movimientos;
+  - el reporte devuelve totales, estado `consistent` y diferencias por prenda, ubicacion y
+    proveedor, sin modificar ni corregir datos automaticamente;
+  - los totales de lotes se obtienen mediante proyeccion agregada y no cargan el historial.
 - Pruebas:
   - `RequestCorrelationFilterTest`: 2 pruebas OK para propagacion, reemplazo seguro y limpieza
     de MDC;
   - pruebas dirigidas con controladores de lavanderia: 13 pruebas OK;
-  - `.\mvnw.cmd -B test`: 199 pruebas OK, 0 fallos y 0 errores.
-- Commit asociado: `feat(laundry-observability): add request correlation`.
-- Pendiente: reconciliacion controlada, metricas operativas, migracion del operador Flutter a V2,
-  desactivacion de escritura V1 y validacion punta a punta con datos representativos.
+  - reconciliacion verifica permisos, estado consistente y deteccion de una diferencia inducida;
+  - `.\mvnw.cmd -B test`: 200 pruebas OK, 0 fallos y 0 errores.
+- Commits asociados:
+  - `feat(laundry-observability): add request correlation`;
+  - `feat(laundry-reconciliation): add ledger consistency report`.
+- Pendiente: metricas operativas, migracion del operador Flutter a V2, desactivacion de escritura
+  V1 y validacion punta a punta con datos representativos.
