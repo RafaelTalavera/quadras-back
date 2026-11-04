@@ -718,14 +718,24 @@ control operativo; la fase 4 agrega el acceso externo una vez estabilizadas las 
   - el reporte devuelve totales, estado `consistent` y diferencias por prenda, ubicacion y
     proveedor, sin modificar ni corregir datos automaticamente;
   - los totales de lotes se obtienen mediante proyeccion agregada y no cargan el historial.
+- Metricas operativas completadas:
+  - `GET /api/v2/laundry/metrics` expone stock por ubicacion, pendiente mas antiguo,
+    documentos observados, devoluciones pendientes de hotel, aceptaciones limpias y tasa de
+    relavado;
+  - admite filtro opcional por proveedor y valida su existencia con el mismo criterio del
+    tablero;
+  - las cantidades se calculan mediante consultas agregadas de solo lectura, sin cargar
+    documentos ni manifiestos completos.
 - Pruebas:
   - `RequestCorrelationFilterTest`: 2 pruebas OK para propagacion, reemplazo seguro y limpieza
     de MDC;
   - pruebas dirigidas con controladores de lavanderia: 13 pruebas OK;
   - reconciliacion verifica permisos, estado consistente y deteccion de una diferencia inducida;
+  - metricas verifica el contrato inicial, los totales de stock y el filtro de proveedor;
   - `.\mvnw.cmd -B test`: 200 pruebas OK, 0 fallos y 0 errores.
 - Commits asociados:
   - `feat(laundry-observability): add request correlation`;
-  - `feat(laundry-reconciliation): add ledger consistency report`.
-- Pendiente: metricas operativas, migracion del operador Flutter a V2, desactivacion de escritura
-  V1 y validacion punta a punta con datos representativos.
+  - `feat(laundry-reconciliation): add ledger consistency report`;
+  - `feat(laundry-observability): add operational metrics`.
+- Pendiente: migracion del operador Flutter a V2 y desactivacion controlada de escritura V1;
+  validacion punta a punta con datos representativos y cierre de la fase.
