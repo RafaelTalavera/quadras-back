@@ -47,6 +47,7 @@ class LaundryStockControllerTest {
 	private static final String OPENING = "/api/v2/laundry/opening-stock";
 	private static final String ADJUSTMENTS = "/api/v2/laundry/stock-adjustments";
 	private static final String DASHBOARD = "/api/v2/laundry/dashboard";
+	private static final String METRICS = "/api/v2/laundry/metrics";
 	private static final String STOCK = "/api/v2/laundry/stock";
 	private static final String RECONCILIATION = "/api/v2/laundry/reconciliation";
 
@@ -178,6 +179,25 @@ class LaundryStockControllerTest {
 				.andExpect(status().isBadRequest());
 
 		mockMvc.perform(get(DASHBOARD)
+						.param("providerId", "999999")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token()))
+				.andExpect(status().isNotFound());
+
+		mockMvc.perform(get(METRICS).header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.generatedAt").exists())
+				.andExpect(jsonPath("$.providerId").value(org.hamcrest.Matchers.nullValue()))
+				.andExpect(jsonPath("$.stock.hotelAvailable").value(20.0))
+				.andExpect(jsonPath("$.stock.total").value(20.0))
+				.andExpect(jsonPath("$.oldestPendingAt").value(org.hamcrest.Matchers.nullValue()))
+				.andExpect(jsonPath("$.observedDocuments").value(0))
+				.andExpect(jsonPath("$.returnsAwaitingHotel").value(0))
+				.andExpect(jsonPath("$.cleanAcceptedQuantity").value(0.0))
+				.andExpect(jsonPath("$.rewashQuantity").value(0.0))
+				.andExpect(jsonPath("$.classifiedQuantity").value(0.0))
+				.andExpect(jsonPath("$.rewashRatePercent").value(0.0));
+
+		mockMvc.perform(get(METRICS)
 						.param("providerId", "999999")
 						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token()))
 				.andExpect(status().isNotFound());

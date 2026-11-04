@@ -8,6 +8,7 @@ import com.axioma.quadras.domain.dto.LaundryStockAdjustmentDto;
 import com.axioma.quadras.domain.dto.LaundryStockDashboardDto;
 import com.axioma.quadras.domain.dto.LaundryStockPageDto;
 import com.axioma.quadras.domain.dto.LaundryReconciliationDto;
+import com.axioma.quadras.domain.dto.LaundryOperationalMetricsDto;
 import com.axioma.quadras.domain.dto.LaundryDocumentDto;
 import com.axioma.quadras.domain.dto.SubmitLaundryDocumentDto;
 import com.axioma.quadras.domain.dto.AcknowledgeLaundryDocumentDto;
@@ -32,6 +33,7 @@ import com.axioma.quadras.service.IdempotentResult;
 import com.axioma.quadras.service.LaundryStockService;
 import com.axioma.quadras.service.LaundryDispatchService;
 import com.axioma.quadras.service.LaundryReturnService;
+import com.axioma.quadras.service.LaundryOperationalMetricsService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -53,13 +55,16 @@ public class LaundryStockController {
 	private final LaundryStockService laundryStockService;
 	private final LaundryDispatchService laundryDispatchService;
 	private final LaundryReturnService laundryReturnService;
+	private final LaundryOperationalMetricsService laundryOperationalMetricsService;
 
 	public LaundryStockController(LaundryStockService laundryStockService,
 			LaundryDispatchService laundryDispatchService,
-			LaundryReturnService laundryReturnService) {
+			LaundryReturnService laundryReturnService,
+			LaundryOperationalMetricsService laundryOperationalMetricsService) {
 		this.laundryStockService = laundryStockService;
 		this.laundryDispatchService = laundryDispatchService;
 		this.laundryReturnService = laundryReturnService;
+		this.laundryOperationalMetricsService = laundryOperationalMetricsService;
 	}
 
 	@PostMapping("/returns")
@@ -287,6 +292,12 @@ public class LaundryStockController {
 	@GetMapping("/reconciliation")
 	public ResponseEntity<LaundryReconciliationDto> reconciliation() {
 		return ResponseEntity.ok(laundryStockService.reconciliation());
+	}
+
+	@GetMapping("/metrics")
+	public ResponseEntity<LaundryOperationalMetricsDto> metrics(
+			@RequestParam(required = false) Long providerId) {
+		return ResponseEntity.ok(laundryOperationalMetricsService.metrics(providerId));
 	}
 
 	@GetMapping("/stock")

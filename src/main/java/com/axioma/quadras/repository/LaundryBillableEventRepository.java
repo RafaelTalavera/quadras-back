@@ -12,6 +12,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface LaundryBillableEventRepository extends JpaRepository<LaundryBillableEvent, Long> {
+	@Query("""
+			select coalesce(sum(event.quantity), 0) from LaundryBillableEvent event
+			where (:providerId is null or event.provider.id = :providerId)
+			""")
+	java.math.BigDecimal sumAcceptedClean(@Param("providerId") Long providerId);
+
 	@EntityGraph(attributePaths = { "provider", "item", "manifest", "obligation" })
 	List<LaundryBillableEvent> findByExportStatusOrderByAcceptedAtAscIdAsc(LaundryBillableExportStatus status);
 
