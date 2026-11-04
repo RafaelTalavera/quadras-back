@@ -9,6 +9,8 @@ import com.axioma.quadras.domain.dto.LaundryStockDashboardDto;
 import com.axioma.quadras.domain.dto.LaundryStockPageDto;
 import com.axioma.quadras.domain.dto.LaundryReconciliationDto;
 import com.axioma.quadras.domain.dto.LaundryOperationalMetricsDto;
+import com.axioma.quadras.domain.dto.LaundryItemDto;
+import com.axioma.quadras.domain.dto.LaundryProviderDto;
 import com.axioma.quadras.domain.dto.LaundryDocumentDto;
 import com.axioma.quadras.domain.dto.LaundryDocumentPageDto;
 import com.axioma.quadras.domain.dto.LaundryReturnPageDto;
@@ -36,6 +38,8 @@ import com.axioma.quadras.service.LaundryStockService;
 import com.axioma.quadras.service.LaundryDispatchService;
 import com.axioma.quadras.service.LaundryReturnService;
 import com.axioma.quadras.service.LaundryOperationalMetricsService;
+import com.axioma.quadras.service.LaundryService;
+import java.util.List;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,15 +62,28 @@ public class LaundryStockController {
 	private final LaundryDispatchService laundryDispatchService;
 	private final LaundryReturnService laundryReturnService;
 	private final LaundryOperationalMetricsService laundryOperationalMetricsService;
+	private final LaundryService laundryService;
 
 	public LaundryStockController(LaundryStockService laundryStockService,
 			LaundryDispatchService laundryDispatchService,
 			LaundryReturnService laundryReturnService,
-			LaundryOperationalMetricsService laundryOperationalMetricsService) {
+			LaundryOperationalMetricsService laundryOperationalMetricsService,
+			LaundryService laundryService) {
 		this.laundryStockService = laundryStockService;
 		this.laundryDispatchService = laundryDispatchService;
 		this.laundryReturnService = laundryReturnService;
 		this.laundryOperationalMetricsService = laundryOperationalMetricsService;
+		this.laundryService = laundryService;
+	}
+
+	@GetMapping("/providers")
+	public ResponseEntity<List<LaundryProviderDto>> providers() {
+		return ResponseEntity.ok(laundryService.providers());
+	}
+
+	@GetMapping("/items")
+	public ResponseEntity<List<LaundryItemDto>> items() {
+		return ResponseEntity.ok(laundryService.items());
 	}
 
 	@PostMapping("/returns")

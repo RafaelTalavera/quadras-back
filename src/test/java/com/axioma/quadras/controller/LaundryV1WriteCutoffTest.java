@@ -32,6 +32,12 @@ class LaundryV1WriteCutoffTest {
 		mockMvc.perform(get("/api/v1/laundry/items")
 						.header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
 				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/v2/laundry/items")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/v2/laundry/providers")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+				.andExpect(status().isOk());
 
 		mockMvc.perform(post("/api/v1/laundry/providers")
 						.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
