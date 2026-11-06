@@ -190,6 +190,29 @@ class LaundryReturnControllerTest {
 	}
 
 	@Test
+	void shouldIdentifyEveryItemThatExceedsTheProviderPendingBalance() throws Exception {
+		Session supervisor = authenticate();
+		LaundryItem firstItem = item();
+		LaundryItem secondItem = item();
+		LaundryProvider provider = provider();
+		String body = """
+				{"version":0,"providerId":%d,"effectiveAt":"%s","notes":"Registro hotel","correctionNotes":null,"lines":[
+				{"itemId":%d,"declaredClean":2.000,"declaredRetained":0.000,"acceptedClean":2.000,"returnedDirty":0.000,"retained":0.000,"missing":0.000,"damaged":0.000},
+				{"itemId":%d,"declaredClean":1.000,"declaredRetained":0.000,"acceptedClean":1.000,"returnedDirty":0.000,"retained":0.000,"missing":0.000,"damaged":0.000}]}
+				""".formatted(provider.getId(), now(), firstItem.getId(), secondItem.getId());
+		String expectedMessage = "No se puede registrar la recepción. Estas prendas superan el saldo pendiente de la lavandería:\n"
+				+ "- " + firstItem.getName() + ": solicitado 2, disponible 0\n"
+				+ "- " + secondItem.getName() + ": solicitado 1, disponible 0";
+
+		mockMvc.perform(command("/api/v2/laundry/returns/manual", supervisor,
+				"manual-invalid-" + UUID.randomUUID(), body))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value(expectedMessage));
+		assertThat(obligationRepository.count()).isZero();
+		assertThat(billableRepository.count()).isZero();
+	}
+
+	@Test
 	void shouldReconcileMissingAndDamagedWithoutBillingAndExposeReports() throws Exception {
 		Session supervisor = authenticate();
 		LaundryItem item = item();

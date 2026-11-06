@@ -4,11 +4,14 @@ import com.axioma.quadras.domain.dto.CreateLaundryOpeningStockDto;
 import com.axioma.quadras.domain.dto.CreateLaundryDispatchDto;
 import com.axioma.quadras.domain.dto.CreateLaundryStockAdjustmentDto;
 import com.axioma.quadras.domain.dto.LaundryOpeningStockDto;
+import com.axioma.quadras.domain.dto.LaundryInventoryMovementDto;
+import com.axioma.quadras.domain.dto.RetireLaundryItemDto;
 import com.axioma.quadras.domain.dto.LaundryStockAdjustmentDto;
 import com.axioma.quadras.domain.dto.LaundryStockDashboardDto;
 import com.axioma.quadras.domain.dto.LaundryStockPageDto;
 import com.axioma.quadras.domain.dto.LaundryReconciliationDto;
 import com.axioma.quadras.domain.dto.LaundryOperationalMetricsDto;
+import com.axioma.quadras.domain.dto.LaundryOperationalDailyRowDto;
 import com.axioma.quadras.domain.dto.LaundryItemDto;
 import com.axioma.quadras.domain.dto.LaundryProviderDto;
 import com.axioma.quadras.domain.dto.CreateLaundryProviderDto;
@@ -30,6 +33,7 @@ import com.axioma.quadras.domain.dto.ProviderLaundryReturnPageDto;
 import com.axioma.quadras.domain.dto.ProviderLaundryDocumentPageDto;
 import com.axioma.quadras.domain.model.LaundryBillableExportStatus;
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.LaundryStockBucket;
 import com.axioma.quadras.domain.model.LaundryDocumentType;
@@ -353,6 +357,14 @@ public class LaundryStockController {
 		return ResponseEntity.ok(laundryOperationalMetricsService.metrics(providerId));
 	}
 
+	@GetMapping("/operational-summary")
+	public ResponseEntity<List<LaundryOperationalDailyRowDto>> operationalSummary(
+			@RequestParam(required = false) Long providerId,
+			@RequestParam(required = false) LocalDate from,
+			@RequestParam(required = false) LocalDate to) {
+		return ResponseEntity.ok(laundryStockService.operationalDailySummary(providerId, from, to));
+	}
+
 	@GetMapping("/stock")
 	public ResponseEntity<LaundryStockPageDto> stock(
 			@RequestParam(required = false) Long itemId,
@@ -362,6 +374,23 @@ public class LaundryStockController {
 			@RequestParam(required = false) Integer size
 	) {
 		return ResponseEntity.ok(laundryStockService.stock(itemId, bucket, providerId, page, size));
+	}
+
+	@GetMapping("/inventory/movements")
+	public ResponseEntity<List<LaundryInventoryMovementDto>> inventoryMovements(
+			@RequestParam LocalDate date) {
+		return ResponseEntity.ok(laundryStockService.inventoryMovements(date));
+	}
+
+	@PostMapping("/inventory/items/{itemId}/retire")
+	public ResponseEntity<LaundryInventoryMovementDto> retireItem(
+			@PathVariable Long itemId,
+			@RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+			@Valid @RequestBody RetireLaundryItemDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		final AuthenticatedUserPrincipal user = requirePrincipal(principal);
+		return response(laundryStockService.retireItem(
+				itemId, input, user.getUsername(), user.getRole().name(), idempotencyKey));
 	}
 
 	@PostMapping("/opening-stock")

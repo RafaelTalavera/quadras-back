@@ -15,9 +15,13 @@ import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.time.OffsetDateTime;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiError> handleMethodArgumentNotValidException(
@@ -100,6 +104,13 @@ public class ApiExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiError> handleUnexpectedException(Exception ex, HttpServletRequest request) {
+		LOGGER.error(
+				"Unexpected request failure method={} path={} correlationId={}",
+				request.getMethod(),
+				request.getRequestURI(),
+				MDC.get(RequestCorrelationFilter.MDC_KEY),
+				ex
+		);
 		HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
 		ApiError body = new ApiError(
 				OffsetDateTime.now(),

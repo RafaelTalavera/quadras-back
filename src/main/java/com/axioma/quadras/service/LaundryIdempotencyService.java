@@ -78,11 +78,15 @@ public class LaundryIdempotencyService {
 			try {
 				final T result = action.get();
 				final String body = serialize(result);
-				final LaundryIdempotencyRecord record = repository
-						.findByActorUsernameAndIdempotencyKey(actorUsername, idempotencyKey)
-						.orElseThrow(() -> new IllegalStateException("Idempotency placeholder disappeared"));
-				record.complete(successStatus, body);
-				repository.save(record);
+				final int completed = repository.complete(
+						actorUsername,
+						idempotencyKey,
+						successStatus,
+						body
+				);
+				if (completed != 1) {
+					throw new IllegalStateException("Idempotency placeholder could not be completed");
+				}
 				return new IdempotentResult<>(successStatus, result, false);
 			} catch (RuntimeException ex) {
 				release(actorUsername, idempotencyKey);

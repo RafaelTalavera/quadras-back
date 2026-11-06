@@ -3,11 +3,14 @@ package com.axioma.quadras.service;
 import com.axioma.quadras.domain.dto.CreateLaundryOpeningStockDto;
 import com.axioma.quadras.domain.dto.CreateLaundryStockAdjustmentDto;
 import com.axioma.quadras.domain.dto.LaundryOpeningStockDto;
+import com.axioma.quadras.domain.dto.LaundryInventoryMovementDto;
+import com.axioma.quadras.domain.dto.RetireLaundryItemDto;
 import com.axioma.quadras.domain.dto.LaundryReconciliationDto;
 import com.axioma.quadras.domain.dto.LaundryReconciliationMismatchDto;
 import com.axioma.quadras.domain.dto.LaundryOpeningStockLineInputDto;
 import com.axioma.quadras.domain.dto.LaundryStockAdjustmentDto;
 import com.axioma.quadras.domain.dto.LaundryStockDashboardDto;
+import com.axioma.quadras.domain.dto.LaundryOperationalDailyRowDto;
 import com.axioma.quadras.domain.dto.LaundryStockDashboardItemDto;
 import com.axioma.quadras.domain.dto.LaundryStockPageDto;
 import com.axioma.quadras.domain.dto.LaundryStockProviderTotalsDto;
@@ -17,7 +20,6 @@ import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.LaundryItem;
 import com.axioma.quadras.domain.model.LaundryOpeningStock;
 import com.axioma.quadras.domain.model.LaundryOpeningStockLine;
-import com.axioma.quadras.domain.model.LaundryOpeningStockStatus;
 import com.axioma.quadras.domain.model.LaundryProvider;
 import com.axioma.quadras.domain.model.LaundryStockAdjustment;
 import com.axioma.quadras.domain.model.LaundryStockBalance;
@@ -39,8 +41,8 @@ import com.axioma.quadras.repository.projection.LaundryStockLotTotalView;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -52,6 +54,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Comparator;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -71,6 +74,7 @@ public class LaundryStockService {
 	private static final DateTimeFormatter REFERENCE_DATE = DateTimeFormatter.BASIC_ISO_DATE;
 	private static final String OPENING_PATH = "/api/v2/laundry/opening-stock";
 	private static final String ADJUSTMENT_PATH = "/api/v2/laundry/stock-adjustments";
+	private static final String RETIRE_PATH = "/api/v2/laundry/inventory/items/{itemId}/retire";
 	private static final String SUPERVISOR = "SUPERVISOR";
 
 	private final LaundryStockBalanceRepository balanceRepository;
@@ -158,6 +162,62 @@ public class LaundryStockService {
 				itemDtos,
 				providerDtos
 		);
+	}
+
+	public List<LaundryInventoryMovementDto> inventoryMovements(LocalDate date) {
+		if (date == null) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "date is required");
+		}
+		final OffsetDateTime from = date.atStartOfDay().atOffset(ZoneOffset.UTC);
+		return movementRepository.findTraceabilityMovements(from, from.plusDays(1)).stream()
+				.map(LaundryInventoryMovementDto::from)
+				.toList();
+	}
+
+	public List<LaundryOperationalDailyRowDto> operationalDailySummary(
+			Long providerId, LocalDate from, LocalDate to) {
+		if (providerId != null && !providerRepository.existsById(providerId)) {
+			throw new ApplicationException(HttpStatus.NOT_FOUND, "Laundry provider not found");
+		}
+		LocalDate safeTo = to == null ? LocalDate.now(ZoneOffset.UTC) : to;
+		LocalDate safeFrom = from == null ? LocalDate.of(1970, 1, 1) : from;
+		if (safeFrom.isAfter(safeTo)) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "from must not be after to");
+		}
+		Map<DailyItemKey, DailyQuantities> totals = new HashMap<>();
+		for (LaundryStockMovement movement : movementRepository.findOperationalMovements(
+				providerId, safeFrom.atStartOfDay().atOffset(ZoneOffset.UTC),
+				safeTo.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC))) {
+			DailyItemKey key = new DailyItemKey(
+					movement.getEffectiveAt().withOffsetSameInstant(ZoneOffset.UTC).toLocalDate(),
+					movement.getItem());
+			DailyQuantities quantities = totals.computeIfAbsent(key, ignored -> new DailyQuantities());
+			if (movement.getDocumentType() == LaundryStockDocumentType.DISPATCH
+					&& movement.getFromBucket() == LaundryStockBucket.HOTEL_AVAILABLE
+					&& movement.getToBucket() == LaundryStockBucket.PROVIDER_PROCESSING) {
+				quantities.sent = quantities.sent.add(movement.getQuantity());
+			} else if (movement.getDocumentType() == LaundryStockDocumentType.REWASH_DISPATCH
+					&& movement.getFromBucket() == LaundryStockBucket.HOTEL_REWASH_QUEUE
+					&& movement.getToBucket() == LaundryStockBucket.PROVIDER_REWASH) {
+				quantities.rewashed = quantities.rewashed.add(movement.getQuantity());
+			} else if (movement.getDocumentType() == LaundryStockDocumentType.RETURN
+					&& (movement.getFromBucket() == LaundryStockBucket.PROVIDER_PROCESSING
+							|| movement.getFromBucket() == LaundryStockBucket.PROVIDER_REWASH)
+					&& (movement.getToBucket() == LaundryStockBucket.HOTEL_AVAILABLE
+							|| movement.getToBucket() == LaundryStockBucket.HOTEL_REWASH_QUEUE)) {
+				quantities.received = quantities.received.add(movement.getQuantity());
+			}
+		}
+		return totals.entrySet().stream()
+				.filter(entry -> entry.getValue().hasQuantity())
+				.sorted(Map.Entry.<DailyItemKey, DailyQuantities>comparingByKey(
+						Comparator.comparing(DailyItemKey::date).reversed()
+								.thenComparing(key -> key.item().getName(), String.CASE_INSENSITIVE_ORDER)))
+				.map(entry -> new LaundryOperationalDailyRowDto(entry.getKey().date(),
+						entry.getKey().item().getId(), entry.getKey().item().getName(),
+						entry.getKey().item().getUnitType(), entry.getValue().sent,
+						entry.getValue().received, entry.getValue().rewashed))
+				.toList();
 	}
 
 	public LaundryReconciliationDto reconciliation() {
@@ -268,6 +328,89 @@ public class LaundryStockService {
 	}
 
 	@Transactional
+	public IdempotentResult<LaundryInventoryMovementDto> retireItem(
+			Long itemId,
+			RetireLaundryItemDto input,
+			String actorUsername,
+			String actorRole,
+			String idempotencyKey
+	) {
+		requireSupervisor(actorRole);
+		final String path = RETIRE_PATH.replace("{itemId}", itemId.toString());
+		final String fingerprint = idempotencyService.fingerprint("POST", path, input);
+		return idempotencyService.execute(
+				actorUsername,
+				idempotencyKey,
+				fingerprint,
+				LaundryInventoryMovementDto.class,
+				201,
+				() -> retireItem(itemId, input, actorUsername, actorRole)
+		);
+	}
+
+	private LaundryInventoryMovementDto retireItem(
+			Long itemId,
+			RetireLaundryItemDto input,
+			String actorUsername,
+			String actorRole
+	) {
+		validateEffectiveAt(input.effectiveAt());
+		final LaundryItem item = itemRepository.findById(itemId)
+				.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND,
+						"Laundry item not found: " + itemId));
+		if (!item.isActive()) {
+			throw new ApplicationException(HttpStatus.CONFLICT, "Laundry item is already inactive");
+		}
+		final BigDecimal quantity;
+		try {
+			quantity = LaundryStockBalance.normalize(input.quantity());
+		} catch (IllegalArgumentException ex) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, ex.getMessage());
+		}
+		if (quantity.signum() <= 0) {
+			throw new ApplicationException(HttpStatus.BAD_REQUEST, "quantity must be positive");
+		}
+		final LaundryStockBalance source = balanceRepository
+				.findForUpdate(itemId, LaundryStockBucket.HOTEL_AVAILABLE, 0L)
+				.orElseThrow(() -> insufficient(LaundryStockBucket.HOTEL_AVAILABLE, itemId, zero(), quantity));
+		if (source.getVersion() != input.version()) {
+			throw new ApplicationException(HttpStatus.CONFLICT,
+					"Stock balance version mismatch: expected " + input.version()
+							+ ", current " + source.getVersion());
+		}
+		final String correlationId = UUID.randomUUID().toString();
+		applyOutgoing(
+				item,
+				LaundryStockBucket.HOTEL_AVAILABLE,
+				null,
+				quantity,
+				input.effectiveAt(),
+				LaundryStockMovementType.ADJUSTMENT_DECREASE,
+				LaundryStockDocumentType.ITEM_RETIREMENT,
+				itemId,
+				null,
+				actorUsername,
+				actorRole,
+				input.notes(),
+				correlationId
+		);
+		item.retire();
+		itemRepository.save(item);
+		final LaundryStockMovement movement = movementRepository
+				.findByCorrelationIdOrderByIdAsc(correlationId).get(0);
+		final Map<String, Object> changes = new LinkedHashMap<>();
+		changes.put("quantity", quantity);
+		changes.put("effectiveAt", input.effectiveAt().toString());
+		changes.put("notes", input.notes());
+		changes.put("correlationId", correlationId);
+		auditTrailService.record(
+				"LAUNDRY", "LAUNDRY_ITEM", itemId, "RETIRE",
+				"Laundry item retired", changes, Map.of("active", true), Map.of("active", false)
+		);
+		return LaundryInventoryMovementDto.from(movement);
+	}
+
+	@Transactional
 	public void transferDocumentStock(
 			LaundryItem item,
 			LaundryStockBucket fromBucket,
@@ -297,10 +440,6 @@ public class LaundryStockService {
 			throw new ApplicationException(HttpStatus.BAD_REQUEST, "version must be 0 for opening stock");
 		}
 		validateEffectiveAt(input.effectiveAt());
-		if (openingStockRepository.existsByStatus(LaundryOpeningStockStatus.APPROVED)) {
-			throw new ApplicationException(HttpStatus.CONFLICT, "Opening stock is already approved");
-		}
-
 		final Set<Long> itemIds = new HashSet<>();
 		final List<ValidatedOpeningLine> lines = new ArrayList<>();
 		boolean hasPositiveQuantity = false;
@@ -370,7 +509,7 @@ public class LaundryStockService {
 					line.getId(),
 					actorUsername,
 					actorRole,
-					"Opening stock",
+					input.notes(),
 					correlationId
 			);
 			totalQuantity = totalQuantity.add(line.getQuantity());
@@ -1081,6 +1220,18 @@ public class LaundryStockService {
 					totals.damaged,
 					totals.total()
 			);
+		}
+	}
+
+	private record DailyItemKey(LocalDate date, LaundryItem item) { }
+
+	private static final class DailyQuantities {
+		private BigDecimal sent = BigDecimal.ZERO.setScale(3);
+		private BigDecimal received = BigDecimal.ZERO.setScale(3);
+		private BigDecimal rewashed = BigDecimal.ZERO.setScale(3);
+
+		private boolean hasQuantity() {
+			return sent.signum() > 0 || received.signum() > 0 || rewashed.signum() > 0;
 		}
 	}
 }

@@ -158,6 +158,28 @@ class LaundryDispatchControllerTest {
 	}
 
 	@Test
+	void shouldExplainRewashBalanceErrorsWithItemNameAndQuantities() throws Exception {
+		Session supervisor = authenticate("supervisor.demo", "654321");
+		LaundryItem item = item("Toalla");
+		LaundryProvider provider = provider("Lavanderia");
+		String created = mockMvc.perform(command("/api/v2/laundry/rewash-dispatches", supervisor,
+				"rewash-" + UUID.randomUUID(), dispatchJson(provider.getId(), item.getId(), "5.000")))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		long id = objectMapper.readTree(created).get("id").asLong();
+		String expectedMessage = "No se puede enviar \"" + item.getName() + "\" a relavado. "
+				+ "Cantidad solicitada: 5; cantidad disponible para relavado: 0. "
+				+ "Registre primero la recepción de las prendas como \"Para relavado\" "
+				+ "o reduzca la cantidad.";
+
+		mockMvc.perform(command("/api/v2/laundry/documents/" + id + "/submit", supervisor,
+				"rewash-submit-" + UUID.randomUUID(), "{\"version\":0}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value(expectedMessage));
+		assertThat(documentRepository.findById(id).orElseThrow().getStatus().name()).isEqualTo("DRAFT");
+		assertThat(rewashAllocationRepository.count()).isZero();
+	}
+
+	@Test
 	void shouldDispatchRewashAgainstOldestEligibleObligationAtZeroPrice() throws Exception {
 		Session supervisor = authenticate("supervisor.demo", "654321");
 		LaundryItem item = item("Funda");

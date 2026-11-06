@@ -300,8 +300,17 @@ public class LaundryDispatchService {
 			remaining = remaining.subtract(take);
 			if (remaining.signum() == 0) return;
 		}
+		BigDecimal available = line.getQuantity().subtract(remaining);
 		throw new ApplicationException(HttpStatus.CONFLICT,
-				"Rewash quantity exceeds FIFO obligation balance for item " + line.getItem().getId());
+				"No se puede enviar \"" + line.getItem().getName() + "\" a relavado. "
+						+ "Cantidad solicitada: " + quantity(line.getQuantity()) + "; "
+						+ "cantidad disponible para relavado: " + quantity(available) + ". "
+						+ "Registre primero la recepción de las prendas como \"Para relavado\" "
+						+ "o reduzca la cantidad.");
+	}
+
+	private String quantity(BigDecimal value) {
+		return value.setScale(3).stripTrailingZeros().toPlainString();
 	}
 
 	private void validateEffectiveAt(OffsetDateTime value) {

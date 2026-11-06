@@ -50,6 +50,7 @@ class LaundryStockControllerTest {
 	private static final String METRICS = "/api/v2/laundry/metrics";
 	private static final String STOCK = "/api/v2/laundry/stock";
 	private static final String RECONCILIATION = "/api/v2/laundry/reconciliation";
+	private static final String MOVEMENTS = "/api/v2/laundry/inventory/movements";
 
 	@Autowired private MockMvc mockMvc;
 	@Autowired private ObjectMapper objectMapper;
@@ -134,8 +135,52 @@ class LaundryStockControllerTest {
 				));
 
 		mockMvc.perform(command(OPENING, supervisor, "another-" + UUID.randomUUID(), body))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.message").value("Opening stock is already approved"));
+				.andExpect(status().isCreated());
+		assertThat(openingStockRepository.count()).isEqualTo(2);
+		assertThat(movementRepository.count()).isEqualTo(2);
+	}
+
+	@Test
+	void shouldTraceMovementsAndRetireItemIdempotently() throws Exception {
+		final UserSession supervisor = authenticate("supervisor.demo", "654321");
+		final LaundryItem item = item("Toalha");
+		final OffsetDateTime effectiveAt = OffsetDateTime.now().minusDays(1).withNano(0);
+		mockMvc.perform(command(OPENING, supervisor, "trace-open-" + UUID.randomUUID(),
+				openingJson(item.getId(), "12.000", effectiveAt.toString())))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(get(MOVEMENTS)
+						.param("date", effectiveAt.toLocalDate().toString())
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].itemId").value(item.getId()))
+				.andExpect(jsonPath("$[0].itemName").value(item.getName()))
+				.andExpect(jsonPath("$[0].quantity").value(12.0))
+				.andExpect(jsonPath("$[0].movementType").value("OPENING_STOCK"))
+				.andExpect(jsonPath("$[0].createdBy").value("supervisor.demo"));
+
+		final String retirePath = "/api/v2/laundry/inventory/items/" + item.getId() + "/retire";
+		final JsonNode availableStock = read(get(STOCK)
+				.param("itemId", item.getId().toString())
+				.param("bucket", "HOTEL_AVAILABLE")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token()));
+		final long version = availableStock.get("items").get(0).get("version").asLong();
+		final String retireBody = """
+				{"version":%d,"effectiveAt":"%s","quantity":5,"notes":"Producto fuera de uso"}
+				""".formatted(version, effectiveAt.plusHours(1));
+		final String key = "retire-" + UUID.randomUUID();
+		mockMvc.perform(command(retirePath, supervisor, key, retireBody))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.movementType").value("ITEM_RETIREMENT"))
+				.andExpect(jsonPath("$.quantity").value(5.0))
+				.andExpect(jsonPath("$.notes").value("Producto fuera de uso"));
+		mockMvc.perform(command(retirePath, supervisor, key, retireBody))
+				.andExpect(status().isCreated())
+				.andExpect(header().string("Idempotent-Replay", "true"));
+
+		assertThat(itemRepository.findById(item.getId()).orElseThrow().isActive()).isFalse();
+		assertThat(balanceRepository.findAll().get(0).getQuantity()).isEqualByComparingTo("7.000");
+		assertThat(movementRepository.count()).isEqualTo(2);
 	}
 
 	@Test

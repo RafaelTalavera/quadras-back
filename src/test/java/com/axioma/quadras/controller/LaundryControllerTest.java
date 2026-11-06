@@ -24,6 +24,8 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -43,6 +45,23 @@ class LaundryControllerTest {
 	@Autowired private LaundryItemRepository itemRepository;
 	@Autowired private LaundryShipmentRepository shipmentRepository;
 	private final ObjectMapper objectMapper = new ObjectMapper();
+
+	@ParameterizedTest
+	@CsvSource({
+			"operador.demo, 123456",
+			"supervisor.demo, 654321"
+	})
+	void shouldAllowLaundryV2WritesForOperatorAndSupervisor(String username, String password) throws Exception {
+		String token = authenticate(username, password);
+
+		mockMvc.perform(post("/api/v2/laundry/providers")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+						{"name":"%s","contact":"Prueba de autorizacion","active":true}
+						""".formatted(unique("Proveedor por rol"))))
+				.andExpect(status().isCreated());
+	}
 
 	@Test
 	void shouldCreateAndDeactivateLaundryProvider() throws Exception {
@@ -501,9 +520,15 @@ class LaundryControllerTest {
 	}
 
 	private String authenticate() throws Exception {
+		return authenticate("operador.demo", "123456");
+	}
+
+	private String authenticate(String username, String password) throws Exception {
 		String response = mockMvc.perform(post("/api/v1/auth/login")
 					.contentType(MediaType.APPLICATION_JSON)
-					.content("{\"username\":\"operador.demo\",\"password\":\"123456\"}"))
+					.content("""
+						{"username":"%s","password":"%s"}
+						""".formatted(username, password)))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 		return objectMapper.readTree(response).get("accessToken").asText();
 	}

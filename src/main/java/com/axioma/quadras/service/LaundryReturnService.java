@@ -274,6 +274,7 @@ public class LaundryReturnService {
 			throw conflict("Return manifest is not confirmable");
 		Map<Long, ConfirmLaundryReturnLineDto> decisions = decisionMap(input.lines());
 		if (decisions.size() != manifest.getLines().size()) throw bad("A final decision is required for every return line");
+		validateAvailableBalances(manifest, manifest.getLines(), decisions);
 		boolean corrected = false;
 		for (LaundryReturnManifestLine line : manifest.getLines()) {
 			ConfirmLaundryReturnLineDto decision = decisions.remove(line.getItem().getId());
@@ -311,6 +312,35 @@ public class LaundryReturnService {
 				decision.missing(), actor, actorRole);
 		allocateOutcome(manifest, line, obligations, LaundryReturnOutcome.DAMAGED,
 				decision.damaged(), actor, actorRole);
+	}
+
+	private void validateAvailableBalances(LaundryReturnManifest manifest,
+			List<LaundryReturnManifestLine> lines,
+			Map<Long, ConfirmLaundryReturnLineDto> decisions) {
+		List<String> problems = new ArrayList<>();
+		for (LaundryReturnManifestLine line : lines) {
+			ConfirmLaundryReturnLineDto decision = decisions.get(line.getItem().getId());
+			if (decision == null) continue;
+			BigDecimal requested = total(decision);
+			BigDecimal available = obligationRepository.findOpenForUpdate(
+					manifest.getProvider().getId(), line.getItem().getId()).stream()
+					.map(obligation -> obligation.processingQuantity()
+							.add(obligation.getInRewashQuantity()))
+					.reduce(BigDecimal.ZERO, BigDecimal::add);
+			if (requested.compareTo(available) > 0) {
+				problems.add("- " + line.getItem().getName()
+						+ ": solicitado " + quantity(requested)
+						+ ", disponible " + quantity(available));
+			}
+		}
+		if (!problems.isEmpty()) {
+			throw conflict("No se puede registrar la recepción. Estas prendas superan el saldo pendiente de la lavandería:\n"
+					+ String.join("\n", problems));
+		}
+	}
+
+	private String quantity(BigDecimal value) {
+		return value.setScale(3).stripTrailingZeros().toPlainString();
 	}
 
 	private void allocateOutcome(LaundryReturnManifest manifest, LaundryReturnManifestLine line,

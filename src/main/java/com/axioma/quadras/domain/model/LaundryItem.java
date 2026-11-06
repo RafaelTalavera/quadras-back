@@ -43,6 +43,10 @@ public class LaundryItem {
 		this.active = active;
 	}
 
+	public void retire() {
+		this.active = false;
+	}
+
 	public Long getId() { return id; }
 	public String getName() { return name; }
 	public LaundryUnitType getUnitType() { return unitType; }
