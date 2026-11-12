@@ -144,7 +144,7 @@ class LaundryStockControllerTest {
 	void shouldTraceMovementsAndRetireItemIdempotently() throws Exception {
 		final UserSession supervisor = authenticate("supervisor.demo", "654321");
 		final LaundryItem item = item("Toalha");
-		final OffsetDateTime effectiveAt = OffsetDateTime.now().minusDays(1).withNano(0);
+		final OffsetDateTime effectiveAt = OffsetDateTime.now().minusDays(1).withHour(12).withNano(0);
 		mockMvc.perform(command(OPENING, supervisor, "trace-open-" + UUID.randomUUID(),
 				openingJson(item.getId(), "12.000", effectiveAt.toString())))
 				.andExpect(status().isCreated());

@@ -38,6 +38,7 @@ import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.LaundryStockBucket;
 import com.axioma.quadras.domain.model.LaundryDocumentType;
 import com.axioma.quadras.domain.model.AppUserRole;
+import com.axioma.quadras.domain.model.ProviderAccessType;
 import com.axioma.quadras.service.AuthenticatedUserPrincipal;
 import com.axioma.quadras.service.IdempotentResult;
 import com.axioma.quadras.service.LaundryStockService;
@@ -45,6 +46,7 @@ import com.axioma.quadras.service.LaundryDispatchService;
 import com.axioma.quadras.service.LaundryReturnService;
 import com.axioma.quadras.service.LaundryOperationalMetricsService;
 import com.axioma.quadras.service.LaundryService;
+import com.axioma.quadras.service.ProviderAccessGuard;
 import java.util.List;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -69,17 +71,20 @@ public class LaundryStockController {
 	private final LaundryReturnService laundryReturnService;
 	private final LaundryOperationalMetricsService laundryOperationalMetricsService;
 	private final LaundryService laundryService;
+	private final ProviderAccessGuard providerAccessGuard;
 
 	public LaundryStockController(LaundryStockService laundryStockService,
 			LaundryDispatchService laundryDispatchService,
 			LaundryReturnService laundryReturnService,
 			LaundryOperationalMetricsService laundryOperationalMetricsService,
-			LaundryService laundryService) {
+			LaundryService laundryService,
+			ProviderAccessGuard providerAccessGuard) {
 		this.laundryStockService = laundryStockService;
 		this.laundryDispatchService = laundryDispatchService;
 		this.laundryReturnService = laundryReturnService;
 		this.laundryOperationalMetricsService = laundryOperationalMetricsService;
 		this.laundryService = laundryService;
+		this.providerAccessGuard = providerAccessGuard;
 	}
 
 	@GetMapping("/providers")
@@ -112,7 +117,7 @@ public class LaundryStockController {
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
 		AuthenticatedUserPrincipal user = requirePrincipal(principal);
 		if (user.getRole() == AppUserRole.PROVIDER) {
-			return response(laundryReturnService.createProvider(input, user.getLaundryProviderId(),
+			return response(laundryReturnService.createProvider(input, providerResourceId(user),
 					user.getUsername(), key));
 		}
 		return response(laundryReturnService.create(input, user.getUsername(), key));
@@ -137,7 +142,7 @@ public class LaundryStockController {
 		AuthenticatedUserPrincipal user = requirePrincipal(principal);
 		if (user.getRole() == AppUserRole.PROVIDER) {
 			return response(laundryReturnService.submitProvider(id, input,
-					user.getLaundryProviderId(), user.getUsername(), key));
+					providerResourceId(user), user.getUsername(), key));
 		}
 		return response(laundryReturnService.submit(id, input, user.getUsername(), key));
 	}
@@ -150,7 +155,7 @@ public class LaundryStockController {
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
 		AuthenticatedUserPrincipal user = requirePrincipal(principal);
 		return response(laundryReturnService.updateProvider(id, input,
-				user.getLaundryProviderId(), user.getUsername(), key));
+				providerResourceId(user), user.getUsername(), key));
 	}
 
 	@PostMapping("/returns/{id}/confirm")
@@ -169,7 +174,7 @@ public class LaundryStockController {
 		AuthenticatedUserPrincipal user = requirePrincipal(principal);
 		if (user.getRole() == AppUserRole.PROVIDER) {
 			return ResponseEntity.ok(laundryReturnService.getForProvider(id,
-					user.getLaundryProviderId()));
+					providerResourceId(user)));
 		}
 		return ResponseEntity.ok(laundryReturnService.get(id));
 	}
@@ -190,7 +195,7 @@ public class LaundryStockController {
 			@RequestParam(required = false) Integer size,
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
 		AuthenticatedUserPrincipal user = requirePrincipal(principal);
-		return ResponseEntity.ok(laundryReturnService.providerPage(user.getLaundryProviderId(),
+		return ResponseEntity.ok(laundryReturnService.providerPage(providerResourceId(user),
 				status, page, size));
 	}
 
@@ -202,7 +207,7 @@ public class LaundryStockController {
 			@RequestParam(required = false) Integer size,
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
 		AuthenticatedUserPrincipal user = requirePrincipal(principal);
-		return ResponseEntity.ok(laundryDispatchService.providerPage(user.getLaundryProviderId(),
+		return ResponseEntity.ok(laundryDispatchService.providerPage(providerResourceId(user),
 				status, type, page, size));
 	}
 
@@ -220,7 +225,7 @@ public class LaundryStockController {
 		}
 		AuthenticatedUserPrincipal user = requirePrincipal(principal);
 		return ResponseEntity.ok(laundryStockService.stock(itemId, bucket,
-				user.getLaundryProviderId(), page, size));
+				providerResourceId(user), page, size));
 	}
 
 	@GetMapping("/billable-events")
@@ -274,6 +279,16 @@ public class LaundryStockController {
 				requirePrincipal(principal).getUsername(), key));
 	}
 
+	@PutMapping("/documents/{id}")
+	public ResponseEntity<LaundryDocumentDto> updateDocument(
+			@PathVariable Long id,
+			@RequestHeader(value = "Idempotency-Key", required = false) String key,
+			@Valid @RequestBody CreateLaundryDispatchDto input,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		return response(laundryDispatchService.update(id, input,
+				requirePrincipal(principal).getUsername(), key));
+	}
+
 	@PostMapping("/documents/{id}/submit")
 	public ResponseEntity<LaundryDocumentDto> submitDocument(
 			@PathVariable Long id,
@@ -293,7 +308,7 @@ public class LaundryStockController {
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
 		AuthenticatedUserPrincipal user = requirePrincipal(principal);
 		return response(laundryDispatchService.acknowledge(id, input,
-				user.getLaundryProviderId(), user.getUsername(), key));
+				providerResourceId(user), user.getUsername(), key));
 	}
 
 	@PostMapping("/documents/{id}/observations")
@@ -304,7 +319,7 @@ public class LaundryStockController {
 			@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
 		AuthenticatedUserPrincipal user = requirePrincipal(principal);
 		return response(laundryDispatchService.observe(id, input,
-				user.getLaundryProviderId(), user.getUsername(), key));
+				providerResourceId(user), user.getUsername(), key));
 	}
 
 	@PostMapping("/discrepancies/{id}/resolve")
@@ -324,7 +339,7 @@ public class LaundryStockController {
 		AuthenticatedUserPrincipal user = requirePrincipal(principal);
 		if (user.getRole() == AppUserRole.PROVIDER) {
 			return ResponseEntity.ok(laundryDispatchService.getForProvider(id,
-					user.getLaundryProviderId()));
+					providerResourceId(user)));
 		}
 		return ResponseEntity.ok(laundryDispatchService.get(id));
 	}
@@ -436,5 +451,10 @@ public class LaundryStockController {
 			throw new ApplicationException(HttpStatus.UNAUTHORIZED, "Authentication is required");
 		}
 		return principal;
+	}
+
+	private Long providerResourceId(AuthenticatedUserPrincipal principal) {
+		requirePrincipal(principal);
+		return providerAccessGuard.requireType(ProviderAccessType.LAUNDRY).resourceId();
 	}
 }

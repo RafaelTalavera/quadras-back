@@ -63,6 +63,10 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/courts/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/massages/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/maintenance/**").hasRole(AppUserRole.OPERATOR.name())
+						.requestMatchers("/api/v1/provider/courts/**",
+								"/api/v1/provider/massages/**",
+								"/api/v1/provider/maintenance/**")
+								.hasRole(AppUserRole.PROVIDER.name())
 						.requestMatchers("/api/v1/tours/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers("/api/v1/laundry/**").hasRole(AppUserRole.OPERATOR.name())
 						.requestMatchers(HttpMethod.GET, "/api/v2/laundry/documents/*")

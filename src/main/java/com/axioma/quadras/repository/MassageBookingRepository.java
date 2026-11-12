@@ -5,11 +5,57 @@ import com.axioma.quadras.domain.model.MassageBookingStatus;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface MassageBookingRepository extends JpaRepository<MassageBooking, Long> {
+
+	Optional<MassageBooking> findByIdAndTherapistId(Long id, Long therapistId);
+
+	@Query("""
+			select
+				b.id as id,
+				b.bookingDate as bookingDate,
+				b.startTime as startTime,
+				b.clientName as clientName,
+				b.guestReference as guestReference,
+				b.treatment as treatment,
+				b.status as status,
+				b.cancellationNotes as cancellationNotes
+			from MassageBooking b
+			where b.id = :bookingId
+			  and b.therapist.id = :therapistId
+			""")
+	Optional<ProviderMassageBookingView> findProviderViewByIdAndTherapistId(
+			@Param("bookingId") Long bookingId,
+			@Param("therapistId") Long therapistId
+	);
+
+	@Query("""
+			select
+				b.id as id,
+				b.bookingDate as bookingDate,
+				b.startTime as startTime,
+				b.clientName as clientName,
+				b.guestReference as guestReference,
+				b.treatment as treatment,
+				b.status as status,
+				b.cancellationNotes as cancellationNotes
+			from MassageBooking b
+			where b.therapist.id = :therapistId
+			  and b.bookingDate >= :dateFrom
+			  and b.bookingDate <= :dateTo
+			  and (:status is null or b.status = :status)
+			order by b.bookingDate asc, b.startTime asc, b.id asc
+			""")
+	List<ProviderMassageBookingView> findProviderViews(
+			@Param("therapistId") Long therapistId,
+			@Param("dateFrom") LocalDate dateFrom,
+			@Param("dateTo") LocalDate dateTo,
+			@Param("status") MassageBookingStatus status
+	);
 
 	boolean existsByTherapistIdAndBookingDateAndStartTimeAndStatus(
 			Long therapistId,

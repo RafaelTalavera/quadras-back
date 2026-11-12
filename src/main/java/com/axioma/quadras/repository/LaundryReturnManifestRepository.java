@@ -13,6 +13,15 @@ import org.springframework.data.repository.query.Param;
 import com.axioma.quadras.repository.projection.LaundryReturnClassificationView;
 
 public interface LaundryReturnManifestRepository extends JpaRepository<LaundryReturnManifest, Long> {
+	@EntityGraph(attributePaths = { "provider", "lines", "lines.item" })
+	Optional<LaundryReturnManifest> findByIdAndProviderId(Long id, Long providerId);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@EntityGraph(attributePaths = { "provider", "lines", "lines.item" })
+	@Query("select manifest from LaundryReturnManifest manifest where manifest.id = :id and manifest.provider.id = :providerId")
+	Optional<LaundryReturnManifest> findForUpdateByIdAndProviderId(@Param("id") Long id,
+			@Param("providerId") Long providerId);
+
 	@Query("""
 			select count(manifest) from LaundryReturnManifest manifest
 			where manifest.status = com.axioma.quadras.domain.model.LaundryReturnStatus.SUBMITTED

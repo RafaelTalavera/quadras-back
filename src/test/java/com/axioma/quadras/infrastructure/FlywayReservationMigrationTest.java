@@ -51,6 +51,45 @@ class FlywayReservationMigrationTest {
 	}
 
 	@Test
+	void shouldCreateGenericProviderAccessColumnsViaFlyway() {
+		final Integer count = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*)
+				FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'APP_USERS'
+				  AND COLUMN_NAME IN (
+				    'PROVIDER_TYPE',
+				    'COURT_PARTNER_COACH_ID',
+				    'MASSAGE_THERAPIST_ID',
+				    'MAINTENANCE_PROVIDER_ID',
+				    'LAUNDRY_PROVIDER_ID'
+				  )
+				""",
+				Integer.class
+		);
+
+		assertThat(count).isEqualTo(5);
+	}
+
+	@Test
+	void shouldCreateProviderOwnershipAndAuditContextColumnsViaFlyway() {
+		final Integer bookingOwnershipColumns = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'COURT_BOOKINGS' AND COLUMN_NAME = 'PARTNER_COACH_ID'
+				""", Integer.class);
+		final Integer auditContextColumns = jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_NAME = 'AUDIT_EVENTS'
+				  AND COLUMN_NAME IN ('ACTOR_PROVIDER_TYPE', 'ACTOR_PROVIDER_RESOURCE_ID')
+				""", Integer.class);
+
+		assertThat(bookingOwnershipColumns).isEqualTo(1);
+		assertThat(auditContextColumns).isEqualTo(2);
+	}
+
+	@Test
 	void shouldCreateMassageProvidersTableViaFlyway() {
 		final Integer count = jdbcTemplate.queryForObject(
 				"""

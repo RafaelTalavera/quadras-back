@@ -2,6 +2,7 @@ package com.axioma.quadras.config;
 
 import com.axioma.quadras.domain.model.AppUser;
 import com.axioma.quadras.domain.model.AppUserRole;
+import com.axioma.quadras.domain.model.ProviderAccessType;
 import com.axioma.quadras.service.ApplicationUserDetailsService;
 import com.axioma.quadras.service.AuthenticatedUserPrincipal;
 import com.axioma.quadras.service.JwtService;
@@ -65,6 +66,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			final String username = AppUser.normalizeUsername(jwt.getSubject());
 			final AppUserRole role = AppUserRole.fromClaim(jwt.getClaimAsString("role"));
 			final Long securityVersion = extractSecurityVersion(jwt.getClaim("securityVersion"));
+			final ProviderAccessType providerType = extractProviderType(jwt.getClaimAsString("providerType"));
+			final Long providerResourceId = extractLong(jwt.getClaim("providerResourceId"));
 			final Long laundryProviderId = extractLong(jwt.getClaim("laundryProviderId"));
 			final AuthenticatedUserPrincipal principal =
 					(AuthenticatedUserPrincipal) userDetailsService.loadUserByUsername(username);
@@ -77,6 +80,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			}
 			if (!Objects.equals(principal.getLaundryProviderId(), laundryProviderId)) {
 				throw new BadCredentialsException("JWT laundry provider does not match persisted user state.");
+			}
+			final boolean legacyLaundryToken = principal.getProviderType() == ProviderAccessType.LAUNDRY
+					&& providerType == null && providerResourceId == null && laundryProviderId != null;
+			if (!legacyLaundryToken && (!Objects.equals(principal.getProviderType(), providerType)
+					|| !Objects.equals(principal.getProviderResourceId(), providerResourceId))) {
+				throw new BadCredentialsException("JWT provider access does not match persisted user state.");
 			}
 
 			if (SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -99,6 +108,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private Long extractSecurityVersion(Object claimValue) {
 		return extractLong(claimValue);
+	}
+
+	private ProviderAccessType extractProviderType(String claimValue) {
+		if (claimValue == null || claimValue.isBlank()) {
+			return null;
+		}
+		return ProviderAccessType.valueOf(claimValue.trim());
 	}
 
 	private Long extractLong(Object claimValue) {

@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
@@ -19,6 +20,76 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface MaintenanceOrderRepository extends JpaRepository<MaintenanceOrder, Long> {
+
+	Optional<MaintenanceOrder> findByIdAndProviderId(Long id, Long providerId);
+
+	@Query("""
+			select
+				o.id as id,
+				o.locationTypeSnapshot as locationType,
+				o.locationLabelSnapshot as locationLabel,
+				o.orderKind as orderKind,
+				o.title as title,
+				o.description as description,
+				o.priority as priority,
+				o.estimatedExecutionMinutes as estimatedExecutionMinutes,
+				o.status as status,
+				o.reportedAt as reportedAt,
+				o.scheduledStartAt as scheduledStartAt,
+				o.scheduledEndAt as scheduledEndAt,
+				o.startedAt as startedAt,
+				o.completedAt as completedAt,
+				o.resolutionNotes as resolutionNotes,
+				o.cancellationNotes as cancellationNotes
+			from MaintenanceOrder o
+			where o.provider.id = :providerId
+			  and (:status is null or o.status = :status)
+			  and (
+			        (o.scheduledStartAt is not null
+			         and o.scheduledStartAt >= :dateFrom
+			         and o.scheduledStartAt < :dateToExclusive)
+			        or
+			        (o.scheduledStartAt is null
+			         and o.reportedAt >= :reportedFrom
+			         and o.reportedAt < :reportedToExclusive)
+			  )
+			order by case when o.scheduledStartAt is null then 1 else 0 end,
+				o.scheduledStartAt asc, o.reportedAt asc, o.id asc
+			""")
+	List<ProviderMaintenanceOrderView> findProviderViews(
+			@Param("providerId") Long providerId,
+			@Param("dateFrom") LocalDateTime dateFrom,
+			@Param("dateToExclusive") LocalDateTime dateToExclusive,
+			@Param("reportedFrom") OffsetDateTime reportedFrom,
+			@Param("reportedToExclusive") OffsetDateTime reportedToExclusive,
+			@Param("status") MaintenanceOrderStatus status
+	);
+
+	@Query("""
+			select
+				o.id as id,
+				o.locationTypeSnapshot as locationType,
+				o.locationLabelSnapshot as locationLabel,
+				o.orderKind as orderKind,
+				o.title as title,
+				o.description as description,
+				o.priority as priority,
+				o.estimatedExecutionMinutes as estimatedExecutionMinutes,
+				o.status as status,
+				o.reportedAt as reportedAt,
+				o.scheduledStartAt as scheduledStartAt,
+				o.scheduledEndAt as scheduledEndAt,
+				o.startedAt as startedAt,
+				o.completedAt as completedAt,
+				o.resolutionNotes as resolutionNotes,
+				o.cancellationNotes as cancellationNotes
+			from MaintenanceOrder o
+			where o.id = :orderId and o.provider.id = :providerId
+			""")
+	Optional<ProviderMaintenanceOrderView> findProviderViewByIdAndProviderId(
+			@Param("orderId") Long orderId,
+			@Param("providerId") Long providerId
+	);
 
 	@Query("""
 			select o

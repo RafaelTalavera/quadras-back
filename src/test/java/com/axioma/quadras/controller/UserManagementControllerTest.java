@@ -2,11 +2,23 @@ package com.axioma.quadras.controller;
 
 import com.axioma.quadras.domain.model.AppUser;
 import com.axioma.quadras.domain.model.AppUserRole;
+import com.axioma.quadras.domain.model.CourtPartnerCoach;
 import com.axioma.quadras.domain.model.LaundryProvider;
+import com.axioma.quadras.domain.model.MaintenanceProvider;
+import com.axioma.quadras.domain.model.MaintenanceProviderSpecialty;
+import com.axioma.quadras.domain.model.MaintenanceProviderType;
+import com.axioma.quadras.domain.model.MassageProvider;
+import com.axioma.quadras.domain.model.MassageTherapist;
 import com.axioma.quadras.repository.AppUserRepository;
+import com.axioma.quadras.repository.CourtPartnerCoachRepository;
 import com.axioma.quadras.repository.LaundryProviderRepository;
+import com.axioma.quadras.repository.MaintenanceProviderRepository;
+import com.axioma.quadras.repository.MassageProviderRepository;
+import com.axioma.quadras.repository.MassageTherapistRepository;
+import com.axioma.quadras.config.JwtProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +29,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -49,6 +66,24 @@ class UserManagementControllerTest {
 
 	@Autowired
 	private LaundryProviderRepository laundryProviderRepository;
+
+	@Autowired
+	private CourtPartnerCoachRepository courtPartnerCoachRepository;
+
+	@Autowired
+	private MassageProviderRepository massageProviderRepository;
+
+	@Autowired
+	private MassageTherapistRepository massageTherapistRepository;
+
+	@Autowired
+	private MaintenanceProviderRepository maintenanceProviderRepository;
+
+	@Autowired
+	private JwtEncoder jwtEncoder;
+
+	@Autowired
+	private JwtProperties jwtProperties;
 
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -139,6 +174,139 @@ class UserManagementControllerTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.role").value("PROVIDER"))
 				.andExpect(jsonPath("$.laundryProviderId").value(provider.getId()));
+	}
+
+	@Test
+	void supervisorShouldCreateAndAuthenticateEveryGenericProviderType() throws Exception {
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
+		final String suffix = UUID.randomUUID().toString().substring(0, 8);
+		final CourtPartnerCoach coach = courtPartnerCoachRepository.save(
+				CourtPartnerCoach.create("Coach " + suffix, "supervisor.demo"));
+		final MassageProvider massageProvider = massageProviderRepository.save(
+				MassageProvider.create("Spa " + suffix, "Massagem", "contato"));
+		final MassageTherapist therapist = massageTherapistRepository.save(
+				MassageTherapist.create(massageProvider, "Therapist " + suffix));
+		final MaintenanceProvider maintenanceProvider = maintenanceProviderRepository.save(
+				MaintenanceProvider.create(
+						MaintenanceProviderType.EXTERNAL,
+						MaintenanceProviderSpecialty.GENERAL_MAINTENANCE,
+						"Maintenance " + suffix,
+						"General", null, "contato", true, "supervisor.demo"));
+		final LaundryProvider laundryProvider = laundryProviderRepository.save(
+				LaundryProvider.create("Laundry " + suffix, null, true));
+
+		assertGenericProvider(supervisorToken, "provider.courts." + suffix,
+				"COURTS", coach.getId(), coach.getName(), null);
+		assertGenericProvider(supervisorToken, "provider.massage." + suffix,
+				"MASSAGE", therapist.getId(), therapist.getName(), null);
+		assertGenericProvider(supervisorToken, "provider.maintenance." + suffix,
+				"MAINTENANCE", maintenanceProvider.getId(), maintenanceProvider.getName(), null);
+		assertGenericProvider(supervisorToken, "provider.laundry." + suffix,
+				"LAUNDRY", laundryProvider.getId(), laundryProvider.getName(), laundryProvider.getId());
+	}
+
+	@Test
+	void supervisorShouldNotCreateTwoAccessAccountsForTheSameProviderResource() throws Exception {
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
+		final CourtPartnerCoach coach = courtPartnerCoachRepository.save(
+				CourtPartnerCoach.create("Coach " + UUID.randomUUID(), "supervisor.demo"));
+
+		assertGenericProvider(supervisorToken, "provider.first." + coach.getId(),
+				"COURTS", coach.getId(), coach.getName(), null);
+
+		mockMvc.perform(post("/api/v1/users")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"username":"provider.second.%d","password":"111111","role":"PROVIDER","providerType":"COURTS","providerResourceId":%d,"enabled":true}
+							""".formatted(coach.getId(), coach.getId())))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("The provider resource already has an access account."));
+	}
+
+	@Test
+	void shouldRejectInactiveOrInternalProviderResources() throws Exception {
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
+		final String suffix = UUID.randomUUID().toString().substring(0, 8);
+		final CourtPartnerCoach inactiveCoach = CourtPartnerCoach.create(
+				"Inactive " + suffix, "supervisor.demo");
+		inactiveCoach.update(inactiveCoach.getName(), false, "supervisor.demo");
+		courtPartnerCoachRepository.save(inactiveCoach);
+		final MaintenanceProvider internalProvider = maintenanceProviderRepository.save(
+				MaintenanceProvider.create(
+						MaintenanceProviderType.INTERNAL,
+						MaintenanceProviderSpecialty.GENERAL_MAINTENANCE,
+						"Internal " + suffix,
+						"General", null, null, true, "supervisor.demo"));
+
+		createProviderRequest(supervisorToken, "inactive." + suffix, "COURTS", inactiveCoach.getId())
+				.andExpect(status().isBadRequest());
+		createProviderRequest(supervisorToken, "internal." + suffix, "MAINTENANCE", internalProvider.getId())
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void shouldRejectJwtWhenProviderResourceClaimDoesNotMatchPersistedAccess() throws Exception {
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
+		final String suffix = UUID.randomUUID().toString().substring(0, 8);
+		final CourtPartnerCoach coach = courtPartnerCoachRepository.save(
+				CourtPartnerCoach.create("JWT Coach " + suffix, "supervisor.demo"));
+		final String username = "provider.jwt." + suffix;
+		createProviderRequest(supervisorToken, username, "COURTS", coach.getId())
+				.andExpect(status().isCreated());
+		final AppUser user = appUserRepository.findByUsername(username).orElseThrow();
+		final String forgedToken = forgeProviderToken(
+				username, user.getSecurityVersion(), "COURTS", coach.getId() + 1L);
+
+		mockMvc.perform(get("/api/v1/users/me")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + forgedToken))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.message").value("Invalid JWT token."));
+	}
+
+	@Test
+	void shouldInvalidateRealJwtAfterProviderReassignmentRoleChangeAndDisable() throws Exception {
+		final String supervisorToken = authenticate("supervisor.demo", "654321");
+		final String suffix = UUID.randomUUID().toString().substring(0, 8);
+		final CourtPartnerCoach firstCoach = courtPartnerCoachRepository.save(
+				CourtPartnerCoach.create("First Coach " + suffix, "supervisor.demo"));
+		final CourtPartnerCoach secondCoach = courtPartnerCoachRepository.save(
+				CourtPartnerCoach.create("Second Coach " + suffix, "supervisor.demo"));
+		final String username = "provider.lifecycle." + suffix;
+
+		createProviderRequest(supervisorToken, username, "COURTS", firstCoach.getId())
+				.andExpect(status().isCreated());
+		final Long userId = appUserRepository.findByUsername(username).orElseThrow().getId();
+		final String firstToken = authenticate(username, "111111");
+
+		mockMvc.perform(put("/api/v1/users/{userId}", userId)
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"role":"PROVIDER","providerType":"COURTS","providerResourceId":%d,"enabled":true}
+							""".formatted(secondCoach.getId())))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.providerAccess.resourceId").value(secondCoach.getId()));
+		assertTokenInvalid(firstToken);
+
+		final String secondToken = authenticate(username, "111111");
+		mockMvc.perform(put("/api/v1/users/{userId}", userId)
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"role\":\"OPERATOR\",\"enabled\":true}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.role").value("OPERATOR"))
+				.andExpect(jsonPath("$.providerAccess").doesNotExist());
+		assertTokenInvalid(secondToken);
+
+		final String operatorToken = authenticate(username, "111111");
+		mockMvc.perform(put("/api/v1/users/{userId}", userId)
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"role\":\"OPERATOR\",\"enabled\":false}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.enabled").value(false));
+		assertTokenInvalid(operatorToken);
 	}
 
 	@Test
@@ -263,6 +431,69 @@ class UserManagementControllerTest {
 
 		final JsonNode response = objectMapper.readTree(responseBody);
 		return response.get("accessToken").asText();
+	}
+
+	private void assertTokenInvalid(String token) throws Exception {
+		mockMvc.perform(get("/api/v1/users/me")
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.message").value("Invalid JWT token."));
+	}
+
+	private void assertGenericProvider(String supervisorToken, String username, String type,
+			Long resourceId, String displayName, Long legacyLaundryProviderId) throws Exception {
+		createProviderRequest(supervisorToken, username, type, resourceId)
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.providerAccess.type").value(type))
+				.andExpect(jsonPath("$.providerAccess.resourceId").value(resourceId))
+				.andExpect(jsonPath("$.providerAccess.displayName").value(displayName));
+
+		final String responseBody = mockMvc.perform(post("/api/v1/auth/login")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(loginPayload(username, "111111")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.providerAccess.type").value(type))
+				.andExpect(jsonPath("$.providerAccess.resourceId").value(resourceId))
+				.andReturn().getResponse().getContentAsString();
+		final String token = objectMapper.readTree(responseBody).get("accessToken").asText();
+
+		final var currentUser = mockMvc.perform(get("/api/v1/users/me")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.providerAccess.type").value(type))
+				.andExpect(jsonPath("$.providerAccess.resourceId").value(resourceId));
+		if (legacyLaundryProviderId == null) {
+			currentUser.andExpect(jsonPath("$.laundryProviderId").doesNotExist());
+		} else {
+			currentUser.andExpect(jsonPath("$.laundryProviderId").value(legacyLaundryProviderId));
+		}
+	}
+
+	private org.springframework.test.web.servlet.ResultActions createProviderRequest(
+			String supervisorToken, String username, String type, Long resourceId) throws Exception {
+		return mockMvc.perform(post("/api/v1/users")
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisorToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"username":"%s","password":"111111","role":"PROVIDER","providerType":"%s","providerResourceId":%d,"enabled":true}
+						""".formatted(username, type, resourceId)));
+	}
+
+	private String forgeProviderToken(String username, long securityVersion,
+			String providerType, Long providerResourceId) {
+		final Instant issuedAt = Instant.now();
+		final JwtClaimsSet claims = JwtClaimsSet.builder()
+				.issuer(jwtProperties.issuer())
+				.issuedAt(issuedAt)
+				.expiresAt(issuedAt.plusSeconds(jwtProperties.expirationSeconds()))
+				.subject(username)
+				.claim("role", "PROVIDER")
+				.claim("securityVersion", securityVersion)
+				.claim("providerType", providerType)
+				.claim("providerResourceId", providerResourceId)
+				.build();
+		return jwtEncoder.encode(JwtEncoderParameters.from(
+				JwsHeader.with(MacAlgorithm.HS256).type("JWT").build(), claims)).getTokenValue();
 	}
 
 	private String loginPayload(String username, String password) {

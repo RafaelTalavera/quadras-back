@@ -77,6 +77,16 @@ public class LaundryDocument {
 		lines.add(LaundryDocumentLine.create(this, item, quantity, unitPrice));
 	}
 
+	public void updateDraft(LaundryProvider provider, OffsetDateTime effectiveAt, String notes) {
+		if (status != LaundryDocumentStatus.DRAFT)
+			throw new IllegalStateException("Only DRAFT documents can be updated");
+		this.provider = provider;
+		this.effectiveAt = effectiveAt;
+		this.notes = notes == null || notes.isBlank() ? null : notes.trim();
+		this.lines.clear();
+		this.updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
+	}
+
 	public void submit(String actor) {
 		if (status != LaundryDocumentStatus.DRAFT) throw new IllegalStateException("Only DRAFT documents can be submitted");
 		status = LaundryDocumentStatus.SUBMITTED;

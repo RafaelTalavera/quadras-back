@@ -39,6 +39,22 @@ public class AppUser {
 	@Column(name = "role", nullable = false, length = 40)
 	private AppUserRole role;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "provider_type", length = 20)
+	private ProviderAccessType providerType;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "court_partner_coach_id")
+	private CourtPartnerCoach courtPartnerCoach;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "massage_therapist_id")
+	private MassageTherapist massageTherapist;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "maintenance_provider_id")
+	private MaintenanceProvider maintenanceProvider;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "laundry_provider_id")
 	private LaundryProvider laundryProvider;
@@ -60,10 +76,20 @@ public class AppUser {
 
 	private AppUser(String username, String passwordHash, AppUserRole role,
 			LaundryProvider laundryProvider, boolean enabled) {
+		this(username, passwordHash, role,
+				role == AppUserRole.PROVIDER ? ProviderAccessType.LAUNDRY : null,
+				null, null, null, laundryProvider, enabled);
+	}
+
+	private AppUser(String username, String passwordHash, AppUserRole role,
+			ProviderAccessType providerType, CourtPartnerCoach courtPartnerCoach,
+			MassageTherapist massageTherapist, MaintenanceProvider maintenanceProvider,
+			LaundryProvider laundryProvider, boolean enabled) {
 		this.username = normalizeUsername(username);
 		this.passwordHash = normalizePasswordHash(passwordHash);
 		this.role = requireRole(role);
-		this.laundryProvider = requireProviderAssociation(role, laundryProvider);
+		applyProviderAssociation(role, providerType, courtPartnerCoach, massageTherapist,
+				maintenanceProvider, laundryProvider);
 		this.enabled = enabled;
 		this.securityVersion = 1L;
 	}
@@ -75,6 +101,14 @@ public class AppUser {
 	public static AppUser create(String username, String passwordHash, AppUserRole role,
 			LaundryProvider laundryProvider, boolean enabled) {
 		return new AppUser(username, passwordHash, role, laundryProvider, enabled);
+	}
+
+	public static AppUser create(String username, String passwordHash, AppUserRole role,
+			ProviderAccessType providerType, CourtPartnerCoach courtPartnerCoach,
+			MassageTherapist massageTherapist, MaintenanceProvider maintenanceProvider,
+			LaundryProvider laundryProvider, boolean enabled) {
+		return new AppUser(username, passwordHash, role, providerType, courtPartnerCoach,
+				massageTherapist, maintenanceProvider, laundryProvider, enabled);
 	}
 
 	public static String normalizeUsername(String username) {
@@ -95,15 +129,40 @@ public class AppUser {
 	}
 
 	public boolean updateAccess(AppUserRole role, LaundryProvider laundryProvider, boolean enabled) {
+		return updateAccess(role, role == AppUserRole.PROVIDER ? ProviderAccessType.LAUNDRY : null,
+				null, null, null, laundryProvider, enabled);
+	}
+
+	public boolean updateAccess(AppUserRole role, ProviderAccessType providerType,
+			CourtPartnerCoach courtPartnerCoach, MassageTherapist massageTherapist,
+			MaintenanceProvider maintenanceProvider, LaundryProvider laundryProvider,
+			boolean enabled) {
 		final AppUserRole normalizedRole = requireRole(role);
-		final LaundryProvider normalizedProvider = requireProviderAssociation(normalizedRole, laundryProvider);
+		validateProviderAssociation(normalizedRole, providerType, courtPartnerCoach,
+				massageTherapist, maintenanceProvider, laundryProvider);
 		boolean changed = false;
 		if (this.role != normalizedRole) {
 			this.role = normalizedRole;
 			changed = true;
 		}
-		if (this.laundryProvider != normalizedProvider) {
-			this.laundryProvider = normalizedProvider;
+		if (this.providerType != providerType) {
+			this.providerType = providerType;
+			changed = true;
+		}
+		if (this.courtPartnerCoach != courtPartnerCoach) {
+			this.courtPartnerCoach = courtPartnerCoach;
+			changed = true;
+		}
+		if (this.massageTherapist != massageTherapist) {
+			this.massageTherapist = massageTherapist;
+			changed = true;
+		}
+		if (this.maintenanceProvider != maintenanceProvider) {
+			this.maintenanceProvider = maintenanceProvider;
+			changed = true;
+		}
+		if (this.laundryProvider != laundryProvider) {
+			this.laundryProvider = laundryProvider;
 			changed = true;
 		}
 		if (this.enabled != enabled) {
@@ -142,8 +201,36 @@ public class AppUser {
 		return role;
 	}
 
+	public ProviderAccessType getProviderType() {
+		return providerType;
+	}
+
+	public CourtPartnerCoach getCourtPartnerCoach() {
+		return courtPartnerCoach;
+	}
+
+	public MassageTherapist getMassageTherapist() {
+		return massageTherapist;
+	}
+
+	public MaintenanceProvider getMaintenanceProvider() {
+		return maintenanceProvider;
+	}
+
 	public LaundryProvider getLaundryProvider() {
 		return laundryProvider;
+	}
+
+	public ProviderAccess providerAccess() {
+		if (role != AppUserRole.PROVIDER) {
+			return null;
+		}
+		return switch (providerType) {
+			case COURTS -> new ProviderAccess(providerType, courtPartnerCoach.getId(), courtPartnerCoach.getName());
+			case MASSAGE -> new ProviderAccess(providerType, massageTherapist.getId(), massageTherapist.getName());
+			case MAINTENANCE -> new ProviderAccess(providerType, maintenanceProvider.getId(), maintenanceProvider.getName());
+			case LAUNDRY -> new ProviderAccess(providerType, laundryProvider.getId(), laundryProvider.getName());
+		};
 	}
 
 	public boolean isEnabled() {
@@ -194,14 +281,42 @@ public class AppUser {
 		return role;
 	}
 
-	private static LaundryProvider requireProviderAssociation(AppUserRole role,
-			LaundryProvider laundryProvider) {
-		if (role == AppUserRole.PROVIDER && laundryProvider == null) {
-			throw new IllegalArgumentException("laundryProvider is required for PROVIDER role");
+	private void applyProviderAssociation(AppUserRole role, ProviderAccessType providerType,
+			CourtPartnerCoach courtPartnerCoach, MassageTherapist massageTherapist,
+			MaintenanceProvider maintenanceProvider, LaundryProvider laundryProvider) {
+		validateProviderAssociation(role, providerType, courtPartnerCoach, massageTherapist,
+				maintenanceProvider, laundryProvider);
+		this.providerType = providerType;
+		this.courtPartnerCoach = courtPartnerCoach;
+		this.massageTherapist = massageTherapist;
+		this.maintenanceProvider = maintenanceProvider;
+		this.laundryProvider = laundryProvider;
+	}
+
+	private static void validateProviderAssociation(AppUserRole role, ProviderAccessType providerType,
+			CourtPartnerCoach courtPartnerCoach, MassageTherapist massageTherapist,
+			MaintenanceProvider maintenanceProvider, LaundryProvider laundryProvider) {
+		final int associationCount = (courtPartnerCoach == null ? 0 : 1)
+				+ (massageTherapist == null ? 0 : 1)
+				+ (maintenanceProvider == null ? 0 : 1)
+				+ (laundryProvider == null ? 0 : 1);
+		if (role != AppUserRole.PROVIDER) {
+			if (providerType != null || associationCount != 0) {
+				throw new IllegalArgumentException("provider access is only allowed for PROVIDER role");
+			}
+			return;
 		}
-		if (role != AppUserRole.PROVIDER && laundryProvider != null) {
-			throw new IllegalArgumentException("laundryProvider is only allowed for PROVIDER role");
+		if (providerType == null || associationCount != 1) {
+			throw new IllegalArgumentException("exactly one provider access is required for PROVIDER role");
 		}
-		return laundryProvider;
+		final boolean matchingAssociation = switch (providerType) {
+			case COURTS -> courtPartnerCoach != null;
+			case MASSAGE -> massageTherapist != null;
+			case MAINTENANCE -> maintenanceProvider != null;
+			case LAUNDRY -> laundryProvider != null;
+		};
+		if (!matchingAssociation) {
+			throw new IllegalArgumentException("provider type does not match associated resource");
+		}
 	}
 }

@@ -38,6 +38,8 @@ public class AuditTrailService {
 			Object beforeState,
 			Object afterState
 	) {
+		final com.axioma.quadras.domain.model.ProviderAccess providerAccess =
+				currentActorService.currentProviderAccess();
 		auditEventRepository.save(
 				AuditEvent.create(
 						moduleName,
@@ -46,6 +48,8 @@ public class AuditTrailService {
 						actionName,
 						currentActorService.currentUsername(),
 						currentActorService.currentRole(),
+						providerAccess == null ? null : providerAccess.type(),
+						providerAccess == null ? null : providerAccess.resourceId(),
 						summaryText,
 						writeJson(changes),
 						writeJson(beforeState),

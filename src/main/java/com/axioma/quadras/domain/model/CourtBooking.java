@@ -10,6 +10,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -60,6 +62,10 @@ public class CourtBooking {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "customer_type", nullable = false, length = 40)
 	private CourtCustomerType customerType;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "partner_coach_id")
+	private CourtPartnerCoach partnerCoach;
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "pricing_period", nullable = false, length = 20)
@@ -288,6 +294,20 @@ public class CourtBooking {
 
 	public CourtCustomerType getCustomerType() {
 		return customerType;
+	}
+
+	public CourtPartnerCoach getPartnerCoach() {
+		return partnerCoach;
+	}
+
+	public void configurePartnerCoach(CourtPartnerCoach partnerCoach) {
+		if (customerType == CourtCustomerType.PARTNER_COACH && partnerCoach == null) {
+			throw new IllegalArgumentException("partnerCoach is required for partner coach bookings");
+		}
+		if (customerType != CourtCustomerType.PARTNER_COACH && partnerCoach != null) {
+			throw new IllegalArgumentException("partnerCoach is only allowed for partner coach bookings");
+		}
+		this.partnerCoach = partnerCoach;
 	}
 
 	public CourtPricingPeriod getPricingPeriod() {

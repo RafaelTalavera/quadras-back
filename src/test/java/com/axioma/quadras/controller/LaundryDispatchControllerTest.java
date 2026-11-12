@@ -3,6 +3,7 @@ package com.axioma.quadras.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -12,6 +13,9 @@ import com.axioma.quadras.domain.model.AppUser;
 import com.axioma.quadras.domain.model.AppUserRole;
 import com.axioma.quadras.domain.model.LaundryProvider;
 import com.axioma.quadras.domain.model.LaundryUnitType;
+import com.axioma.quadras.domain.model.CourtPartnerCoach;
+import com.axioma.quadras.domain.model.ProviderAccessType;
+import com.axioma.quadras.repository.CourtPartnerCoachRepository;
 import com.axioma.quadras.repository.LaundryDocumentRepository;
 import com.axioma.quadras.repository.LaundryItemRepository;
 import com.axioma.quadras.repository.LaundryObligationRepository;
@@ -53,6 +57,7 @@ class LaundryDispatchControllerTest {
 	@Autowired LaundryStockMovementRepository movementRepository;
 	@Autowired LaundryRewashDispatchAllocationRepository rewashAllocationRepository;
 	@Autowired AppUserRepository appUserRepository;
+	@Autowired CourtPartnerCoachRepository courtPartnerCoachRepository;
 	@Autowired PasswordEncoder passwordEncoder;
 
 	@BeforeEach
@@ -73,6 +78,22 @@ class LaundryDispatchControllerTest {
 		jdbcTemplate.update("DELETE FROM laundry_stock_movements");
 		jdbcTemplate.update("DELETE FROM laundry_stock_lots");
 		jdbcTemplate.update("DELETE FROM laundry_stock_balances");
+	}
+
+	@Test
+	void nonLaundryProviderShouldBeRejectedByGenericAccessGuard() throws Exception {
+		final CourtPartnerCoach coach = courtPartnerCoachRepository.save(
+				CourtPartnerCoach.create("Coach " + UUID.randomUUID().toString().substring(0, 6),
+						"supervisor.demo"));
+		final String username = "court.provider." + UUID.randomUUID().toString().substring(0, 8);
+		appUserRepository.save(AppUser.create(username, passwordEncoder.encode("123456"),
+				AppUserRole.PROVIDER, ProviderAccessType.COURTS, coach,
+				null, null, null, true));
+		final Session courtProvider = authenticate(username, "123456");
+
+		mockMvc.perform(get("/api/v2/laundry/provider/documents")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + courtProvider.token()))
+				.andExpect(status().isForbidden());
 	}
 
 	@Test
@@ -155,6 +176,63 @@ class LaundryDispatchControllerTest {
 		assertThat(obligationRepository.count()).isZero();
 		assertThat(movementRepository.count()).isEqualTo(movements);
 		assertStock(supervisor, item.getId(), "HOTEL_AVAILABLE", null, 5.0);
+	}
+
+	@Test
+	void shouldUpdateDraftAndAllowSubmitRetryWithoutChangingItsIdentity() throws Exception {
+		Session supervisor = authenticate("supervisor.demo", "654321");
+		LaundryItem item = item("Sabana editable");
+		LaundryProvider provider = provider("Proveedor editable");
+		open(supervisor, item, "5.000");
+		String created = mockMvc.perform(command("/api/v2/laundry/dispatches", supervisor,
+				"create-" + UUID.randomUUID(), dispatchJson(provider.getId(), item.getId(), "6.000")))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		JsonNode createdJson = objectMapper.readTree(created);
+		long id = createdJson.get("id").asLong();
+		String reference = createdJson.get("reference").asText();
+
+		mockMvc.perform(command("/api/v2/laundry/documents/" + id + "/submit", supervisor,
+				"submit-failed-" + UUID.randomUUID(), "{\"version\":0}"))
+				.andExpect(status().isConflict());
+
+		String updateKey = "update-" + UUID.randomUUID();
+		String updateBody = """
+				{"version":0,"providerId":%d,"effectiveAt":"%s","notes":"Cantidad corregida","lines":[{"itemId":%d,"quantity":4.000}]}
+				""".formatted(provider.getId(), OffsetDateTime.now().withNano(0), item.getId());
+		mockMvc.perform(put("/api/v2/laundry/documents/" + id)
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token())
+					.header("Idempotency-Key", updateKey)
+					.contentType(MediaType.APPLICATION_JSON).content(updateBody))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(id))
+				.andExpect(jsonPath("$.reference").value(reference))
+				.andExpect(jsonPath("$.status").value("DRAFT"))
+				.andExpect(jsonPath("$.version").value(1))
+				.andExpect(jsonPath("$.notes").value("Cantidad corregida"))
+				.andExpect(jsonPath("$.lines[0].quantity").value(4.0));
+
+		mockMvc.perform(put("/api/v2/laundry/documents/" + id)
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token())
+					.header("Idempotency-Key", updateKey)
+					.contentType(MediaType.APPLICATION_JSON).content(updateBody))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Idempotent-Replay", "true"))
+				.andExpect(jsonPath("$.version").value(1));
+
+		mockMvc.perform(command("/api/v2/laundry/documents/" + id + "/submit", supervisor,
+				"submit-retry-" + UUID.randomUUID(), "{\"version\":1}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("SUBMITTED"))
+				.andExpect(jsonPath("$.version").value(2));
+		assertStock(supervisor, item.getId(), "HOTEL_AVAILABLE", null, 1.0);
+
+		String submittedUpdate = updateBody.replace("\"version\":0", "\"version\":2");
+		mockMvc.perform(put("/api/v2/laundry/documents/" + id)
+					.header(HttpHeaders.AUTHORIZATION, "Bearer " + supervisor.token())
+					.header("Idempotency-Key", "update-submitted-" + UUID.randomUUID())
+					.contentType(MediaType.APPLICATION_JSON).content(submittedUpdate))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("Only DRAFT documents can be updated"));
 	}
 
 	@Test

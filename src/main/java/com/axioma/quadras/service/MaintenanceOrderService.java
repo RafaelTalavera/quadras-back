@@ -342,6 +342,24 @@ public class MaintenanceOrderService {
 			String actorUsername
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
+		return startOrder(order, input, actorUsername);
+	}
+
+	@Transactional
+	public MaintenanceOrderDto startForProvider(
+			Long orderId,
+			Long providerId,
+			StartMaintenanceOrderDto input,
+			String actorUsername
+	) {
+		return startOrder(findOwnedOrThrow(orderId, providerId), input, actorUsername);
+	}
+
+	private MaintenanceOrderDto startOrder(
+			MaintenanceOrder order,
+			StartMaintenanceOrderDto input,
+			String actorUsername
+	) {
 		final Map<String, Object> beforeState = snapshot(order);
 		order.start(input == null ? null : input.startedAt(), actorUsername);
 		notificationLifecycleService.resolveActiveForOrder(order.getId());
@@ -376,6 +394,24 @@ public class MaintenanceOrderService {
 			String actorUsername
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
+		return completeOrder(order, input, actorUsername);
+	}
+
+	@Transactional
+	public MaintenanceOrderDto completeForProvider(
+			Long orderId,
+			Long providerId,
+			CompleteMaintenanceOrderDto input,
+			String actorUsername
+	) {
+		return completeOrder(findOwnedOrThrow(orderId, providerId), input, actorUsername);
+	}
+
+	private MaintenanceOrderDto completeOrder(
+			MaintenanceOrder order,
+			CompleteMaintenanceOrderDto input,
+			String actorUsername
+	) {
 		final Map<String, Object> beforeState = snapshot(order);
 		order.complete(input.completedAt(), input.resolutionNotes(), actorUsername);
 		notificationLifecycleService.resolveActiveForOrder(order.getId());
@@ -406,6 +442,14 @@ public class MaintenanceOrderService {
 				.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public List<MaintenanceOrderAttachmentDto> listAttachmentsForProvider(Long orderId, Long providerId) {
+		findOwnedOrThrow(orderId, providerId);
+		return maintenanceOrderAttachmentRepository.findMetadataByOrderIdOrderByCreatedAtDesc(orderId).stream()
+				.map(this::toAttachmentDto)
+				.toList();
+	}
+
 	@Transactional
 	public MaintenanceOrderAttachmentDto addAttachment(
 			Long orderId,
@@ -413,6 +457,24 @@ public class MaintenanceOrderService {
 			String actorUsername
 	) {
 		final MaintenanceOrder order = findOrThrow(orderId);
+		return addAttachment(order, input, actorUsername);
+	}
+
+	@Transactional
+	public MaintenanceOrderAttachmentDto addAttachmentForProvider(
+			Long orderId,
+			Long providerId,
+			AddMaintenanceAttachmentDto input,
+			String actorUsername
+	) {
+		return addAttachment(findOwnedOrThrow(orderId, providerId), input, actorUsername);
+	}
+
+	private MaintenanceOrderAttachmentDto addAttachment(
+			MaintenanceOrder order,
+			AddMaintenanceAttachmentDto input,
+			String actorUsername
+	) {
 		final Map<String, Object> beforeState = snapshot(order);
 		final byte[] content = decodeBase64(input.base64Content());
 		final MaintenanceOrderAttachment attachment = MaintenanceOrderAttachment.create(
@@ -480,6 +542,14 @@ public class MaintenanceOrderService {
 				.orElseThrow(() -> new ApplicationException(
 						HttpStatus.NOT_FOUND,
 						"Maintenance order " + orderId + " not found"
+				));
+	}
+
+	private MaintenanceOrder findOwnedOrThrow(Long orderId, Long providerId) {
+		return maintenanceOrderRepository.findByIdAndProviderId(orderId, providerId)
+				.orElseThrow(() -> new ApplicationException(
+						HttpStatus.NOT_FOUND,
+						"Maintenance order not found"
 				));
 	}
 

@@ -3,6 +3,7 @@ package com.axioma.quadras.service;
 import com.axioma.quadras.domain.dto.AuthTokenDto;
 import com.axioma.quadras.domain.dto.CurrentUserDto;
 import com.axioma.quadras.domain.dto.LoginRequestDto;
+import com.axioma.quadras.domain.dto.ProviderAccessDto;
 import com.axioma.quadras.domain.exception.ApplicationException;
 import com.axioma.quadras.domain.model.AppUser;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,7 @@ public class AuthService {
 
 	public CurrentUserDto currentUser(AuthenticatedUserPrincipal principal) {
 		return new CurrentUserDto(principal.getUsername(), principal.getRole().name(),
+				ProviderAccessDto.from(principal.getProviderAccess()),
 				principal.getLaundryProviderId());
 	}
 

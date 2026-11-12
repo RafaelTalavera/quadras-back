@@ -12,6 +12,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface LaundryDocumentRepository extends JpaRepository<LaundryDocument, Long> {
+	@EntityGraph(attributePaths = { "provider", "lines", "lines.item" })
+	Optional<LaundryDocument> findByIdAndProviderId(Long id, Long providerId);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@EntityGraph(attributePaths = { "provider", "lines", "lines.item" })
+	@Query("select document from LaundryDocument document where document.id = :id and document.provider.id = :providerId")
+	Optional<LaundryDocument> findForUpdateByIdAndProviderId(@Param("id") Long id,
+			@Param("providerId") Long providerId);
+
 	@Query("""
 			select count(document) from LaundryDocument document
 			where document.status = com.axioma.quadras.domain.model.LaundryDocumentStatus.OBSERVED

@@ -1,6 +1,7 @@
 package com.axioma.quadras.domain.dto;
 
 import com.axioma.quadras.domain.model.AppUserRole;
+import com.axioma.quadras.domain.model.ProviderAccessType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -13,6 +14,8 @@ public record CreateAppUserDto(
 		String password,
 		@NotNull(message = "role is required")
 		AppUserRole role,
+		ProviderAccessType providerType,
+		Long providerResourceId,
 		Long laundryProviderId,
 		Boolean enabled
 ) {

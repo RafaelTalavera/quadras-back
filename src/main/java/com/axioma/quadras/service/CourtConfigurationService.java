@@ -184,6 +184,16 @@ public class CourtConfigurationService {
 				&& courtPartnerCoachRepository.existsByNameIgnoreCaseAndActiveTrue(name.trim());
 	}
 
+	public CourtPartnerCoach resolveActivePartnerCoach(String name) {
+		if (name == null || name.isBlank()) {
+			throw new ApplicationException(HttpStatus.CONFLICT,
+					"Partner coach name must match an active predefined coach.");
+		}
+		return courtPartnerCoachRepository.findByNameIgnoreCaseAndActiveTrue(name.trim())
+				.orElseThrow(() -> new ApplicationException(HttpStatus.CONFLICT,
+						"Partner coach name must match an active predefined coach."));
+	}
+
 	public CourtPartnerCoach findPartnerCoachOrThrow(Long partnerCoachId) {
 		return courtPartnerCoachRepository.findById(partnerCoachId)
 				.orElseThrow(() -> new ApplicationException(

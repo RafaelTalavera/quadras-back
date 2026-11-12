@@ -384,6 +384,7 @@ Respuesta `201`:
 - `GET /api/v2/laundry/documents/{id}`
 - Documento de envio: `POST /api/v2/laundry/dispatches`
 - Envio desde cola de relavado: `POST /api/v2/laundry/rewash-dispatches`
+- Editar borrador de envio o relavado: `PUT /api/v2/laundry/documents/{id}`
 - Enviar documento: `POST /api/v2/laundry/documents/{id}/submit`
 - Confirmar documento: `POST /api/v2/laundry/documents/{id}/confirm`
 - Observar documento: `POST /api/v2/laundry/documents/{id}/observations`
@@ -413,6 +414,11 @@ Respuesta `201`:
 - Crea una obligacion por linea con precio historico.
 - Si no hay saldo: `409`.
 - El documento puede guardarse como `DRAFT`; al enviarse pasa a `SUBMITTED`.
+- Un `DRAFT` puede editarse con `PUT /api/v2/laundry/documents/{id}` usando el mismo
+  payload y su `version` actual. La edicion conserva `id`, `reference` y tipo de documento,
+  reemplaza las lineas y no mueve stock. Requiere una nueva `Idempotency-Key` por intento.
+- Si el envio falla, el cliente debe conservar el borrador, mostrar el error y permitir
+  corregirlo. Despues de editar, debe usar la nueva `version` para reintentar `/submit`.
 - Un documento `SUBMITTED` ya no se edita.
 
 ### 5.3 Relavado manual

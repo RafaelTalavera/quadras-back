@@ -408,12 +408,9 @@ public class LaundryReturnService {
 	}
 	private LaundryReturnManifest ownedManifest(Long id, Long providerId, boolean lock) {
 		Long ownedProviderId = requireProviderId(providerId);
-		LaundryReturnManifest manifest = (lock ? manifestRepository.findForUpdate(id)
-				: manifestRepository.findById(id)).orElseThrow(() ->
+		return (lock ? manifestRepository.findForUpdateByIdAndProviderId(id, ownedProviderId)
+				: manifestRepository.findByIdAndProviderId(id, ownedProviderId)).orElseThrow(() ->
 				new ApplicationException(HttpStatus.NOT_FOUND, "Laundry return not found"));
-		if (!manifest.getProvider().getId().equals(ownedProviderId))
-			throw new ApplicationException(HttpStatus.NOT_FOUND, "Laundry return not found");
-		return manifest;
 	}
 	private Long requireProviderId(Long providerId) {
 		if (providerId == null) throw new ApplicationException(HttpStatus.FORBIDDEN,

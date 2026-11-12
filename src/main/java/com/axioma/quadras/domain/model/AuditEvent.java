@@ -46,6 +46,13 @@ public class AuditEvent {
 	@Column(name = "actor_role", length = MAX_ROLE_LENGTH)
 	private String actorRole;
 
+	@Column(name = "actor_provider_type", length = 30)
+	@jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+	private ProviderAccessType actorProviderType;
+
+	@Column(name = "actor_provider_resource_id")
+	private Long actorProviderResourceId;
+
 	@Column(name = "summary_text", length = MAX_SUMMARY_LENGTH)
 	private String summaryText;
 
@@ -68,6 +75,8 @@ public class AuditEvent {
 			String actionName,
 			String actorUsername,
 			String actorRole,
+			ProviderAccessType actorProviderType,
+			Long actorProviderResourceId,
 			String summaryText,
 			String changesJson,
 			String beforeStateJson,
@@ -83,6 +92,8 @@ public class AuditEvent {
 		event.actionName = normalizeRequired(actionName, "actionName", MAX_ACTION_LENGTH);
 		event.actorUsername = normalizeOptional(actorUsername, "actorUsername", MAX_USERNAME_LENGTH);
 		event.actorRole = normalizeOptional(actorRole, "actorRole", MAX_ROLE_LENGTH);
+		event.actorProviderType = actorProviderType;
+		event.actorProviderResourceId = actorProviderResourceId;
 		event.summaryText = normalizeOptional(summaryText, "summaryText", MAX_SUMMARY_LENGTH);
 		event.changesJson = normalizeJson(changesJson);
 		event.beforeStateJson = normalizeJson(beforeStateJson);
@@ -120,6 +131,14 @@ public class AuditEvent {
 
 	public String getActorRole() {
 		return actorRole;
+	}
+
+	public ProviderAccessType getActorProviderType() {
+		return actorProviderType;
+	}
+
+	public Long getActorProviderResourceId() {
+		return actorProviderResourceId;
 	}
 
 	public String getSummaryText() {

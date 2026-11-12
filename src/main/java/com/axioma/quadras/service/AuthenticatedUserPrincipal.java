@@ -2,6 +2,8 @@ package com.axioma.quadras.service;
 
 import com.axioma.quadras.domain.model.AppUser;
 import com.axioma.quadras.domain.model.AppUserRole;
+import com.axioma.quadras.domain.model.ProviderAccess;
+import com.axioma.quadras.domain.model.ProviderAccessType;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,9 +14,11 @@ import java.util.List;
 public class AuthenticatedUserPrincipal implements UserDetails {
 
 	private final AppUser appUser;
+	private final ProviderAccess providerAccess;
 
 	public AuthenticatedUserPrincipal(AppUser appUser) {
 		this.appUser = appUser;
+		this.providerAccess = appUser.providerAccess();
 	}
 
 	public AppUser getAppUser() {
@@ -31,6 +35,18 @@ public class AuthenticatedUserPrincipal implements UserDetails {
 
 	public Long getLaundryProviderId() {
 		return appUser.getLaundryProvider() == null ? null : appUser.getLaundryProvider().getId();
+	}
+
+	public ProviderAccess getProviderAccess() {
+		return providerAccess;
+	}
+
+	public ProviderAccessType getProviderType() {
+		return providerAccess == null ? null : providerAccess.type();
+	}
+
+	public Long getProviderResourceId() {
+		return providerAccess == null ? null : providerAccess.resourceId();
 	}
 
 	@Override

@@ -2,6 +2,7 @@ package com.axioma.quadras.service;
 
 import com.axioma.quadras.config.JwtProperties;
 import com.axioma.quadras.domain.dto.AuthTokenDto;
+import com.axioma.quadras.domain.dto.ProviderAccessDto;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -39,6 +40,10 @@ public class JwtService {
 		if (principal.getLaundryProviderId() != null) {
 			claimsBuilder.claim("laundryProviderId", principal.getLaundryProviderId());
 		}
+		if (principal.getProviderAccess() != null) {
+			claimsBuilder.claim("providerType", principal.getProviderType().name());
+			claimsBuilder.claim("providerResourceId", principal.getProviderResourceId());
+		}
 		final JwtClaimsSet claims = claimsBuilder.build();
 		final JwsHeader header = JwsHeader.with(MacAlgorithm.HS256)
 				.type("JWT")
@@ -50,6 +55,7 @@ public class JwtService {
 				jwtProperties.expirationSeconds(),
 				principal.getUsername(),
 				principal.getRole().name(),
+				ProviderAccessDto.from(principal.getProviderAccess()),
 				principal.getLaundryProviderId()
 		);
 	}

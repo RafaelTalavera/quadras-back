@@ -7,11 +7,65 @@ import java.lang.Boolean;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CourtBookingRepository extends JpaRepository<CourtBooking, Long> {
+
+	Optional<CourtBooking> findByIdAndPartnerCoachId(Long id, Long partnerCoachId);
+
+	@Query("""
+			select
+				b.id as id,
+				b.bookingDate as bookingDate,
+				b.startTime as startTime,
+				b.endTime as endTime,
+				b.durationMinutes as durationMinutes,
+				b.customerName as customerName,
+				b.customerReference as customerReference,
+				b.status as status,
+				b.cancellationNotes as cancellationNotes,
+				b.recurrenceGroupId as recurrenceGroupId,
+				b.recurrenceStartDate as recurrenceStartDate,
+				b.recurrenceEndDate as recurrenceEndDate
+			from CourtBooking b
+			where b.id = :bookingId
+			  and b.partnerCoach.id = :partnerCoachId
+			""")
+	Optional<ProviderCourtBookingView> findProviderViewByIdAndPartnerCoachId(
+			@Param("bookingId") Long bookingId,
+			@Param("partnerCoachId") Long partnerCoachId
+	);
+
+	@Query("""
+			select
+				b.id as id,
+				b.bookingDate as bookingDate,
+				b.startTime as startTime,
+				b.endTime as endTime,
+				b.durationMinutes as durationMinutes,
+				b.customerName as customerName,
+				b.customerReference as customerReference,
+				b.status as status,
+				b.cancellationNotes as cancellationNotes,
+				b.recurrenceGroupId as recurrenceGroupId,
+				b.recurrenceStartDate as recurrenceStartDate,
+				b.recurrenceEndDate as recurrenceEndDate
+			from CourtBooking b
+			where b.partnerCoach.id = :partnerCoachId
+			  and b.bookingDate >= :dateFrom
+			  and b.bookingDate <= :dateTo
+			  and (:status is null or b.status = :status)
+			order by b.bookingDate asc, b.startTime asc, b.id asc
+			""")
+	List<ProviderCourtBookingView> findProviderViews(
+			@Param("partnerCoachId") Long partnerCoachId,
+			@Param("dateFrom") LocalDate dateFrom,
+			@Param("dateTo") LocalDate dateTo,
+			@Param("status") CourtBookingStatus status
+	);
 
 	List<CourtBooking> findByRecurrenceGroupIdOrderByBookingDateAscStartTimeAscIdAsc(String recurrenceGroupId);
 

@@ -19,11 +19,20 @@ import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import com.axioma.quadras.domain.model.AppUser;
+import com.axioma.quadras.domain.model.AppUserRole;
+import com.axioma.quadras.domain.model.LaundryProvider;
+import com.axioma.quadras.repository.AppUserRepository;
+import com.axioma.quadras.repository.LaundryProviderRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -46,7 +55,73 @@ class AuthControllerTest {
 	@Autowired
 	private JwtProperties jwtProperties;
 
+	@Autowired
+	private AppUserRepository appUserRepository;
+
+	@Autowired
+	private LaundryProviderRepository laundryProviderRepository;
+
+	@Autowired
+	private PasswordEncoder passwordEncoder;
+
 	private final ObjectMapper objectMapper = new ObjectMapper();
+
+	@Test
+	void shouldRejectOperatorFromProviderSelfServiceRoutes() throws Exception {
+		mockMvc.perform(get("/api/v1/provider/courts/bookings")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + authenticate()))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void shouldRejectProviderWithWrongTypeFromCourtSelfServiceRoutes() throws Exception {
+		final String username = "provider.security.route";
+		if (appUserRepository.findByUsername(username).isEmpty()) {
+			appUserRepository.save(AppUser.create(
+					username,
+					passwordEncoder.encode("123456"),
+					AppUserRole.PROVIDER,
+					laundryProviderRepository.save(LaundryProvider.create(
+							"Laundry security route", null, true)),
+					true
+			));
+		}
+		final String token = authenticate(username, "123456");
+
+		mockMvc.perform(get("/api/v1/provider/courts/bookings")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void shouldRejectProviderFromAdministrativeRoutesForEveryHttpMethod() throws Exception {
+		final String username = "provider.security.admin";
+		if (appUserRepository.findByUsername(username).isEmpty()) {
+			appUserRepository.save(AppUser.create(
+					username,
+					passwordEncoder.encode("123456"),
+					AppUserRole.PROVIDER,
+					laundryProviderRepository.save(LaundryProvider.create(
+							"Laundry security admin", null, true)),
+					true
+			));
+		}
+		final String authorization = "Bearer " + authenticate(username, "123456");
+
+		mockMvc.perform(get("/api/v1/courts/bookings").header(HttpHeaders.AUTHORIZATION, authorization))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/v1/massages/bookings").header(HttpHeaders.AUTHORIZATION, authorization))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(put("/api/v1/maintenance/orders/1").header(HttpHeaders.AUTHORIZATION, authorization))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(patch("/api/v1/maintenance/orders/1/start").header(HttpHeaders.AUTHORIZATION, authorization))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(delete("/api/v1/maintenance/orders/1/attachments/1")
+					.header(HttpHeaders.AUTHORIZATION, authorization))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(get("/api/v1/users").header(HttpHeaders.AUTHORIZATION, authorization))
+				.andExpect(status().isForbidden());
+	}
 
 	@Test
 	void shouldAuthenticateAndReturnJwt() throws Exception {
@@ -147,9 +222,13 @@ class AuthControllerTest {
 	}
 
 	private String authenticate() throws Exception {
+		return authenticate("operador.demo", "123456");
+	}
+
+	private String authenticate(String username, String password) throws Exception {
 		final String responseBody = mockMvc.perform(post("/api/v1/auth/login")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(loginPayload("operador.demo", "123456")))
+						.content(loginPayload(username, password)))
 				.andExpect(status().isOk())
 				.andReturn()
 				.getResponse()

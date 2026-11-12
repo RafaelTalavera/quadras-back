@@ -17,6 +17,22 @@ public class CurrentActorService {
 		return principal == null ? null : principal.getRole().name();
 	}
 
+	public AuthenticatedUserPrincipal requirePrincipal() {
+		final AuthenticatedUserPrincipal principal = currentPrincipal();
+		if (principal == null) {
+			throw new com.axioma.quadras.domain.exception.ApplicationException(
+					org.springframework.http.HttpStatus.UNAUTHORIZED,
+					"Authentication is required"
+			);
+		}
+		return principal;
+	}
+
+	public com.axioma.quadras.domain.model.ProviderAccess currentProviderAccess() {
+		final AuthenticatedUserPrincipal principal = currentPrincipal();
+		return principal == null ? null : principal.getProviderAccess();
+	}
+
 	private AuthenticatedUserPrincipal currentPrincipal() {
 		final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUserPrincipal principal)) {

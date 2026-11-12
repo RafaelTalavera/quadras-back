@@ -19,6 +19,7 @@ import com.axioma.quadras.domain.model.CourtBookingStatus;
 import com.axioma.quadras.domain.model.CourtCustomerType;
 import com.axioma.quadras.domain.model.CourtMaterialSetting;
 import com.axioma.quadras.domain.model.CourtPaymentMethod;
+import com.axioma.quadras.domain.model.CourtPartnerCoach;
 import com.axioma.quadras.domain.model.CourtPricingPeriod;
 import com.axioma.quadras.domain.model.CourtRate;
 import com.axioma.quadras.repository.CourtBookingRepository;
@@ -81,7 +82,7 @@ public class CourtBookingService {
 	@Transactional
 	public CourtBookingDto create(CreateCourtBookingDto input, String actorUsername) {
 		validateTimeWindow(input.bookingDate(), input.startTime(), input.endTime());
-		validatePartnerCoachName(input.customerType(), input.customerName());
+		final CourtPartnerCoach partnerCoach = resolvePartnerCoach(input.customerType(), input.customerName());
 		validateRecurrence(input.customerType(), input.bookingDate(), input.recurrence());
 		final List<LocalDate> bookingDates = resolveBookingDates(input.bookingDate(), input.recurrence());
 		scheduleLockService.acquireCourtBookingDates(bookingDates);
@@ -124,6 +125,7 @@ public class CourtBookingService {
 							actorUsername
 					);
 					booking.configureCustomerWhatsapp(input.customerWhatsappNumber());
+					booking.configurePartnerCoach(partnerCoach);
 					return booking;
 				}).toList()
 		);
@@ -155,7 +157,7 @@ public class CourtBookingService {
 		final LocalDate previousBookingDate = booking.getBookingDate();
 		validateCanEdit(booking);
 		validateTimeWindow(input.bookingDate(), input.startTime(), input.endTime());
-		validatePartnerCoachName(input.customerType(), input.customerName());
+		final CourtPartnerCoach partnerCoach = resolvePartnerCoach(input.customerType(), input.customerName());
 		final CourtPricingSnapshot pricing = resolvePricing(
 				input.bookingDate(),
 				input.startTime(),
@@ -186,6 +188,7 @@ public class CourtBookingService {
 				actorUsername
 		);
 		booking.configureCustomerWhatsapp(input.customerWhatsappNumber());
+		booking.configurePartnerCoach(partnerCoach);
 		final Map<String, Object> afterState = snapshot(booking);
 		auditTrailService.record(
 				"courts",
@@ -617,16 +620,11 @@ public class CourtBookingService {
 		}
 	}
 
-	private void validatePartnerCoachName(CourtCustomerType customerType, String customerName) {
+	private CourtPartnerCoach resolvePartnerCoach(CourtCustomerType customerType, String customerName) {
 		if (customerType != CourtCustomerType.PARTNER_COACH) {
-			return;
+			return null;
 		}
-		if (!courtConfigurationService.isActivePartnerCoachName(customerName)) {
-			throw new ApplicationException(
-					HttpStatus.CONFLICT,
-					"Partner coach name must match an active predefined coach."
-			);
-		}
+		return courtConfigurationService.resolveActivePartnerCoach(customerName);
 	}
 
 	private void validateRecurrence(

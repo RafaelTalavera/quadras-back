@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import jakarta.persistence.EntityManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,6 +63,7 @@ public class LaundryDispatchService {
 	private final LaundryReturnAllocationRepository returnAllocationRepository;
 	private final LaundryIdempotencyService idempotencyService;
 	private final LaundryDocumentConfirmationRepository confirmationRepository;
+	private final EntityManager entityManager;
 
 	public LaundryDispatchService(LaundryDocumentRepository documentRepository,
 			LaundryProviderRepository providerRepository, LaundryItemRepository itemRepository,
@@ -69,7 +71,8 @@ public class LaundryDispatchService {
 			LaundryIdempotencyService idempotencyService,
 			LaundryRewashDispatchAllocationRepository rewashAllocationRepository,
 			LaundryReturnAllocationRepository returnAllocationRepository,
-			LaundryDocumentConfirmationRepository confirmationRepository) {
+			LaundryDocumentConfirmationRepository confirmationRepository,
+			EntityManager entityManager) {
 		this.documentRepository = documentRepository;
 		this.providerRepository = providerRepository;
 		this.itemRepository = itemRepository;
@@ -79,6 +82,7 @@ public class LaundryDispatchService {
 		this.rewashAllocationRepository = rewashAllocationRepository;
 		this.returnAllocationRepository = returnAllocationRepository;
 		this.confirmationRepository = confirmationRepository;
+		this.entityManager = entityManager;
 	}
 
 	@Transactional
@@ -98,6 +102,15 @@ public class LaundryDispatchService {
 		String fingerprint = idempotencyService.fingerprint("POST", path, input);
 		return idempotencyService.execute(actor, key, fingerprint, LaundryDocumentDto.class, 200,
 				() -> submitDocument(id, input.version(), actor, actorRole));
+	}
+
+	@Transactional
+	public IdempotentResult<LaundryDocumentDto> update(Long id, CreateLaundryDispatchDto input,
+			String actor, String key) {
+		String path = "/api/v2/laundry/documents/" + id;
+		String fingerprint = idempotencyService.fingerprint("PUT", path, input);
+		return idempotencyService.execute(actor, key, fingerprint, LaundryDocumentDto.class, 200,
+				() -> updateDraft(id, input));
 	}
 
 	public LaundryDocumentDto get(Long id) {
@@ -202,13 +215,9 @@ public class LaundryDispatchService {
 			throw new ApplicationException(HttpStatus.FORBIDDEN,
 					"Provider account is not associated with a laundry provider");
 		}
-		LaundryDocument document = (lock ? documentRepository.findForUpdate(id)
-				: documentRepository.findById(id)).orElseThrow(() ->
+		return (lock ? documentRepository.findForUpdateByIdAndProviderId(id, providerId)
+				: documentRepository.findByIdAndProviderId(id, providerId)).orElseThrow(() ->
 				new ApplicationException(HttpStatus.NOT_FOUND, "Laundry document not found"));
-		if (!document.getProvider().getId().equals(providerId)) {
-			throw new ApplicationException(HttpStatus.NOT_FOUND, "Laundry document not found");
-		}
-		return document;
 	}
 
 	private ProviderLaundryDocumentDto providerDto(LaundryDocument document) {
@@ -227,28 +236,57 @@ public class LaundryDispatchService {
 	private LaundryDocumentDto createDraft(CreateLaundryDispatchDto input,
 			LaundryDocumentType type, String actor) {
 		if (input.version() != 0L) throw bad("version must be 0 for new documents");
+		ValidatedDraft validated = validateDraft(input);
+		String correlationId = UUID.randomUUID().toString();
+		LaundryDocument document = LaundryDocument.draft(reference(type), type, validated.provider(),
+				input.effectiveAt(), input.notes(), actor, correlationId);
+		addLines(document, validated.lines());
+		return LaundryDocumentDto.from(documentRepository.saveAndFlush(document));
+	}
+
+	private LaundryDocumentDto updateDraft(Long id, CreateLaundryDispatchDto input) {
+		LaundryDocument document = documentRepository.findForUpdate(id)
+				.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND,
+						"Laundry document not found"));
+		checkVersion(document, input.version());
+		if (document.getStatus() != LaundryDocumentStatus.DRAFT) {
+			throw new ApplicationException(HttpStatus.CONFLICT,
+					"Only DRAFT documents can be updated");
+		}
+		ValidatedDraft validated = validateDraft(input);
+		document.updateDraft(validated.provider(), input.effectiveAt(), input.notes());
+		// Flush orphan removals before inserting replacement lines so the
+		// document_id + item_id unique constraint is not violated.
+		entityManager.flush();
+		addLines(document, validated.lines());
+		return LaundryDocumentDto.from(documentRepository.saveAndFlush(document));
+	}
+
+	private ValidatedDraft validateDraft(CreateLaundryDispatchDto input) {
 		validateEffectiveAt(input.effectiveAt());
 		LaundryProvider provider = providerRepository.findById(input.providerId())
-				.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND, "Laundry provider not found"));
+				.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND,
+						"Laundry provider not found"));
 		if (!provider.isActive()) throw bad("Inactive laundry provider cannot receive dispatches");
 		Set<Long> itemIds = new HashSet<>();
 		List<ValidatedLine> lines = new ArrayList<>();
 		for (CreateLaundryDispatchLineDto line : input.lines()) {
 			if (!itemIds.add(line.itemId())) throw bad("Dispatch cannot contain duplicate items");
 			LaundryItem item = itemRepository.findById(line.itemId())
-					.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND, "Laundry item not found: " + line.itemId()));
+					.orElseThrow(() -> new ApplicationException(HttpStatus.NOT_FOUND,
+							"Laundry item not found: " + line.itemId()));
 			if (!item.isActive()) throw bad("Inactive laundry item cannot be dispatched: " + line.itemId());
-			BigDecimal quantity = line.quantity().setScale(3);
-			lines.add(new ValidatedLine(item, quantity));
+			lines.add(new ValidatedLine(item, line.quantity().setScale(3)));
 		}
-		String correlationId = UUID.randomUUID().toString();
-		LaundryDocument document = LaundryDocument.draft(reference(type), type, provider,
-				input.effectiveAt(), input.notes(), actor, correlationId);
+		return new ValidatedDraft(provider, lines);
+	}
+
+	private void addLines(LaundryDocument document, List<ValidatedLine> lines) {
 		for (ValidatedLine line : lines) {
-			document.addLine(line.item(), line.quantity(), type == LaundryDocumentType.STANDARD_DISPATCH
+			document.addLine(line.item(), line.quantity(),
+					document.getDocumentType() == LaundryDocumentType.STANDARD_DISPATCH
 					? line.item().getCurrentUnitPrice() : BigDecimal.ZERO);
 		}
-		return LaundryDocumentDto.from(documentRepository.saveAndFlush(document));
 	}
 
 	private LaundryDocumentDto submitDocument(Long id, long expectedVersion,
@@ -329,4 +367,5 @@ public class LaundryDispatchService {
 	}
 
 	private record ValidatedLine(LaundryItem item, BigDecimal quantity) { }
+	private record ValidatedDraft(LaundryProvider provider, List<ValidatedLine> lines) { }
 }
